@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingoizer's World</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="title-screen">
+            <h1>Ingoizer's World</h1>
+            <p class="subtitle">A Tale of Gems and Glory</p>
+            <div class="title-art">
+                <pre>
+    ⚔️  👑  ⚔️
+   ╔═══════════╗
+   ║  INGOIZER ║
+   ║   AWAITS   ║
+   ╚═══════════╝
+                </pre>
+            </div>
+            <button id="startBtn" class="menu-btn">Begin Adventure</button>
+            <button id="controlsBtn" class="menu-btn">Controls</button>
+        </div>
+        <div id="controls-screen" class="hidden">
+            <h2>Controls</h2>
+            <div class="controls-list">
+                <div class="control-item"><span class="key">WASD / Arrow Keys</span> Move</div>
+                <div class="control-item"><span class="key">Space</span> Attack</div>
+                <div class="control-item"><span class="key">E</span> Interact / Enter Shop</div>
+                <div class="control-item"><span class="key">M</span> Toggle Map</div>
+                <div class="control-item"><span class="key">1-4</span> Select Elemental Power</div>
+                <div class="control-item"><span class="key">Q</span> Use Elemental Power</div>
+                <div class="control-item"><span class="key">I</span> Inventory</div>
+                <div class="control-item"><span class="key">ESC</span> Pause</div>
+            </div>
+            <button id="backBtn" class="menu-btn">Back</button>
+        </div>
+        <div id="hud" class="hidden">
+            <div id="hud-top">
+                <div id="health-bar">
+                    <div id="health-fill"></div>
+                    <span id="health-text">100/100</span>
+                </div>
+                <div id="gem-counter">
+                    <span class="gem-icon">💎</span>
+                    <span id="gem-count">0</span> / 5
+                </div>
+                <div id="gold-counter">
+                    <span class="gold-icon">🪙</span>
+                    <span id="gold-count">0</span>
+                </div>
+            </div>
+            <div id="hud-bottom">
+                <div id="weapon-display">
+                    <span id="current-weapon">🗡️ Rusty Sword</span>
+                </div>
+                <div id="element-display">
+                    <div class="element-slot" id="elem-fire" title="Fire">🔥</div>
+                    <div class="element-slot" id="elem-water" title="Water">💧</div>
+                    <div class="element-slot" id="elem-ice" title="Ice">❄️</div>
+                    <div class="element-slot" id="elem-lightning" title="Lightning">⚡</div>
+                </div>
+            </div>
+            <div id="minimap-container">
+                <canvas id="minimap" width="150" height="150"></canvas>
+            </div>
+        </div>
+        <div id="map-overlay" class="hidden">
+            <h2>World Map</h2>
+            <canvas id="worldmap" width="600" height="450"></canvas>
+            <p class="map-hint">Press M to close</p>
+        </div>
+        <div id="shop-overlay" class="hidden">
+            <h2 id="shop-title">Shop</h2>
+            <div id="shop-items"></div>
+            <button id="shop-close" class="menu-btn">Leave Shop</button>
+        </div>
+        <div id="inventory-overlay" class="hidden">
+            <h2>Inventory</h2>
+            <div id="inventory-weapons"></div>
+            <div id="inventory-gems"></div>
+            <button id="inv-close" class="menu-btn">Close</button>
+        </div>
+        <div id="dialog-box" class="hidden">
+            <p id="dialog-text"></p>
+            <span class="dialog-hint">Press E to continue</span>
+        </div>
+        <div id="game-over-screen" class="hidden">
+            <h1 id="game-over-title">Game Over</h1>
+            <p id="game-over-text"></p>
+            <button id="restartBtn" class="menu-btn">Try Again</button>
+        </div>
+    </div>
+    <script src="js/constants.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/world.js"></script>
+    <script src="js/entities.js"></script>
+    <script src="js/combat.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

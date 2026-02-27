@@ -22,6 +22,14 @@ class Player {
         this.weapons = ["rusty_sword"];
         this.currentWeapon = "rusty_sword";
 
+        // Bows & Arrows
+        this.bows = ["rusty_bow"];
+        this.currentBow = "rusty_bow";
+        this.arrows = 5;
+        this.lastShootTime = 0;
+        this.shooting = false;
+        this.shootTimer = 0;
+
         // Elements
         this.elements = {};
         this.activeElement = null;
@@ -74,6 +82,53 @@ class Player {
             return true;
         }
         return false;
+    }
+
+    getBow() {
+        return BOWS[this.currentBow];
+    }
+
+    addBow(bowId) {
+        if (!this.bows.includes(bowId)) {
+            this.bows.push(bowId);
+            return true;
+        }
+        return false;
+    }
+
+    equipBow(bowId) {
+        if (this.bows.includes(bowId)) {
+            this.currentBow = bowId;
+            return true;
+        }
+        return false;
+    }
+
+    shootArrow() {
+        if (this.arrows <= 0) return null;
+        const now = Date.now();
+        const bow = this.getBow();
+        const cooldown = PLAYER_DEFAULTS.attackCooldown / bow.speed;
+        if (now - this.lastShootTime < cooldown) return null;
+
+        this.arrows--;
+        this.lastShootTime = now;
+        this.shooting = true;
+        this.shootTimer = 150;
+
+        const isFireArrow = this.activeElement === "fire" && this.elements.fire;
+        const fireDamage = isFireArrow ? Math.floor(ELEMENTS.fire.damage * 0.5) : 0;
+
+        return {
+            x: this.x + this.facing.x * 10,
+            y: this.y + this.facing.y * 10,
+            vx: this.facing.x * bow.projectileSpeed,
+            vy: this.facing.y * bow.projectileSpeed,
+            damage: bow.damage + fireDamage,
+            range: bow.range,
+            distTraveled: 0,
+            isFireArrow: isFireArrow,
+        };
     }
 
     unlockElement() {
@@ -157,6 +212,14 @@ class Player {
             this.attackTimer -= dt;
             if (this.attackTimer <= 0) {
                 this.attacking = false;
+            }
+        }
+
+        // Shoot timer
+        if (this.shooting) {
+            this.shootTimer -= dt;
+            if (this.shootTimer <= 0) {
+                this.shooting = false;
             }
         }
 
@@ -310,6 +373,14 @@ class Player {
         // Render weapon
         this.renderWeapon(ctx, sx, sy + bobY, time);
 
+        // Render quiver on back
+        this.renderQuiver(ctx, sx, sy + bobY);
+
+        // Render bow when shooting
+        if (this.shooting) {
+            this.renderBowShot(ctx, sx, sy + bobY);
+        }
+
         // Active element glow
         if (this.activeElement) {
             const elem = ELEMENTS[this.activeElement];
@@ -364,6 +435,55 @@ class Player {
             ctx.arc(sx, sy, weapon.range, angle - 0.8, angle + 0.8);
             ctx.stroke();
         }
+    }
+
+    renderQuiver(ctx, sx, sy) {
+        // Quiver on back (right side)
+        ctx.fillStyle = "#654321";
+        ctx.fillRect(sx + 7, sy - 10, 3, 14);
+
+        // Arrow tips sticking out of quiver
+        if (this.arrows > 0) {
+            const showArrows = Math.min(3, this.arrows);
+            ctx.fillStyle = "#aaaacc";
+            for (let i = 0; i < showArrows; i++) {
+                ctx.fillRect(sx + 6 + i * 2, sy - 13, 1, 4);
+            }
+            // Fletching
+            ctx.fillStyle = "#cc4444";
+            for (let i = 0; i < showArrows; i++) {
+                ctx.fillRect(sx + 6 + i * 2, sy - 13, 1, 1);
+            }
+        }
+    }
+
+    renderBowShot(ctx, sx, sy) {
+        const angle = dirToAngle(this.facing.x, this.facing.y);
+        const progress = 1 - this.shootTimer / 150;
+
+        // Bow (curved arc)
+        ctx.save();
+        ctx.translate(sx + Math.cos(angle) * 10, sy - 2 + Math.sin(angle) * 10);
+        ctx.rotate(angle);
+
+        // Bow limb
+        ctx.strokeStyle = "#8B4513";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, -Math.PI * 0.5, Math.PI * 0.5);
+        ctx.stroke();
+
+        // Bowstring
+        const stringPull = (1 - progress) * 5;
+        ctx.strokeStyle = "#ccc";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, -10);
+        ctx.lineTo(-stringPull, 0);
+        ctx.lineTo(0, 10);
+        ctx.stroke();
+
+        ctx.restore();
     }
 }
 

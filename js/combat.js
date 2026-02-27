@@ -7,6 +7,7 @@ class CombatSystem {
         this.particles = [];
         this.damageNumbers = [];
         this.elementEffects = [];
+        this.arrowProjectiles = [];
     }
 
     // Check player attack hitting monsters
@@ -224,6 +225,144 @@ class CombatSystem {
         });
     }
 
+    // Arrow projectile system
+    addArrow(arrowData) {
+        this.arrowProjectiles.push(arrowData);
+    }
+
+    updateArrows(dt, monsters, boss) {
+        const hits = [];
+        for (let i = this.arrowProjectiles.length - 1; i >= 0; i--) {
+            const a = this.arrowProjectiles[i];
+            const moveX = a.vx * dt * 0.1;
+            const moveY = a.vy * dt * 0.1;
+            a.x += moveX;
+            a.y += moveY;
+            a.distTraveled += Math.sqrt(moveX * moveX + moveY * moveY);
+
+            // Fire arrow trail particles
+            if (a.isFireArrow) {
+                this.particles.push({
+                    x: a.x, y: a.y,
+                    vx: randFloat(-0.5, 0.5), vy: randFloat(-1, 0),
+                    life: 200, maxLife: 200, size: randFloat(2, 4),
+                    color: choose(["#ff4400", "#ff8800", "#ffaa00"]),
+                });
+            }
+
+            // Remove if past range
+            if (a.distTraveled >= a.range) {
+                this.arrowProjectiles.splice(i, 1);
+                continue;
+            }
+
+            let removed = false;
+
+            // Check monster collision
+            for (const m of monsters) {
+                if (!m.alive) continue;
+                if (dist(a.x, a.y, m.x, m.y) < m.size + 4) {
+                    let damage = a.damage;
+                    let crit = false;
+                    if (Math.random() < 0.15) {
+                        damage = Math.floor(damage * 1.8);
+                        crit = true;
+                    }
+                    const killed = m.takeDamage(damage, a.x, a.y);
+                    this.spawnHitParticles(m.x, m.y, a.isFireArrow ? "#ff6600" : "#ff4444", 5);
+                    this.addDamageNumber(m.x, m.y, damage, crit);
+                    if (a.isFireArrow) {
+                        this.spawnElementEffect(m.x, m.y, "fire", 500);
+                    }
+                    hits.push({ target: m, damage, killed, crit });
+                    this.arrowProjectiles.splice(i, 1);
+                    removed = true;
+                    break;
+                }
+            }
+
+            if (removed) continue;
+
+            // Check boss collision
+            if (boss && boss.alive && boss.spawned && boss.spawnAnimation <= 0) {
+                if (dist(a.x, a.y, boss.x, boss.y) < boss.size + 4) {
+                    let damage = a.damage;
+                    let crit = false;
+                    if (Math.random() < 0.12) {
+                        damage = Math.floor(damage * 1.6);
+                        crit = true;
+                    }
+                    const killed = boss.takeDamage(damage, a.x, a.y);
+                    this.spawnHitParticles(boss.x, boss.y, a.isFireArrow ? "#ff6600" : "#ff8800", 8);
+                    this.addDamageNumber(boss.x, boss.y, damage, crit);
+                    if (a.isFireArrow) {
+                        this.spawnElementEffect(boss.x, boss.y, "fire", 500);
+                    }
+                    hits.push({ target: boss, damage, killed, crit, isBoss: true });
+                    this.arrowProjectiles.splice(i, 1);
+                }
+            }
+        }
+        return hits;
+    }
+
+    renderArrows(ctx, camera) {
+        for (const a of this.arrowProjectiles) {
+            const sx = a.x - camera.x;
+            const sy = a.y - camera.y;
+            const angle = Math.atan2(a.vy, a.vx);
+
+            ctx.save();
+            ctx.translate(sx, sy);
+            ctx.rotate(angle);
+
+            // Arrow shaft
+            ctx.strokeStyle = a.isFireArrow ? "#ff6600" : "#8B4513";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-10, 0);
+            ctx.lineTo(6, 0);
+            ctx.stroke();
+
+            // Arrow head
+            ctx.fillStyle = a.isFireArrow ? "#ff4400" : "#aaaacc";
+            ctx.beginPath();
+            ctx.moveTo(10, 0);
+            ctx.lineTo(5, -3);
+            ctx.lineTo(5, 3);
+            ctx.closePath();
+            ctx.fill();
+
+            // Fletching
+            ctx.fillStyle = a.isFireArrow ? "#ffaa00" : "#654321";
+            ctx.beginPath();
+            ctx.moveTo(-10, 0);
+            ctx.lineTo(-7, -3);
+            ctx.lineTo(-7, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(-10, 0);
+            ctx.lineTo(-7, 3);
+            ctx.lineTo(-7, 0);
+            ctx.closePath();
+            ctx.fill();
+
+            // Fire glow
+            if (a.isFireArrow) {
+                ctx.shadowColor = "#ff4400";
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = "rgba(255, 100, 0, 0.4)";
+                ctx.beginPath();
+                ctx.arc(4, 0, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.restore();
+        }
+    }
+
     addDamageNumber(x, y, amount, crit, isHeal) {
         this.damageNumbers.push({
             x: x + randFloat(-10, 10),
@@ -271,6 +410,9 @@ class CombatSystem {
     }
 
     render(ctx, camera, time) {
+        // Render arrow projectiles
+        this.renderArrows(ctx, camera);
+
         // Render element effects
         for (const e of this.elementEffects) {
             const sx = e.x - camera.x;

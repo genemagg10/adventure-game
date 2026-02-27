@@ -25,6 +25,8 @@ class UIManager {
         this.inventoryOverlay = document.getElementById("inventory-overlay");
         this.invWeapons = document.getElementById("inventory-weapons");
         this.invGems = document.getElementById("inventory-gems");
+        this.arrowCount = document.getElementById("arrow-count");
+        this.invBows = document.getElementById("inventory-bows");
         this.dialogBox = document.getElementById("dialog-box");
         this.dialogText = document.getElementById("dialog-text");
         this.gameOverScreen = document.getElementById("game-over-screen");
@@ -100,9 +102,13 @@ class UIManager {
         // Gold
         this.goldCount.textContent = player.gold;
 
+        // Arrows
+        this.arrowCount.textContent = player.arrows;
+
         // Weapon
         const weapon = player.getWeapon();
-        this.weaponDisplay.textContent = `${weapon.icon} ${weapon.name}`;
+        const bow = player.getBow();
+        this.weaponDisplay.textContent = `${weapon.icon} ${weapon.name}  |  ${bow.icon} ${bow.name}`;
 
         // Element slots
         for (const [key, slot] of Object.entries(this.elemSlots)) {
@@ -190,13 +196,14 @@ class UIManager {
         this.shopOverlay.classList.remove("hidden");
 
         for (const itemId of shop.inventory) {
-            // Check if weapon or potion
+            // Check if weapon, bow, or potion
             const isWeapon = WEAPONS[itemId];
+            const isBow = BOWS[itemId];
             const isPotion = SHOP_POTIONS[itemId];
-            const item = isWeapon || isPotion;
+            const item = isWeapon || isBow || isPotion;
             if (!item) continue;
 
-            const owned = isWeapon && player.weapons.includes(itemId);
+            const owned = (isWeapon && player.weapons.includes(itemId)) || (isBow && player.bows.includes(itemId));
             const canAfford = player.gold >= item.price;
 
             const el = document.createElement("div");
@@ -210,7 +217,7 @@ class UIManager {
 
             if (!owned && canAfford) {
                 el.addEventListener("click", () => {
-                    this.buyItem(itemId, isWeapon, isPotion, player, shop);
+                    this.buyItem(itemId, isWeapon, isBow, isPotion, player, shop);
                 });
             }
 
@@ -218,8 +225,8 @@ class UIManager {
         }
     }
 
-    buyItem(itemId, isWeapon, isPotion, player, shop) {
-        const item = isWeapon || isPotion;
+    buyItem(itemId, isWeapon, isBow, isPotion, player, shop) {
+        const item = isWeapon || isBow || isPotion;
         if (player.gold < item.price) {
             this.showNotification("Not enough gold!");
             return;
@@ -230,6 +237,10 @@ class UIManager {
         if (isWeapon) {
             player.addWeapon(itemId);
             player.equipWeapon(itemId);
+            this.showNotification(`Purchased ${item.name}!`);
+        } else if (isBow) {
+            player.addBow(itemId);
+            player.equipBow(itemId);
             this.showNotification(`Purchased ${item.name}!`);
         } else if (isPotion) {
             // Use potion immediately
@@ -246,6 +257,10 @@ class UIManager {
                     player.shieldActive = true;
                     player.shieldHits = isPotion.value;
                     this.showNotification("Shield activated!");
+                    break;
+                case "arrows":
+                    player.arrows += isPotion.value;
+                    this.showNotification(`Got ${isPotion.value} arrows!`);
                     break;
             }
         }
@@ -266,6 +281,7 @@ class UIManager {
     openInventory(player) {
         this.inventoryOverlay.classList.remove("hidden");
         this.invWeapons.innerHTML = "<h3 style='color:#ffd700;width:100%;text-align:center;margin-bottom:8px;'>Weapons</h3>";
+        this.invBows.innerHTML = "<h3 style='color:#cc8844;width:100%;text-align:center;margin-bottom:8px;'>Bows (Arrows: " + player.arrows + ")</h3>";
         this.invGems.innerHTML = "<h3 style='color:#4488ff;width:100%;text-align:center;margin-bottom:8px;'>Blue Gems: " + player.blueGems + " / 5</h3>";
 
         for (const wid of player.weapons) {
@@ -284,6 +300,25 @@ class UIManager {
                 this.showNotification(`Equipped ${w.name}`);
             });
             this.invWeapons.appendChild(el);
+        }
+
+        // Show bows
+        for (const bid of player.bows) {
+            const b = BOWS[bid];
+            const isEquipped = player.currentBow === bid;
+            const el = document.createElement("div");
+            el.className = "inv-item" + (isEquipped ? " equipped" : "");
+            el.innerHTML = `
+                <span class="inv-item-icon">${b.icon}</span>
+                <span class="inv-item-name">${b.name}</span>
+                <span class="inv-item-name" style="color:#aaa;font-size:10px;">DMG: ${b.damage}</span>
+            `;
+            el.addEventListener("click", () => {
+                player.equipBow(bid);
+                this.openInventory(player);
+                this.showNotification(`Equipped ${b.name}`);
+            });
+            this.invBows.appendChild(el);
         }
 
         // Show element gems

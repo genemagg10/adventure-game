@@ -268,14 +268,7 @@ class Game {
 
         // Player attack
         if (this.keyJustPressed.attack) {
-            if (this.player.attack()) {
-                const hits = this.combat.checkPlayerAttack(this.player, this.monsters, this.boss);
-                for (const hit of hits) {
-                    if (hit.killed) {
-                        this.onEntityKilled(hit.target, hit.isBoss);
-                    }
-                }
-            }
+            this.player.attack();
         }
 
         // Use element

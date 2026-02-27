@@ -171,8 +171,9 @@ class World {
         // Castle gate (south side, middle)
         const gateX = cx + Math.floor(cw / 2);
         for (let dx = -1; dx <= 1; dx++) {
-            if (this.tiles[cy + ch - 1]) {
-                this.tiles[cy + ch - 1][gateX + dx] = TILE.PATH;
+            const gx = gateX + dx;
+            if (cy + ch - 1 >= 0 && cy + ch - 1 < WORLD_H && gx >= 0 && gx < WORLD_W) {
+                this.tiles[cy + ch - 1][gx] = TILE.PATH;
             }
         }
 

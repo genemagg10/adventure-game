@@ -21,6 +21,7 @@ class CombatSystem {
         // Check monsters
         for (const monster of monsters) {
             if (!monster.alive) continue;
+            if (player.attackHitTargets && player.attackHitTargets.has(monster)) continue;
             const d = dist(player.x, player.y, monster.x, monster.y);
             if (d > range + monster.size) continue;
 
@@ -30,6 +31,7 @@ class CombatSystem {
             if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
             if (angleDiff > Math.PI / 3) continue;
 
+            if (player.attackHitTargets) player.attackHitTargets.add(monster);
             let damage = weapon.damage;
 
             // Critical hit
@@ -51,6 +53,7 @@ class CombatSystem {
 
         // Check boss
         if (boss && boss.alive && boss.spawned && boss.spawnAnimation <= 0) {
+            if (player.attackHitTargets && player.attackHitTargets.has(boss)) return hits;
             const d = dist(player.x, player.y, boss.x, boss.y);
             if (d <= range + boss.size) {
                 const angleToTarget = dirToAngle(boss.x - player.x, boss.y - player.y);
@@ -58,6 +61,7 @@ class CombatSystem {
                 if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
 
                 if (angleDiff <= Math.PI / 3) {
+                    if (player.attackHitTargets) player.attackHitTargets.add(boss);
                     let damage = weapon.damage;
                     let crit = false;
                     if (Math.random() < 0.12) {

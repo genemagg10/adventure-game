@@ -195,6 +195,7 @@ class Player {
         this.attackTimer = 200;
         this.attackAngle = dirToAngle(this.facing.x, this.facing.y);
         this.lastAttackTime = now;
+        this.attackHitTargets = new Set();
         return true;
     }
 

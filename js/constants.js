@@ -195,6 +195,39 @@ const GEM_SPAWN_POINTS = [
 ];
 // 2 more come from monster drops, for total of 5
 
+// Lady of the Lake (Excalibur encounter)
+const LADY_OF_LAKE = {
+    x: 50, y: 68, // tile coordinates - on the shore of Crystal Lake
+    interactRange: 50,
+    riddles: [
+        {
+            question: "What castle stands at the edge of the realm, where darkness gathers and a great evil dwells?",
+            choices: ["Dragon Keep", "Ing Castle", "Camelot", "The Black Tower"],
+            answer: 1,
+        },
+        {
+            question: "How many Blue Gems must a hero gather before the final battle can begin?",
+            choices: ["Three", "Four", "Five", "Seven"],
+            answer: 2,
+        },
+        {
+            question: "Which of these lands is home to the Crystal Lake?",
+            choices: ["The Darklands", "Scorched Wastes", "Between Camelot Village and Dark Forest", "Dragon Mountains"],
+            answer: 2,
+        },
+        {
+            question: "What foul knight clad in shadow guards the gates of Ing Castle?",
+            choices: ["The Red Knight", "The Black Knight", "The Iron Knight", "The Pale Knight"],
+            answer: 1,
+        },
+        {
+            question: "What ancient power do the Blue Gems bestow upon their bearer?",
+            choices: ["Invisibility", "Flight", "Elemental Powers", "Immortality"],
+            answer: 2,
+        },
+    ],
+};
+
 const COLORS = {
     player: "#3388ff",
     playerOutline: "#1155cc",

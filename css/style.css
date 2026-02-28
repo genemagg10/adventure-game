@@ -293,6 +293,87 @@ body {
     font-size: 14px;
 }
 
+/* Riddle Overlay */
+#riddle-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 20, 40, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 55;
+}
+
+#riddle-overlay h2 {
+    color: #88ccff;
+    font-size: 26px;
+    margin-bottom: 8px;
+    text-shadow: 0 0 15px rgba(100, 180, 255, 0.5);
+}
+
+#riddle-question {
+    color: #eee;
+    font-size: 16px;
+    max-width: 550px;
+    text-align: center;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    font-style: italic;
+}
+
+#riddle-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 400px;
+}
+
+.riddle-choice {
+    padding: 10px 20px;
+    background: rgba(30, 50, 80, 0.8);
+    border: 2px solid #4488aa;
+    border-radius: 6px;
+    color: #ddd;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    font-family: inherit;
+    pointer-events: auto;
+}
+
+.riddle-choice:hover {
+    background: rgba(40, 70, 110, 0.9);
+    border-color: #88ccff;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(100, 180, 255, 0.3);
+}
+
+.riddle-choice.correct {
+    border-color: #44cc44;
+    background: rgba(30, 100, 30, 0.8);
+    color: #88ff88;
+}
+
+.riddle-choice.wrong {
+    border-color: #cc4444;
+    background: rgba(100, 30, 30, 0.8);
+    color: #ff8888;
+}
+
+#riddle-result {
+    color: #88ccff;
+    font-size: 16px;
+    margin-top: 15px;
+    min-height: 24px;
+    text-align: center;
+    max-width: 500px;
+}
+
 /* Shop Overlay */
 #shop-overlay {
     position: absolute;

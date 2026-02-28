@@ -33,6 +33,12 @@ class UIManager {
         this.gameOverTitle = document.getElementById("game-over-title");
         this.gameOverText = document.getElementById("game-over-text");
 
+        this.riddleOverlay = document.getElementById("riddle-overlay");
+        this.riddleQuestion = document.getElementById("riddle-question");
+        this.riddleChoices = document.getElementById("riddle-choices");
+        this.riddleResult = document.getElementById("riddle-result");
+        this.riddleCallback = null;
+
         this.elemSlots = {
             fire: document.getElementById("elem-fire"),
             water: document.getElementById("elem-water"),
@@ -233,6 +239,7 @@ class UIManager {
         }
 
         player.gold -= item.price;
+        if (this.game.sound) this.game.sound.shopBuy();
 
         if (isWeapon) {
             player.addWeapon(itemId);
@@ -351,6 +358,57 @@ class UIManager {
 
     isInventoryOpen() {
         return !this.inventoryOverlay.classList.contains("hidden");
+    }
+
+    // Riddle system
+    openRiddle(riddle, onCorrect, onWrong) {
+        this.riddleOverlay.classList.remove("hidden");
+        this.riddleQuestion.textContent = riddle.question;
+        this.riddleResult.textContent = "";
+        this.riddleChoices.innerHTML = "";
+
+        for (let i = 0; i < riddle.choices.length; i++) {
+            const btn = document.createElement("button");
+            btn.className = "riddle-choice";
+            btn.textContent = riddle.choices[i];
+            btn.addEventListener("click", () => {
+                this.handleRiddleAnswer(i, riddle.answer, onCorrect, onWrong);
+            });
+            this.riddleChoices.appendChild(btn);
+        }
+    }
+
+    handleRiddleAnswer(chosen, correctIndex, onCorrect, onWrong) {
+        const buttons = this.riddleChoices.querySelectorAll(".riddle-choice");
+        // Disable all buttons
+        buttons.forEach(b => { b.style.pointerEvents = "none"; });
+
+        if (chosen === correctIndex) {
+            buttons[chosen].classList.add("correct");
+            this.riddleResult.textContent = "Correct! The Lady of the Lake smiles with approval.";
+            this.riddleResult.style.color = "#88ff88";
+            setTimeout(() => {
+                this.closeRiddle();
+                if (onCorrect) onCorrect();
+            }, 1500);
+        } else {
+            buttons[chosen].classList.add("wrong");
+            buttons[correctIndex].classList.add("correct");
+            this.riddleResult.textContent = "Incorrect. Return when you know the land better, brave Ingoizer.";
+            this.riddleResult.style.color = "#ff8888";
+            setTimeout(() => {
+                this.closeRiddle();
+                if (onWrong) onWrong();
+            }, 2000);
+        }
+    }
+
+    closeRiddle() {
+        this.riddleOverlay.classList.add("hidden");
+    }
+
+    isRiddleOpen() {
+        return !this.riddleOverlay.classList.contains("hidden");
     }
 
     // Game Over

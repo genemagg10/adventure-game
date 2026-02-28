@@ -34,8 +34,9 @@ class World {
         this.carvePath(70, 70, 25, 100, rng); // swamp -> ruins
         this.carvePath(130, 60, 130, 110, rng);// mountains -> darklands
 
-        // Build bridges over water
+        // Build bridges over water (with a connecting bridge to the Lady of the Lake)
         this.buildBridge(49, 65, 51, 65);
+        this.buildBridge(50, 65, 50, 68);  // connects north bridge to Lady's island
         this.buildBridge(49, 70, 51, 70);
 
         // Build castle walls and gate

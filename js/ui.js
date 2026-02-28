@@ -212,12 +212,31 @@ class UIManager {
             const owned = (isWeapon && player.weapons.includes(itemId)) || (isBow && player.bows.includes(itemId));
             const canAfford = player.gold >= item.price;
 
+            // Build stats line for weapons and bows
+            let statsHtml = "";
+            if (isWeapon) {
+                const spdLabel = item.speed >= 1.1 ? "Fast" : item.speed >= 1.0 ? "Normal" : item.speed >= 0.8 ? "Slow" : "V.Slow";
+                statsHtml = `<div class="shop-item-stats">
+                    <span>DMG: ${item.damage}</span>
+                    <span>SPD: ${spdLabel}</span>
+                    <span>RNG: ${item.range}</span>
+                </div>`;
+            } else if (isBow) {
+                const spdLabel = item.speed >= 1.1 ? "Fast" : item.speed >= 1.0 ? "Normal" : item.speed >= 0.8 ? "Slow" : "V.Slow";
+                statsHtml = `<div class="shop-item-stats">
+                    <span>DMG: ${item.damage}</span>
+                    <span>SPD: ${spdLabel}</span>
+                    <span>RNG: ${item.range}</span>
+                </div>`;
+            }
+
             const el = document.createElement("div");
             el.className = "shop-item" + (owned ? " owned" : "");
             el.innerHTML = `
                 <span class="shop-item-icon">${item.icon}</span>
                 <span class="shop-item-name">${item.name}</span>
                 <span class="shop-item-desc">${item.description}</span>
+                ${statsHtml}
                 <span class="shop-item-price">${owned ? "OWNED" : item.price + " gold"}</span>
             `;
 

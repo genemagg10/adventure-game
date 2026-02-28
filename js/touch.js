@@ -18,7 +18,7 @@ class TouchControls {
             currentY: 0,
             dx: 0,
             dy: 0,
-            radius: 50,
+            radius: 60,
         };
 
         // Track button presses for just-pressed detection
@@ -46,6 +46,29 @@ class TouchControls {
         if (this.active) return;
         this.active = true;
         document.body.classList.add("touch-mode");
+
+        // Lock viewport - prevent any page scrolling, bouncing, or zooming
+        document.addEventListener("touchmove", (e) => {
+            // Allow scrolling inside overlay content (shops, inventory)
+            const target = e.target;
+            if (target.closest("#shop-items") || target.closest("#inventory-weapons") ||
+                target.closest("#inventory-bows") || target.closest("#inventory-gems") ||
+                target.closest("#riddle-overlay")) {
+                return;
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        // Prevent double-tap zoom
+        let lastTap = 0;
+        document.addEventListener("touchend", (e) => {
+            const now = Date.now();
+            if (now - lastTap < 300) {
+                e.preventDefault();
+            }
+            lastTap = now;
+        }, { passive: false });
+
         this.createUI();
         this.bindEvents();
     }
@@ -191,8 +214,9 @@ class TouchControls {
         this.joystick.currentY = this.joystick.originY;
 
         // Move joystick base to touch point
-        this.joystickBase.style.left = (this.joystick.originX - 50) + "px";
-        this.joystickBase.style.top = (this.joystick.originY - 50) + "px";
+        this.joystickBase.style.left = (this.joystick.originX - 60) + "px";
+        this.joystickBase.style.top = (this.joystick.originY - 60) + "px";
+        this.joystickBase.style.transform = "none";
         this.joystickBase.style.opacity = "1";
 
         this.game.sound.ensureContext();

@@ -39,7 +39,26 @@ class TouchControls {
             const narrow = window.innerWidth <= 900;
             const touch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
             if ((narrow || touch) && !this.active) this.enable();
+            // Pause/resume game based on portrait/landscape orientation
+            this.checkOrientation();
         });
+        // Initial orientation check
+        this.checkOrientation();
+    }
+
+    checkOrientation() {
+        const isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+        const isNarrow = window.innerWidth <= 900;
+        if (!isTouch && !isNarrow) return; // Only apply to mobile/touch devices
+
+        const isPortrait = window.innerHeight > window.innerWidth;
+        if (isPortrait && this.game.state === "playing" && !this.game.paused) {
+            this.game.paused = true;
+            this._pausedByOrientation = true;
+        } else if (!isPortrait && this._pausedByOrientation) {
+            this.game.paused = false;
+            this._pausedByOrientation = false;
+        }
     }
 
     enable() {

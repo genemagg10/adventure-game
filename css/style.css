@@ -666,6 +666,79 @@ body {
 }
 
 /* ============================================
+   Portrait Mode - Rotate Device Overlay
+   ============================================ */
+
+#rotate-device {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    background: linear-gradient(180deg, #0a0a2e 0%, #1a0a3e 50%, #2a1a4e 100%);
+    z-index: 99999;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.rotate-content {
+    text-align: center;
+    padding: 30px;
+}
+
+.rotate-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    animation: rotateHint 2s ease-in-out infinite;
+}
+
+@keyframes rotateHint {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-20deg); }
+    75% { transform: rotate(20deg); }
+}
+
+#rotate-device h2 {
+    color: #ffd700;
+    font-size: 28px;
+    margin-bottom: 12px;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    letter-spacing: 1px;
+}
+
+#rotate-device p {
+    color: #c0c0c0;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* Show rotate overlay on mobile portrait orientation */
+@media (orientation: portrait) and (max-width: 900px) {
+    #rotate-device {
+        display: flex;
+    }
+
+    #game-container {
+        visibility: hidden;
+        pointer-events: none;
+    }
+}
+
+@media (orientation: portrait) and (pointer: coarse) {
+    #rotate-device {
+        display: flex;
+    }
+
+    #game-container {
+        visibility: hidden;
+        pointer-events: none;
+    }
+}
+
+/* ============================================
    Touch Controls & Mobile Responsive
    ============================================ */
 

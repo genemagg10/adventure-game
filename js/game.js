@@ -46,10 +46,22 @@ class Game {
         // Interaction
         this.nearShop = null;
         this.nearGem = null;
+        this.nearLady = false;
+
+        // Lady of the Lake riddle state
+        this.riddleIndex = 0;
+        this.riddleFailed = false;
+        this.riddleCooldown = 0;
 
         // Monster gem drops (2 from monsters total)
         this.monsterGemDrops = 0;
         this.maxMonsterGemDrops = 2;
+
+        // Sound system
+        this.sound = new SoundSystem();
+
+        // Footstep timer
+        this.footstepTimer = 0;
 
         // UI Manager
         this.ui = new UIManager(this);
@@ -97,6 +109,8 @@ class Game {
 
     startGame() {
         this.state = "playing";
+        this.sound.init();
+        this.sound.menuSelect();
         this.world = new World();
         this.combat = new CombatSystem();
 
@@ -130,6 +144,9 @@ class Game {
     restart() {
         this.ui.hideBossHealth();
         this.ui.hideHud();
+        this.riddleIndex = 0;
+        this.riddleFailed = false;
+        this.riddleCooldown = 0;
         this.state = "title";
         document.getElementById("title-screen").classList.remove("hidden");
     }
@@ -220,7 +237,7 @@ class Game {
 
     update(dt) {
         // Don't update during dialogs, menus
-        const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive;
+        const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive || this.ui.isRiddleOpen();
 
         // Handle menu input
         if (this.keyJustPressed.map) {
@@ -238,6 +255,7 @@ class Game {
             }
         }
         if (this.keyJustPressed.interact && this.ui.dialogActive) {
+            this.sound.dialogAdvance();
             this.ui.advanceDialog();
             return;
         }
@@ -268,13 +286,22 @@ class Game {
 
         // Player attack
         if (this.keyJustPressed.attack) {
-            this.player.attack();
+            if (this.player.attack()) {
+                this.sound.swordSlash();
+            }
         }
 
         // Use element
         if (this.keyJustPressed.element) {
             const elemUsed = this.player.useElement();
             if (elemUsed) {
+                // Play element sound
+                switch (elemUsed) {
+                    case "fire": this.sound.fireBlast(); break;
+                    case "water": this.sound.waterSplash(); break;
+                    case "ice": this.sound.iceFreeze(); break;
+                    case "lightning": this.sound.lightningStrike(); break;
+                }
                 const results = this.combat.useElement(this.player, elemUsed, this.monsters, this.boss);
                 for (const r of results) {
                     if (r.killed) {
@@ -294,14 +321,23 @@ class Game {
             const result = monster.update(dt, this.player, this.world);
             if (result && result.type === "playerHit") {
                 this.combat.addDamageNumber(this.player.x, this.player.y, result.damage, false);
+                this.sound.playerHurt();
+                this.sound.monsterAttack();
             }
         }
 
         // Update boss
         if (this.boss && this.boss.spawned) {
+            const prevCharging = this.boss.charging;
+            const prevSpinning = this.boss.spinning;
+            const prevProjCount = this.boss.projectiles.length;
             this.boss.update(dt, this.player, this.world);
             if (this.boss.alive) {
                 this.ui.showBossHealth(this.boss);
+                // Boss attack sounds
+                if (!prevCharging && this.boss.charging) this.sound.bossCharge();
+                if (!prevSpinning && this.boss.spinning) this.sound.bossSpin();
+                if (this.boss.projectiles.length > prevProjCount) this.sound.bossProjectile();
             }
         }
 
@@ -309,10 +345,31 @@ class Game {
         if (this.player.attacking) {
             const hits = this.combat.checkPlayerAttack(this.player, this.monsters, this.boss);
             for (const hit of hits) {
+                if (hit.crit) {
+                    this.sound.criticalHit();
+                } else {
+                    this.sound.swordHit();
+                }
                 if (hit.killed) {
                     this.onEntityKilled(hit.target, hit.isBoss);
                 }
             }
+        }
+
+        // Footstep sounds
+        if (this.keys.up || this.keys.down || this.keys.left || this.keys.right) {
+            this.footstepTimer += dt;
+            if (this.footstepTimer > 280) {
+                this.sound.footstep();
+                this.footstepTimer = 0;
+            }
+        } else {
+            this.footstepTimer = 200; // ready to play on next move
+        }
+
+        // Riddle cooldown
+        if (this.riddleCooldown > 0) {
+            this.riddleCooldown -= dt;
         }
 
         // Check proximity for interactions
@@ -333,6 +390,7 @@ class Game {
         // Check player death
         if (this.player.hp <= 0) {
             this.state = "gameover";
+            this.sound.playerDeath();
             this.ui.showGameOver(false, "Ingoizer has fallen in battle... The realm is lost.");
             this.ui.hideBossHealth();
         }
@@ -350,8 +408,10 @@ class Game {
         if (isBoss) {
             this.bossDefeated = true;
             this.ui.hideBossHealth();
+            this.sound.bossDefeat();
             setTimeout(() => {
                 this.state = "gameover";
+                this.sound.victoryFanfare();
                 this.ui.showGameOver(true,
                     "The Black Knight has been vanquished! Ingoizer stands victorious. " +
                     "The realm is saved and peace returns to the land. " +
@@ -361,17 +421,20 @@ class Game {
             return;
         }
 
+        this.sound.monsterDeath();
         this.player.monstersKilled++;
         const drops = entity.getDrops();
 
         // Gold
         this.player.gold += drops.gold;
+        this.sound.goldCollect();
         this.ui.showNotification(`+${drops.gold} gold`);
 
         // Weapon drop
         if (drops.weapon) {
             if (this.player.addWeapon(drops.weapon)) {
                 const w = WEAPONS[drops.weapon];
+                this.sound.weaponPickup();
                 this.ui.showNotification(`Found ${w.name}!`);
                 this.ui.showDialog(`You picked up a ${w.name}! ${w.description}. Open inventory (I) to equip it.`);
             }
@@ -381,6 +444,7 @@ class Game {
         if (drops.gem && this.monsterGemDrops < this.maxMonsterGemDrops && this.player.blueGems < 5) {
             this.monsterGemDrops++;
             const elem = this.player.collectGem();
+            this.sound.gemCollect();
             this.ui.showNotification(`Blue Gem found! (${this.player.blueGems}/5)`);
             if (elem) {
                 this.ui.showDialog(`The Blue Gem resonates with ${ELEMENTS[elem].name} energy! You gained the power of ${ELEMENTS[elem].name}! Press ${this.player.nextElementIndex} to select it, Q to use.`);
@@ -415,11 +479,21 @@ class Game {
         if (this.nearGem) {
             this.collectWorldGem(this.nearGem);
         }
+
+        // Check Lady of the Lake
+        this.nearLady = false;
+        const lady = this.world.ladyOfLake;
+        if (lady && !lady.excaliburGiven) {
+            if (dist(this.player.x, this.player.y, lady.x, lady.y) < LADY_OF_LAKE.interactRange) {
+                this.nearLady = true;
+            }
+        }
     }
 
     collectWorldGem(gem) {
         gem.collected = true;
         const elem = this.player.collectGem();
+        this.sound.gemCollect();
         this.ui.showNotification(`Blue Gem found! (${this.player.blueGems}/5)`);
         if (elem) {
             this.ui.showDialog(`The Blue Gem pulses with ${ELEMENTS[elem].name} energy! You gained the power of ${ELEMENTS[elem].name}! Press ${this.player.nextElementIndex} to select it, Q to use.`);
@@ -432,8 +506,46 @@ class Game {
     handleInteraction() {
         // Shop interaction
         if (this.nearShop) {
+            this.sound.menuSelect();
             this.ui.openShop(this.nearShop, this.player);
+            return;
         }
+
+        // Lady of the Lake interaction
+        if (this.nearLady && this.riddleCooldown <= 0) {
+            this.startLadyRiddle();
+        }
+    }
+
+    startLadyRiddle() {
+        const riddles = LADY_OF_LAKE.riddles;
+        // Pick a random riddle the player hasn't answered correctly yet
+        const riddle = riddles[this.riddleIndex % riddles.length];
+
+        this.ui.showDialog("\"I am the Lady of the Lake. I hold Excalibur, the mightiest blade ever forged.\"", () => {
+            this.ui.showDialog("\"Answer my riddle, brave Ingoizer, and the sword shall be yours.\"", () => {
+                this.ui.openRiddle(
+                    riddle,
+                    // On correct
+                    () => {
+                        this.sound.riddleCorrect();
+                        this.world.ladyOfLake.excaliburGiven = true;
+                        this.player.addWeapon("excalibur");
+                        this.player.equipWeapon("excalibur");
+                        this.sound.excaliburReveal();
+                        this.ui.showDialog("\"You have proven your wisdom, Ingoizer. Take Excalibur - the legendary sword of kings!\"");
+                        this.ui.showDialog("Excalibur has been added to your inventory and equipped! Its golden blade gleams with power.");
+                        this.ui.showNotification("Excalibur obtained!");
+                    },
+                    // On wrong
+                    () => {
+                        this.sound.riddleWrong();
+                        this.riddleIndex++;
+                        this.riddleCooldown = 3000;
+                    }
+                );
+            });
+        });
     }
 
     checkBossTrigger() {
@@ -442,6 +554,7 @@ class Game {
         if (dist(this.player.x, this.player.y, bossPoint.x, bossPoint.y) < 200) {
             this.bossSpawned = true;
             this.boss.spawn();
+            this.sound.bossRoar();
 
             this.ui.showDialog("A dark figure emerges from the shadows of Ing Castle...");
             this.ui.showDialog("\"I am The Black Knight! Those gems belong to me, Ingoizer. Prepare to die!\"");
@@ -524,6 +637,8 @@ class Game {
         // Interaction prompts
         if (this.nearShop) {
             this.ui.renderInteractionPrompt(ctx, "Press E to enter shop");
+        } else if (this.nearLady) {
+            this.ui.renderInteractionPrompt(ctx, "Press E to speak with the Lady of the Lake");
         }
 
         // Render minimap

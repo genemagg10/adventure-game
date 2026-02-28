@@ -8,6 +8,7 @@ class World {
         this.gems = [];
         this.shops = [];
         this.decorations = [];
+        this.ladyOfLake = null;
         this.generate();
     }
 
@@ -45,6 +46,9 @@ class World {
 
         // Place world gems
         this.placeGems();
+
+        // Place Lady of the Lake
+        this.placeLadyOfLake();
 
         // Add decorations
         this.generateDecorations(rng);
@@ -216,6 +220,26 @@ class World {
         }));
     }
 
+    placeLadyOfLake() {
+        const l = LADY_OF_LAKE;
+        // Clear a sand patch on the shore for her
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const tx = l.x + dx;
+                const ty = l.y + dy;
+                if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
+                    this.tiles[ty][tx] = TILE.SAND;
+                }
+            }
+        }
+        this.ladyOfLake = {
+            x: l.x * TILE_SIZE + TILE_SIZE / 2,
+            y: l.y * TILE_SIZE + TILE_SIZE / 2,
+            excaliburGiven: false,
+            riddleActive: false,
+        };
+    }
+
     generateDecorations(rng) {
         // Add flowers, rocks, etc. as visual decorations
         for (let i = 0; i < 500; i++) {
@@ -301,6 +325,15 @@ class World {
             const sy = gem.y - camera.y;
             if (sx < -20 || sx > CANVAS_W + 20 || sy < -20 || sy > CANVAS_H + 20) continue;
             this.renderGem(ctx, sx, sy, time, gem);
+        }
+
+        // Render Lady of the Lake
+        if (this.ladyOfLake && !this.ladyOfLake.excaliburGiven) {
+            const lx = this.ladyOfLake.x - camera.x;
+            const ly = this.ladyOfLake.y - camera.y;
+            if (lx > -60 && lx < CANVAS_W + 60 && ly > -60 && ly < CANVAS_H + 60) {
+                this.renderLadyOfLake(ctx, lx, ly, time);
+            }
         }
     }
 
@@ -480,6 +513,86 @@ class World {
         ctx.restore();
     }
 
+    renderLadyOfLake(ctx, sx, sy, time) {
+        const float = Math.sin(time * 0.002) * 3;
+
+        // Water glow beneath
+        ctx.save();
+        const glowR = 25 + Math.sin(time * 0.003) * 5;
+        const gradient = ctx.createRadialGradient(sx, sy + 10, 0, sx, sy + 10, glowR);
+        gradient.addColorStop(0, "rgba(100, 180, 255, 0.4)");
+        gradient.addColorStop(1, "rgba(100, 180, 255, 0)");
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(sx, sy + 10, glowR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Flowing robe
+        ctx.fillStyle = "#88bbee";
+        ctx.beginPath();
+        ctx.moveTo(sx - 10, sy - 4 + float);
+        ctx.lineTo(sx - 14, sy + 18 + float);
+        ctx.lineTo(sx + 14, sy + 18 + float);
+        ctx.lineTo(sx + 10, sy - 4 + float);
+        ctx.fill();
+
+        // Robe detail
+        ctx.fillStyle = "#aaddff";
+        ctx.beginPath();
+        ctx.moveTo(sx - 6, sy - 2 + float);
+        ctx.lineTo(sx - 8, sy + 16 + float);
+        ctx.lineTo(sx + 8, sy + 16 + float);
+        ctx.lineTo(sx + 6, sy - 2 + float);
+        ctx.fill();
+
+        // Head
+        ctx.fillStyle = "#ffe8cc";
+        ctx.beginPath();
+        ctx.arc(sx, sy - 10 + float, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Hair
+        ctx.fillStyle = "#445599";
+        ctx.beginPath();
+        ctx.arc(sx, sy - 12 + float, 7, Math.PI, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(sx - 7, sy - 10 + float, 2, 12);
+        ctx.fillRect(sx + 5, sy - 10 + float, 2, 12);
+
+        // Crown / circlet
+        ctx.fillStyle = "#ffd700";
+        ctx.fillRect(sx - 5, sy - 17 + float, 10, 2);
+        ctx.fillRect(sx - 1, sy - 20 + float, 2, 3);
+
+        // Excalibur in hand (raised)
+        const swordGlow = Math.sin(time * 0.005) * 0.3 + 0.7;
+        ctx.strokeStyle = `rgba(255, 215, 0, ${swordGlow})`;
+        ctx.shadowColor = "#ffd700";
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(sx + 14, sy - 6 + float);
+        ctx.lineTo(sx + 18, sy - 30 + float);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Sword crossguard
+        ctx.strokeStyle = "#ffd700";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sx + 12, sy - 8 + float);
+        ctx.lineTo(sx + 22, sy - 8 + float);
+        ctx.stroke();
+
+        // Interaction hint
+        ctx.fillStyle = `rgba(136, 204, 255, ${0.5 + Math.sin(time * 0.004) * 0.3})`;
+        ctx.font = "10px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("[E] Speak", sx, sy + 28);
+
+        ctx.restore();
+    }
+
     hexToRgb(hex) {
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result ? {
@@ -537,6 +650,12 @@ class World {
         const cz = ZONES.castle;
         ctx.strokeRect(cz.x * TILE_SIZE * scale, cz.y * TILE_SIZE * scale,
             cz.w * TILE_SIZE * scale, cz.h * TILE_SIZE * scale);
+
+        // Draw Lady of the Lake
+        if (this.ladyOfLake && !this.ladyOfLake.excaliburGiven) {
+            ctx.fillStyle = "#88ccff";
+            ctx.fillRect(this.ladyOfLake.x * scale - 2, this.ladyOfLake.y * scale - 2, 4, 4);
+        }
 
         // Draw player
         ctx.fillStyle = "#00ff00";
@@ -621,6 +740,19 @@ class World {
         ctx.fillStyle = "#ffd700";
         ctx.font = "bold 12px monospace";
         ctx.fillText("⚔ Ing Castle ⚔", ccx, ccy - 8);
+
+        // Lady of the Lake marker
+        if (this.ladyOfLake && !this.ladyOfLake.excaliburGiven) {
+            const lx = this.ladyOfLake.x * scale + offsetX;
+            const ly = this.ladyOfLake.y * scale + offsetY;
+            ctx.fillStyle = "#88ccff";
+            ctx.beginPath();
+            ctx.arc(lx, ly, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.font = "9px monospace";
+            ctx.fillText("Lady of the Lake", lx, ly - 8);
+        }
 
         // Player position
         const px = player.x * scale + offsetX;

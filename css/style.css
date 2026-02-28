@@ -395,6 +395,14 @@ body {
     margin-bottom: 15px;
 }
 
+#shop-gold-display {
+    color: #ffd700;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 12px;
+    text-shadow: 1px 1px 3px #000;
+}
+
 #shop-items {
     display: flex;
     flex-wrap: wrap;
@@ -424,6 +432,16 @@ body {
 .shop-item.owned {
     opacity: 0.5;
     border-color: #555;
+}
+
+.shop-item.too-expensive {
+    opacity: 0.5;
+    border-color: #555;
+    cursor: not-allowed;
+}
+
+.shop-item.too-expensive .shop-item-price {
+    color: #cc4444;
 }
 
 .shop-item-icon {
@@ -905,8 +923,9 @@ body {
     }
 
     body {
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
+        min-height: 0;
     }
 
     #game-container {
@@ -1015,6 +1034,11 @@ body {
 
     #shop-overlay h2 {
         font-size: 20px;
+        margin-bottom: 8px;
+    }
+
+    #shop-gold-display {
+        font-size: 14px;
         margin-bottom: 8px;
     }
 

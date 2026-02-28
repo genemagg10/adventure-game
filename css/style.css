@@ -186,14 +186,14 @@ body {
     text-shadow: 1px 1px 2px #000;
 }
 
-#gem-counter, #gold-counter {
+#gem-counter, #gold-counter, #arrow-counter {
     color: #fff;
     font-size: 16px;
     font-weight: bold;
     text-shadow: 1px 1px 3px #000;
 }
 
-.gem-icon, .gold-icon {
+.gem-icon, .gold-icon, .arrow-icon {
     font-size: 18px;
 }
 
@@ -390,7 +390,7 @@ body {
     margin-bottom: 15px;
 }
 
-#inventory-weapons, #inventory-gems {
+#inventory-weapons, #inventory-bows, #inventory-gems {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;

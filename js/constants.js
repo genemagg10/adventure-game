@@ -79,6 +79,13 @@ const WEAPONS = {
     dark_blade: { name: "Dark Blade", icon: "🗡️", damage: 26, speed: 1.1, range: 34, price: 0, description: "Forged in shadow" },
 };
 
+// Bows (ranged weapons, used with R key independently of melee weapon)
+const BOWS = {
+    rusty_bow: { name: "Rusty Bow", icon: "🏹", damage: 10, speed: 0.8, range: 200, price: 0, description: "A worn but functional bow", projectileSpeed: 5 },
+    hunters_bow: { name: "Hunter's Bow", icon: "🏹", damage: 16, speed: 1.0, range: 280, price: 120, description: "A sturdy hunting bow", projectileSpeed: 6 },
+    longbow: { name: "Longbow", icon: "🏹", damage: 22, speed: 1.1, range: 350, price: 200, description: "Powerful and precise", projectileSpeed: 7 },
+};
+
 // Elements / Gem powers
 const ELEMENTS = {
     fire: { name: "Fire", icon: "🔥", color: "#ff4400", gemColor: "#ff6644", damage: 25, manaCost: 20 },
@@ -153,6 +160,7 @@ const SHOP_POTIONS = {
     greater_health: { name: "Greater Potion", icon: "🧪", price: 60, description: "Restores 80 HP", effect: "heal", value: 80 },
     mana_potion: { name: "Mana Crystal", icon: "🔮", price: 30, description: "Restores 30 mana", effect: "mana", value: 30 },
     shield_potion: { name: "Shield Rune", icon: "🛡️", price: 50, description: "Block next hit", effect: "shield", value: 1 },
+    arrows_bundle: { name: "Arrow Bundle", icon: "🏹", price: 15, description: "10 arrows", effect: "arrows", value: 10 },
 };
 
 // Player defaults
@@ -174,9 +182,9 @@ const MONSTER_SPAWN_INTERVAL = 5000; // ms
 
 // Shop locations (tile coordinates)
 const SHOP_LOCATIONS = [
-    { x: 15, y: 60, name: "Camelot Armory", inventory: ["iron_sword", "mace", "spear", "health_potion", "mana_potion"] },
-    { x: 130, y: 20, name: "Desert Trader", inventory: ["battle_axe", "knights_blade", "greater_health", "shield_potion"] },
-    { x: 75, y: 70, name: "Swamp Witch", inventory: ["health_potion", "greater_health", "mana_potion", "shield_potion"] },
+    { x: 15, y: 60, name: "Camelot Armory", inventory: ["iron_sword", "mace", "spear", "hunters_bow", "health_potion", "mana_potion", "arrows_bundle"] },
+    { x: 130, y: 20, name: "Desert Trader", inventory: ["battle_axe", "knights_blade", "longbow", "greater_health", "shield_potion", "arrows_bundle"] },
+    { x: 75, y: 70, name: "Swamp Witch", inventory: ["health_potion", "greater_health", "mana_potion", "shield_potion", "arrows_bundle"] },
 ];
 
 // Blue gem locations (fixed spawn points) - some from exploration, some from monsters

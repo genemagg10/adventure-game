@@ -79,6 +79,7 @@ class Game {
             "KeyE": "interact",
             "KeyM": "map",
             "KeyQ": "element",
+            "KeyR": "shoot",
             "KeyI": "inventory",
             "Digit1": "elem1",
             "Digit2": "elem2",
@@ -132,10 +133,10 @@ class Game {
         this.running = true;
 
         // Welcome dialog
-        this.ui.showDialog("Welcome, Ingoizer! You awaken in the Green Meadow with naught but a rusty sword.");
+        this.ui.showDialog("Welcome, Ingoizer! You awaken in the Green Meadow with a rusty sword and bow.");
         this.ui.showDialog("Seek the 5 Blue Gems scattered across the land. Defeat monsters and explore to find them.");
         this.ui.showDialog("Once you have all 5 gems, journey to Ing Castle where a dark foe awaits...");
-        this.ui.showDialog("Press M to view your map. Press I for inventory. Use WASD to move, SPACE to attack.");
+        this.ui.showDialog("Press SPACE to attack, R to shoot arrows. Unlock Fire power to ignite your arrows!");
 
         this.lastTime = performance.now();
         requestAnimationFrame((t) => this.gameLoop(t));
@@ -291,6 +292,19 @@ class Game {
             }
         }
 
+        // Shoot arrow (R key)
+        if (this.keyJustPressed.shoot) {
+            const arrowData = this.player.shootArrow();
+            if (arrowData) {
+                this.combat.addArrow(arrowData);
+                if (arrowData.isFireArrow) {
+                    this.ui.showNotification("Fire arrow!");
+                }
+            } else if (this.player.arrows <= 0) {
+                this.ui.showNotification("No arrows!");
+            }
+        }
+
         // Use element
         if (this.keyJustPressed.element) {
             const elemUsed = this.player.useElement();
@@ -338,6 +352,14 @@ class Game {
                 if (!prevCharging && this.boss.charging) this.sound.bossCharge();
                 if (!prevSpinning && this.boss.spinning) this.sound.bossSpin();
                 if (this.boss.projectiles.length > prevProjCount) this.sound.bossProjectile();
+            }
+        }
+
+        // Update arrow projectiles
+        const arrowHits = this.combat.updateArrows(dt, this.monsters, this.boss);
+        for (const hit of arrowHits) {
+            if (hit.killed) {
+                this.onEntityKilled(hit.target, hit.isBoss);
             }
         }
 
@@ -425,10 +447,15 @@ class Game {
         this.player.monstersKilled++;
         const drops = entity.getDrops();
 
+        // Arrow drops (1-3 arrows per kill)
+        const arrowDrop = randInt(1, 3);
+        this.player.arrows += arrowDrop;
+
         // Gold
         this.player.gold += drops.gold;
         this.sound.goldCollect();
         this.ui.showNotification(`+${drops.gold} gold`);
+        this.ui.showNotification(`+${drops.gold} gold  +${arrowDrop} arrows`);
 
         // Weapon drop
         if (drops.weapon) {

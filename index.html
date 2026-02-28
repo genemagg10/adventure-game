@@ -28,7 +28,8 @@
             <h2>Controls</h2>
             <div class="controls-list">
                 <div class="control-item"><span class="key">WASD / Arrow Keys</span> Move</div>
-                <div class="control-item"><span class="key">Space</span> Attack</div>
+                <div class="control-item"><span class="key">Space</span> Melee Attack</div>
+                <div class="control-item"><span class="key">R</span> Shoot Arrow</div>
                 <div class="control-item"><span class="key">E</span> Interact / Enter Shop</div>
                 <div class="control-item"><span class="key">M</span> Toggle Map</div>
                 <div class="control-item"><span class="key">1-4</span> Select Elemental Power</div>
@@ -51,6 +52,10 @@
                 <div id="gold-counter">
                     <span class="gold-icon">🪙</span>
                     <span id="gold-count">0</span>
+                </div>
+                <div id="arrow-counter">
+                    <span class="arrow-icon">🏹</span>
+                    <span id="arrow-count">5</span>
                 </div>
             </div>
             <div id="hud-bottom">
@@ -81,6 +86,7 @@
         <div id="inventory-overlay" class="hidden">
             <h2>Inventory</h2>
             <div id="inventory-weapons"></div>
+            <div id="inventory-bows"></div>
             <div id="inventory-gems"></div>
             <button id="inv-close" class="menu-btn">Close</button>
         </div>

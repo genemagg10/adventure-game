@@ -66,6 +66,9 @@ class Game {
         // UI Manager
         this.ui = new UIManager(this);
 
+        // Touch controls (auto-detects mobile)
+        this.touchControls = new TouchControls(this);
+
         this.setupInput();
     }
 
@@ -136,7 +139,11 @@ class Game {
         this.ui.showDialog("Welcome, Ingoizer! You awaken in the Green Meadow with a rusty sword and bow.");
         this.ui.showDialog("Seek the 5 Blue Gems scattered across the land. Defeat monsters and explore to find them.");
         this.ui.showDialog("Once you have all 5 gems, journey to Ing Castle where a dark foe awaits...");
-        this.ui.showDialog("Press SPACE to attack, R to shoot arrows. Unlock Fire power to ignite your arrows!");
+        if (this.touchControls.active) {
+            this.ui.showDialog("Use the joystick to move. ATK to attack, PWR for elemental powers, ACT to interact.");
+        } else {
+            this.ui.showDialog("Press SPACE to attack, R to shoot arrows. Unlock Fire power to ignite your arrows!");
+        }
 
         this.lastTime = performance.now();
         requestAnimationFrame((t) => this.gameLoop(t));
@@ -237,6 +244,9 @@ class Game {
     }
 
     update(dt) {
+        // Apply touch controls input
+        this.touchControls.applyInput();
+
         // Don't update during dialogs, menus
         const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive || this.ui.isRiddleOpen();
 
@@ -662,10 +672,11 @@ class Game {
         this.ui.renderManaBar(ctx, this.player);
 
         // Interaction prompts
+        const isMobile = this.touchControls.active;
         if (this.nearShop) {
-            this.ui.renderInteractionPrompt(ctx, "Press E to enter shop");
+            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to enter shop" : "Press E to enter shop");
         } else if (this.nearLady) {
-            this.ui.renderInteractionPrompt(ctx, "Press E to speak with the Lady of the Lake");
+            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to speak with the Lady" : "Press E to speak with the Lady of the Lake");
         }
 
         // Render minimap
@@ -674,6 +685,11 @@ class Game {
         // Render world map if open
         if (this.ui.isMapOpen()) {
             this.world.renderWorldMap(this.worldmapCtx, this.player);
+            // Update hint for touch mode
+            const mapHint = document.querySelector(".map-hint");
+            if (mapHint) {
+                mapHint.textContent = isMobile ? "Tap MAP to close" : "Press M to close";
+            }
         }
 
         // Boss approaching warning

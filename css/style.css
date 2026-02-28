@@ -664,3 +664,373 @@ body {
     from { opacity: 1; }
     to { opacity: 0; }
 }
+
+/* ============================================
+   Touch Controls & Mobile Responsive
+   ============================================ */
+
+#touch-controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 20;
+    pointer-events: none;
+}
+
+#touch-joystick-zone {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 45%;
+    height: 50%;
+    pointer-events: auto;
+}
+
+#touch-joystick-base {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+#touch-joystick-knob {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.7) 0%, rgba(255, 215, 0, 0.3) 100%);
+    border: 2px solid rgba(255, 215, 0, 0.8);
+    top: 50%;
+    left: 50%;
+    margin-left: -22px;
+    margin-top: -22px;
+    transition: transform 0.05s;
+}
+
+#touch-buttons-right {
+    position: absolute;
+    bottom: 20px;
+    right: 15px;
+    display: flex;
+    gap: 10px;
+    pointer-events: auto;
+}
+
+.touch-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 215, 0, 0.6);
+    font-size: 13px;
+    font-weight: bold;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 1px 1px 2px #000;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.touch-btn:active {
+    transform: scale(0.9);
+}
+
+.touch-btn-attack {
+    background: radial-gradient(circle, rgba(200, 50, 50, 0.7) 0%, rgba(150, 30, 30, 0.5) 100%);
+    border-color: rgba(255, 80, 80, 0.7);
+}
+
+.touch-btn-shoot {
+    background: radial-gradient(circle, rgba(180, 140, 50, 0.7) 0%, rgba(120, 90, 30, 0.5) 100%);
+    border-color: rgba(220, 180, 60, 0.7);
+}
+
+.touch-btn-element {
+    background: radial-gradient(circle, rgba(80, 80, 200, 0.7) 0%, rgba(40, 40, 150, 0.5) 100%);
+    border-color: rgba(100, 100, 255, 0.7);
+}
+
+.touch-btn-interact {
+    background: radial-gradient(circle, rgba(50, 180, 50, 0.7) 0%, rgba(30, 120, 30, 0.5) 100%);
+    border-color: rgba(80, 220, 80, 0.7);
+}
+
+#touch-buttons-top {
+    position: absolute;
+    top: 42px;
+    left: 10px;
+    display: flex;
+    gap: 8px;
+    pointer-events: auto;
+}
+
+.touch-btn-small {
+    width: 44px;
+    height: 32px;
+    border-radius: 6px;
+    background: rgba(40, 40, 60, 0.8);
+    border: 1px solid rgba(255, 215, 0, 0.5);
+    color: #ffd700;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.touch-btn-small:active {
+    background: rgba(80, 80, 100, 0.9);
+}
+
+/* Responsive layout for mobile */
+@media (max-width: 900px) {
+    body {
+        align-items: flex-start;
+        overflow: auto;
+    }
+
+    #game-container {
+        width: 100vw;
+        height: 56.25vw; /* 16:9-ish aspect from 800x600 = 75% */
+        max-height: 100vh;
+        max-width: 177.78vh; /* inverse aspect */
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    #gameCanvas {
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Scale HUD elements */
+    #hud-top {
+        padding: 4px 8px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    #health-bar {
+        width: 120px;
+        height: 18px;
+    }
+
+    #health-text {
+        font-size: 10px;
+    }
+
+    #gem-counter, #gold-counter, #arrow-counter {
+        font-size: 13px;
+    }
+
+    .gem-icon, .gold-icon {
+        font-size: 14px;
+    }
+
+    #hud-bottom {
+        padding: 6px 8px;
+    }
+
+    #weapon-display {
+        font-size: 13px;
+    }
+
+    .element-slot {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+    }
+
+    #minimap-container {
+        top: 36px;
+        right: 4px;
+        transform: scale(0.75);
+        transform-origin: top right;
+    }
+
+    /* Overlay scaling for small screens */
+    #title-screen h1 {
+        font-size: 28px;
+    }
+
+    .subtitle {
+        font-size: 14px;
+    }
+
+    .title-art {
+        font-size: 12px;
+    }
+
+    .menu-btn {
+        padding: 10px 30px;
+        font-size: 15px;
+        min-width: 160px;
+    }
+
+    /* Controls screen */
+    #controls-screen h2 {
+        font-size: 22px;
+    }
+
+    .control-item {
+        font-size: 13px;
+    }
+
+    .key {
+        min-width: 70px;
+        font-size: 11px;
+        padding: 2px 6px;
+    }
+
+    /* Shop overlay */
+    #shop-overlay h2 {
+        font-size: 22px;
+        margin-bottom: 8px;
+    }
+
+    #shop-items {
+        max-width: 95%;
+        gap: 6px;
+        overflow-y: auto;
+        max-height: 60%;
+    }
+
+    .shop-item {
+        width: 130px;
+        padding: 8px;
+    }
+
+    .shop-item-icon {
+        font-size: 24px;
+    }
+
+    /* Inventory overlay */
+    #inventory-overlay h2 {
+        font-size: 22px;
+    }
+
+    #inventory-weapons, #inventory-bows, #inventory-gems {
+        max-width: 95%;
+        gap: 6px;
+        overflow-y: auto;
+        max-height: 35%;
+    }
+
+    .inv-item {
+        width: 90px;
+        padding: 8px;
+    }
+
+    .inv-item-icon {
+        font-size: 22px;
+    }
+
+    /* Dialog box */
+    #dialog-box {
+        width: 85%;
+        bottom: 80px;
+        padding: 10px 14px;
+    }
+
+    #dialog-text {
+        font-size: 14px;
+    }
+
+    .dialog-hint {
+        font-size: 10px;
+    }
+
+    /* Map overlay */
+    #map-overlay h2 {
+        font-size: 22px;
+        margin-bottom: 5px;
+    }
+
+    #worldmap {
+        max-width: 90vw;
+        max-height: 60vh;
+    }
+
+    /* Riddle overlay */
+    #riddle-overlay h2 {
+        font-size: 20px;
+    }
+
+    #riddle-question {
+        font-size: 14px;
+        max-width: 90%;
+    }
+
+    #riddle-choices {
+        width: 85%;
+        max-width: 350px;
+    }
+
+    .riddle-choice {
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+
+    /* Game over */
+    #game-over-screen h1 {
+        font-size: 32px;
+    }
+
+    #game-over-text {
+        font-size: 15px;
+        max-width: 85%;
+    }
+
+    /* Boss health */
+    #boss-health-container {
+        width: 60%;
+    }
+
+    #boss-name {
+        font-size: 14px;
+    }
+
+    #boss-health-bar {
+        height: 14px;
+    }
+}
+
+/* Touch mode specific - body class added by TouchControls */
+body.touch-mode #dialog-box .dialog-hint {
+    display: none;
+}
+
+body.touch-mode #controls-screen .controls-list {
+    display: none;
+}
+
+body.touch-mode #controls-screen::after {
+    content: "Use the virtual joystick to move. ATK = Attack, PWR = Elemental Power, ACT = Interact. MAP and INV buttons at the top.";
+    color: #ddd;
+    font-size: 14px;
+    text-align: center;
+    max-width: 80%;
+    line-height: 1.6;
+}
+
+/* Prevent text selection and callout on long press */
+body.touch-mode * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}

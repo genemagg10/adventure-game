@@ -929,10 +929,12 @@ body {
     }
 
     #game-container {
-        /* Fill the entire screen */
+        /* Fill screen while maintaining 4:3 aspect ratio to prevent stretching */
         width: 100vw;
         height: 100vh;
         height: 100dvh;
+        max-width: calc(100dvh * 800 / 600);
+        max-height: calc(100vw * 600 / 800);
         border: none;
         border-radius: 0;
         box-shadow: none;
@@ -976,10 +978,22 @@ body {
         font-size: 12px;
     }
 
+    #element-display {
+        /* Center element powerups at bottom-center, between joystick and action buttons */
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 25;
+    }
+
     .element-slot {
-        width: 28px;
-        height: 28px;
-        font-size: 13px;
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        pointer-events: auto;
+        z-index: 25;
+        position: relative;
     }
 
     #minimap-container {
@@ -1231,9 +1245,16 @@ body {
     }
 
     .element-slot {
-        width: 24px;
-        height: 24px;
-        font-size: 11px;
+        width: 26px;
+        height: 26px;
+        font-size: 12px;
+        pointer-events: auto;
+        z-index: 25;
+        position: relative;
+    }
+
+    #element-display {
+        bottom: 10px;
     }
 
     #minimap-container {

@@ -222,6 +222,20 @@ const SHEATH_TROLL = {
 // Sheath damage bonus when in inventory
 const SHEATH_DAMAGE_BONUS = 2;
 
+// Merlin the Wizard (in Merlin's Swamp)
+const MERLIN = {
+    x: 75, y: 75,
+    interactRange: 50,
+};
+
+// Merlin's Hut (near Ing Castle - where his wand is)
+const MERLIN_HUT = {
+    x: 158, y: 58,
+};
+
+// Enchantment damage bonus when weapon is enchanted with an element
+const ENCHANT_DAMAGE_BONUS = 8;
+
 const COLORS = {
     player: "#3388ff",
     playerOutline: "#1155cc",

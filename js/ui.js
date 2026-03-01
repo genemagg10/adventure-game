@@ -34,6 +34,11 @@ class UIManager {
         this.gameOverTitle = document.getElementById("game-over-title");
         this.gameOverText = document.getElementById("game-over-text");
 
+        this.enchantOverlay = document.getElementById("enchant-overlay");
+        this.enchantItems = document.getElementById("enchant-items");
+        this.enchantElements = document.getElementById("enchant-elements");
+        this.enchantElementDesc = document.getElementById("enchant-element-desc");
+
         this.riddleOverlay = document.getElementById("riddle-overlay");
         this.riddleQuestion = document.getElementById("riddle-question");
         this.riddleChoices = document.getElementById("riddle-choices");
@@ -68,6 +73,10 @@ class UIManager {
 
         document.getElementById("shop-close").addEventListener("click", () => {
             this.closeShop();
+        });
+
+        document.getElementById("enchant-close").addEventListener("click", () => {
+            this.closeEnchant();
         });
 
         document.getElementById("inv-close").addEventListener("click", () => {
@@ -325,16 +334,37 @@ class UIManager {
             this.invWeapons.appendChild(sheathEl);
         }
 
+        // Show Enchanter's Mallet if player has it and hasn't used it
+        if (player.hasMallet && !player.malletUsed) {
+            const malletEl = document.createElement("div");
+            malletEl.className = "inv-item";
+            malletEl.style.borderColor = "#aa66ff";
+            malletEl.style.boxShadow = "0 0 8px rgba(160, 100, 255, 0.4)";
+            malletEl.innerHTML = `
+                <span class="inv-item-icon">🔨</span>
+                <span class="inv-item-name">Enchanter's Mallet</span>
+                <span class="inv-item-name" style="color:#aa66ff;font-size:10px;">Tap to enchant a weapon</span>
+            `;
+            malletEl.addEventListener("click", () => {
+                this.closeInventory();
+                this.openEnchant(player);
+            });
+            this.invWeapons.appendChild(malletEl);
+        }
+
         for (const wid of player.weapons) {
             const w = WEAPONS[wid];
-            const dmg = player.hasSheath ? w.damage + SHEATH_DAMAGE_BONUS : w.damage;
+            let dmg = player.hasSheath ? w.damage + SHEATH_DAMAGE_BONUS : w.damage;
+            const enchant = player.enchantments[wid];
+            if (enchant) dmg += ENCHANT_DAMAGE_BONUS;
             const isEquipped = player.currentWeapon === wid;
             const el = document.createElement("div");
             el.className = "inv-item" + (isEquipped ? " equipped" : "");
+            if (enchant) el.style.boxShadow = `0 0 8px ${ELEMENTS[enchant].color}40`;
             el.innerHTML = `
                 <span class="inv-item-icon">${w.icon}</span>
-                <span class="inv-item-name">${w.name}</span>
-                <span class="inv-item-name" style="color:#aaa;font-size:10px;">DMG: ${dmg}${player.hasSheath ? " (+2)" : ""}</span>
+                <span class="inv-item-name">${w.name}${enchant ? " " + ELEMENTS[enchant].icon : ""}</span>
+                <span class="inv-item-name" style="color:#aaa;font-size:10px;">DMG: ${dmg}${enchant ? " (" + ELEMENTS[enchant].name + ")" : ""}</span>
             `;
             el.addEventListener("click", () => {
                 player.equipWeapon(wid);
@@ -347,14 +377,17 @@ class UIManager {
         // Show bows
         for (const bid of player.bows) {
             const b = BOWS[bid];
-            const dmgBow = player.hasSheath ? b.damage + SHEATH_DAMAGE_BONUS : b.damage;
+            let dmgBow = player.hasSheath ? b.damage + SHEATH_DAMAGE_BONUS : b.damage;
+            const enchant = player.enchantments[bid];
+            if (enchant) dmgBow += ENCHANT_DAMAGE_BONUS;
             const isEquipped = player.currentBow === bid;
             const el = document.createElement("div");
             el.className = "inv-item" + (isEquipped ? " equipped" : "");
+            if (enchant) el.style.boxShadow = `0 0 8px ${ELEMENTS[enchant].color}40`;
             el.innerHTML = `
                 <span class="inv-item-icon">${b.icon}</span>
-                <span class="inv-item-name">${b.name}</span>
-                <span class="inv-item-name" style="color:#aaa;font-size:10px;">DMG: ${dmgBow}${player.hasSheath ? " (+2)" : ""}</span>
+                <span class="inv-item-name">${b.name}${enchant ? " " + ELEMENTS[enchant].icon : ""}</span>
+                <span class="inv-item-name" style="color:#aaa;font-size:10px;">DMG: ${dmgBow}${enchant ? " (" + ELEMENTS[enchant].name + ")" : ""}</span>
             `;
             el.addEventListener("click", () => {
                 player.equipBow(bid);
@@ -503,6 +536,103 @@ class UIManager {
         ctx.font = "8px monospace";
         ctx.textAlign = "left";
         ctx.fillText(`MP ${Math.ceil(player.mana)}/${player.maxMana}`, barX + 2, barY + 7);
+    }
+
+    // Enchantment system
+    openEnchant(player) {
+        this.enchantOverlay.classList.remove("hidden");
+        this.enchantItems.innerHTML = "";
+        this.enchantElements.classList.add("hidden");
+        this.enchantElementDesc.classList.add("hidden");
+        document.getElementById("enchant-desc").textContent = "Choose a weapon to enchant:";
+        document.getElementById("enchant-desc").classList.remove("hidden");
+
+        // Show all melee weapons
+        for (const wid of player.weapons) {
+            const w = WEAPONS[wid];
+            const enchanted = player.enchantments[wid];
+            const el = document.createElement("div");
+            el.className = "shop-item" + (enchanted ? " owned" : "");
+            el.innerHTML = `
+                <span class="shop-item-icon">${w.icon}</span>
+                <span class="shop-item-name">${w.name}</span>
+                <span class="shop-item-desc">${enchanted ? "Enchanted: " + ELEMENTS[enchanted].name + " " + ELEMENTS[enchanted].icon : w.description}</span>
+                <span class="shop-item-price">${enchanted ? "ENCHANTED" : "Select"}</span>
+            `;
+            if (!enchanted) {
+                el.addEventListener("click", () => {
+                    this.showEnchantElements(player, wid);
+                });
+            }
+            this.enchantItems.appendChild(el);
+        }
+
+        // Show all bows
+        for (const bid of player.bows) {
+            const b = BOWS[bid];
+            const enchanted = player.enchantments[bid];
+            const el = document.createElement("div");
+            el.className = "shop-item" + (enchanted ? " owned" : "");
+            el.innerHTML = `
+                <span class="shop-item-icon">${b.icon}</span>
+                <span class="shop-item-name">${b.name}</span>
+                <span class="shop-item-desc">${enchanted ? "Enchanted: " + ELEMENTS[enchanted].name + " " + ELEMENTS[enchanted].icon : b.description}</span>
+                <span class="shop-item-price">${enchanted ? "ENCHANTED" : "Select"}</span>
+            `;
+            if (!enchanted) {
+                el.addEventListener("click", () => {
+                    this.showEnchantElements(player, bid);
+                });
+            }
+            this.enchantItems.appendChild(el);
+        }
+    }
+
+    showEnchantElements(player, itemId) {
+        document.getElementById("enchant-desc").classList.add("hidden");
+        this.enchantItems.innerHTML = "";
+        this.enchantElements.classList.remove("hidden");
+        this.enchantElementDesc.classList.remove("hidden");
+        this.enchantElements.innerHTML = "";
+
+        const itemName = WEAPONS[itemId] ? WEAPONS[itemId].name : BOWS[itemId].name;
+        this.enchantElementDesc.textContent = `Enchant ${itemName} with:`;
+
+        const elements = ["fire", "water", "ice", "lightning"];
+        for (const en of elements) {
+            const elem = ELEMENTS[en];
+            const el = document.createElement("div");
+            el.className = "shop-item";
+            el.innerHTML = `
+                <span class="shop-item-icon">${elem.icon}</span>
+                <span class="shop-item-name">${elem.name}</span>
+                <span class="shop-item-desc">+${ENCHANT_DAMAGE_BONUS} ${elem.name} damage</span>
+                <span class="shop-item-price" style="color:${elem.color}">Enchant</span>
+            `;
+            el.addEventListener("click", () => {
+                this.applyEnchant(player, itemId, en);
+            });
+            this.enchantElements.appendChild(el);
+        }
+    }
+
+    applyEnchant(player, itemId, element) {
+        player.enchantments[itemId] = element;
+        player.malletUsed = true;
+        const itemName = WEAPONS[itemId] ? WEAPONS[itemId].name : BOWS[itemId].name;
+        const elemName = ELEMENTS[element].name;
+        this.closeEnchant();
+        if (this.game.sound) this.game.sound.gemCollect();
+        this.showNotification(`${itemName} enchanted with ${elemName}! +${ENCHANT_DAMAGE_BONUS} damage`);
+        this.showDialog(`The Enchanter's Mallet glows as ${elemName} energy flows into your ${itemName}! It now deals bonus ${elemName} damage.`);
+    }
+
+    closeEnchant() {
+        this.enchantOverlay.classList.add("hidden");
+    }
+
+    isEnchantOpen() {
+        return !this.enchantOverlay.classList.contains("hidden");
     }
 
     // Interaction prompt

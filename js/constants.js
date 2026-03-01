@@ -199,14 +199,6 @@ const SHOP_LOCATIONS = [
     { x: 75, y: 70, name: "Swamp Witch", inventory: ["health_potion", "greater_health", "mana_potion", "shield_potion", "arrows_bundle"] },
 ];
 
-// Blue gem locations (fixed spawn points) - some from exploration, some from monsters
-const GEM_SPAWN_POINTS = [
-    { x: 25, y: 25, zone: "meadow" },       // easy to find
-    { x: 85, y: 30, zone: "forest" },        // in the forest
-    { x: 130, y: 70, zone: "mountains" },    // mountain gem
-];
-// 2 more come from monster drops, for total of 5
-
 // Lady of the Lake (Excalibur encounter)
 const LADY_OF_LAKE = {
     x: 50, y: 68, // tile coordinates - on the shore of Crystal Lake
@@ -232,14 +224,24 @@ const SHEATH_TROLL = {
 // Sheath damage bonus when in inventory
 const SHEATH_DAMAGE_BONUS = 2;
 
+// Merlin the Wizard (in Merlin's Swamp)
+const MERLIN = {
+    x: 75, y: 75,
+    interactRange: 50,
+};
+
+// Merlin's Hut (near Ing Castle - where his wand is)
+const MERLIN_HUT = {
+    x: 158, y: 58,
+};
+
+// Enchantment damage bonus when weapon is enchanted with an element
+const ENCHANT_DAMAGE_BONUS = 8;
+
 const COLORS = {
     player: "#3388ff",
-    playerOutline: "#1155cc",
-    boss: "#111122",
-    bossOutline: "#880000",
     gem: "#4488ff",
     gemGlow: "#88bbff",
     gold: "#ffd700",
     shopMarker: "#ffaa00",
-    castleGate: "#8b6914",
 };

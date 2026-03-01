@@ -52,10 +52,15 @@ class Player {
         this.knockbackVy = 0;
 
         // Items
-        this.potions = [];
         this.shieldActive = false;
         this.shieldHits = 0;
         this.hasSheath = false; // Jewel-encrusted sheath of Excalibur
+
+        // Merlin quest items
+        this.hasMerlinWand = false;
+        this.hasMallet = false;
+        this.malletUsed = false;
+        this.enchantments = {}; // weaponId -> element name
 
         // Element cooldown
         this.elementCooldown = 0;
@@ -71,9 +76,10 @@ class Player {
 
     getWeapon() {
         const weapon = WEAPONS[this.currentWeapon];
-        if (this.hasSheath) {
-            return { ...weapon, damage: weapon.damage + SHEATH_DAMAGE_BONUS };
-        }
+        let dmg = weapon.damage;
+        if (this.hasSheath) dmg += SHEATH_DAMAGE_BONUS;
+        if (this.enchantments[this.currentWeapon]) dmg += ENCHANT_DAMAGE_BONUS;
+        if (dmg !== weapon.damage) return { ...weapon, damage: dmg };
         return weapon;
     }
 
@@ -95,9 +101,10 @@ class Player {
 
     getBow() {
         const bow = BOWS[this.currentBow];
-        if (this.hasSheath) {
-            return { ...bow, damage: bow.damage + SHEATH_DAMAGE_BONUS };
-        }
+        let dmg = bow.damage;
+        if (this.hasSheath) dmg += SHEATH_DAMAGE_BONUS;
+        if (this.enchantments[this.currentBow]) dmg += ENCHANT_DAMAGE_BONUS;
+        if (dmg !== bow.damage) return { ...bow, damage: dmg };
         return bow;
     }
 
@@ -462,6 +469,19 @@ class Player {
         ctx.moveTo(midX, midY);
         ctx.lineTo(ex, ey);
         ctx.stroke();
+
+        // Enchantment glow on weapon blade
+        if (this.enchantments[this.currentWeapon]) {
+            const enchElem = ELEMENTS[this.enchantments[this.currentWeapon]];
+            ctx.strokeStyle = enchElem.color;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.5 + Math.sin(time * 0.006) * 0.2;
+            ctx.beginPath();
+            ctx.moveTo(midX, midY);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
 
         // Attack swoosh
         if (this.attacking) {

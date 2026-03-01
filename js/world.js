@@ -52,6 +52,10 @@ class World {
         // Place Lady of the Lake
         this.placeLadyOfLake();
 
+        // Place Merlin and his hut
+        this.placeMerlin();
+        this.placeMerlinHut();
+
         // Add decorations
         this.generateDecorations(rng);
     }
@@ -213,13 +217,33 @@ class World {
     }
 
     placeGems() {
-        this.gems = GEM_SPAWN_POINTS.map(g => ({
-            x: g.x * TILE_SIZE + TILE_SIZE / 2,
-            y: g.y * TILE_SIZE + TILE_SIZE / 2,
-            zone: g.zone,
-            collected: false,
-            pulsePhase: Math.random() * Math.PI * 2,
-        }));
+        // Randomly place 3 gems in different biomes, evenly spread
+        const gemZones = ["meadow", "forest", "desert", "swamp", "mountains", "ruins", "darklands"];
+        // Shuffle
+        for (let i = gemZones.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [gemZones[i], gemZones[j]] = [gemZones[j], gemZones[i]];
+        }
+        const selectedZones = gemZones.slice(0, 3);
+
+        this.gems = [];
+        for (const zoneName of selectedZones) {
+            const zone = ZONES[zoneName];
+            for (let attempt = 0; attempt < 50; attempt++) {
+                const tx = zone.x + Math.floor(Math.random() * (zone.w - 4)) + 2;
+                const ty = zone.y + Math.floor(Math.random() * (zone.h - 4)) + 2;
+                if (!this.isSolid(tx, ty)) {
+                    this.gems.push({
+                        x: tx * TILE_SIZE + TILE_SIZE / 2,
+                        y: ty * TILE_SIZE + TILE_SIZE / 2,
+                        zone: zoneName,
+                        collected: false,
+                        pulsePhase: Math.random() * Math.PI * 2,
+                    });
+                    break;
+                }
+            }
+        }
     }
 
     placeLadyOfLake() {
@@ -238,7 +262,58 @@ class World {
             x: l.x * TILE_SIZE + TILE_SIZE / 2,
             y: l.y * TILE_SIZE + TILE_SIZE / 2,
             excaliburGiven: false,
-            riddleActive: false,
+        };
+    }
+
+    placeMerlin() {
+        const m = MERLIN;
+        // Clear a small walkable area in the swamp for Merlin
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const tx = m.x + dx;
+                const ty = m.y + dy;
+                if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
+                    if (SOLID_TILES.has(this.tiles[ty][tx])) {
+                        this.tiles[ty][tx] = TILE.SWAMP;
+                    }
+                }
+            }
+        }
+        this.merlin = {
+            x: m.x * TILE_SIZE + TILE_SIZE / 2,
+            y: m.y * TILE_SIZE + TILE_SIZE / 2,
+        };
+    }
+
+    placeMerlinHut() {
+        const h = MERLIN_HUT;
+        // Clear area around hut first
+        for (let dy = -2; dy <= 2; dy++) {
+            for (let dx = -2; dx <= 2; dx++) {
+                const tx = h.x + dx;
+                const ty = h.y + dy;
+                if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
+                    if (SOLID_TILES.has(this.tiles[ty][tx])) {
+                        this.tiles[ty][tx] = TILE.PATH;
+                    }
+                }
+            }
+        }
+        // Build hut floor
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const tx = h.x + dx;
+                const ty = h.y + dy;
+                if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
+                    this.tiles[ty][tx] = TILE.SHOP_FLOOR;
+                }
+            }
+        }
+        this.merlinHut = {
+            x: h.x * TILE_SIZE + TILE_SIZE / 2,
+            y: h.y * TILE_SIZE + TILE_SIZE / 2,
+            showWand: false,
+            wandCollected: false,
         };
     }
 
@@ -335,6 +410,33 @@ class World {
             const ly = this.ladyOfLake.y - camera.y;
             if (lx > -60 && lx < CANVAS_W + 60 && ly > -60 && ly < CANVAS_H + 60) {
                 this.renderLadyOfLake(ctx, lx, ly, time);
+            }
+        }
+
+        // Render Merlin's Hut
+        if (this.merlinHut) {
+            const hx = this.merlinHut.x - camera.x;
+            const hy = this.merlinHut.y - camera.y;
+            if (hx > -80 && hx < CANVAS_W + 80 && hy > -80 && hy < CANVAS_H + 80) {
+                this.renderMerlinHut(ctx, hx, hy, time);
+            }
+        }
+
+        // Render Merlin's wand at the hut (if quest active and not collected)
+        if (this.merlinHut && this.merlinHut.showWand && !this.merlinHut.wandCollected) {
+            const wx = this.merlinHut.x - camera.x;
+            const wy = this.merlinHut.y - camera.y + 22;
+            if (wx > -20 && wx < CANVAS_W + 20 && wy > -20 && wy < CANVAS_H + 20) {
+                this.renderMerlinWand(ctx, wx, wy, time);
+            }
+        }
+
+        // Render Merlin
+        if (this.merlin) {
+            const mx = this.merlin.x - camera.x;
+            const my = this.merlin.y - camera.y;
+            if (mx > -60 && mx < CANVAS_W + 60 && my > -60 && my < CANVAS_H + 60) {
+                this.renderMerlin(ctx, mx, my, time);
             }
         }
     }
@@ -629,6 +731,181 @@ class World {
         ctx.restore();
     }
 
+    renderMerlin(ctx, sx, sy, time) {
+        const float = Math.sin(time * 0.0015) * 2;
+
+        ctx.save();
+
+        // Magical aura
+        const glowR = 20 + Math.sin(time * 0.003) * 5;
+        const gradient = ctx.createRadialGradient(sx, sy + 5, 0, sx, sy + 5, glowR);
+        gradient.addColorStop(0, "rgba(160, 100, 255, 0.3)");
+        gradient.addColorStop(1, "rgba(160, 100, 255, 0)");
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(sx, sy + 5, glowR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Robe
+        ctx.fillStyle = "#4a2a8a";
+        ctx.beginPath();
+        ctx.moveTo(sx - 10, sy - 4 + float);
+        ctx.lineTo(sx - 14, sy + 18 + float);
+        ctx.lineTo(sx + 14, sy + 18 + float);
+        ctx.lineTo(sx + 10, sy - 4 + float);
+        ctx.fill();
+
+        // Robe detail
+        ctx.fillStyle = "#6a3aaa";
+        ctx.beginPath();
+        ctx.moveTo(sx - 6, sy - 2 + float);
+        ctx.lineTo(sx - 8, sy + 16 + float);
+        ctx.lineTo(sx + 8, sy + 16 + float);
+        ctx.lineTo(sx + 6, sy - 2 + float);
+        ctx.fill();
+
+        // Stars on robe
+        ctx.fillStyle = "#ffd700";
+        ctx.font = "6px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("\u2605", sx - 4, sy + 8 + float);
+        ctx.fillText("\u2605", sx + 3, sy + 4 + float);
+
+        // Head
+        ctx.fillStyle = "#ffe8cc";
+        ctx.beginPath();
+        ctx.arc(sx, sy - 10 + float, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Beard
+        ctx.fillStyle = "#cccccc";
+        ctx.beginPath();
+        ctx.moveTo(sx - 4, sy - 6 + float);
+        ctx.lineTo(sx, sy + 6 + float);
+        ctx.lineTo(sx + 4, sy - 6 + float);
+        ctx.fill();
+
+        // Pointed hat
+        ctx.fillStyle = "#3a1a6a";
+        ctx.beginPath();
+        ctx.moveTo(sx - 9, sy - 10 + float);
+        ctx.lineTo(sx + 2, sy - 32 + float);
+        ctx.lineTo(sx + 9, sy - 10 + float);
+        ctx.fill();
+
+        // Hat brim
+        ctx.fillStyle = "#4a2a7a";
+        ctx.fillRect(sx - 10, sy - 11 + float, 20, 3);
+
+        // Hat star
+        ctx.fillStyle = "#ffd700";
+        ctx.font = "8px monospace";
+        ctx.fillText("\u2605", sx + 1, sy - 18 + float);
+
+        // Staff
+        ctx.strokeStyle = "#8a6a3a";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(sx + 14, sy - 6 + float);
+        ctx.lineTo(sx + 16, sy + 18 + float);
+        ctx.stroke();
+
+        // Staff crystal
+        const crystalGlow = Math.sin(time * 0.004) * 0.3 + 0.7;
+        ctx.fillStyle = `rgba(160, 100, 255, ${crystalGlow})`;
+        ctx.shadowColor = "#aa66ff";
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(sx + 14, sy - 10 + float, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Interaction hint
+        ctx.fillStyle = `rgba(160, 100, 255, ${0.5 + Math.sin(time * 0.004) * 0.3})`;
+        ctx.font = "10px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("[E] Speak", sx, sy + 28);
+
+        ctx.restore();
+    }
+
+    renderMerlinHut(ctx, sx, sy, time) {
+        // Hut walls
+        ctx.fillStyle = "#5a3a1a";
+        ctx.fillRect(sx - 24, sy - 20, 48, 36);
+
+        // Thatched roof
+        ctx.fillStyle = "#6a5a2a";
+        ctx.beginPath();
+        ctx.moveTo(sx - 30, sy - 20);
+        ctx.lineTo(sx, sy - 40);
+        ctx.lineTo(sx + 30, sy - 20);
+        ctx.fill();
+
+        // Roof thatch lines
+        ctx.strokeStyle = "#7a6a3a";
+        ctx.lineWidth = 1;
+        for (let i = -25; i < 25; i += 5) {
+            ctx.beginPath();
+            ctx.moveTo(sx + i, sy - 20 - Math.abs(i) * 0.66);
+            ctx.lineTo(sx + i, sy - 20);
+            ctx.stroke();
+        }
+
+        // Door
+        ctx.fillStyle = "#3a2a10";
+        ctx.fillRect(sx - 6, sy + 2, 12, 14);
+
+        // Windows
+        ctx.fillStyle = "#8888aa";
+        ctx.fillRect(sx - 18, sy - 10, 8, 8);
+        ctx.fillRect(sx + 10, sy - 10, 8, 8);
+
+        // Window glow
+        const glow = Math.sin(time * 0.002) * 0.15 + 0.35;
+        ctx.fillStyle = `rgba(160, 100, 255, ${glow})`;
+        ctx.fillRect(sx - 17, sy - 9, 6, 6);
+        ctx.fillRect(sx + 11, sy - 9, 6, 6);
+
+        // Sign
+        ctx.fillStyle = "#aa88ff";
+        ctx.font = "9px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("Merlin's Hut", sx, sy - 44);
+    }
+
+    renderMerlinWand(ctx, sx, sy, time) {
+        const glow = Math.sin(time * 0.005) * 0.3 + 0.7;
+        const bob = Math.sin(time * 0.003) * 2;
+
+        ctx.save();
+        ctx.shadowColor = "#aa66ff";
+        ctx.shadowBlur = 8;
+
+        // Wand stick
+        ctx.strokeStyle = "#8a6a3a";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sx - 8, sy + 4 + bob);
+        ctx.lineTo(sx + 8, sy - 4 + bob);
+        ctx.stroke();
+
+        // Wand tip glow
+        ctx.fillStyle = `rgba(180, 120, 255, ${glow})`;
+        ctx.beginPath();
+        ctx.arc(sx + 8, sy - 4 + bob, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pickup hint
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = `rgba(180, 120, 255, ${0.5 + Math.sin(time * 0.004) * 0.3})`;
+        ctx.font = "9px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("Merlin's Wand", sx, sy + 16 + bob);
+
+        ctx.restore();
+    }
+
     hexToRgb(hex) {
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result ? {
@@ -660,13 +937,6 @@ class World {
             ctx.fillRect(shop.worldX * scale - 2, shop.worldY * scale - 2, 4, 4);
         }
 
-        // Draw gem markers
-        for (const gem of this.gems) {
-            if (gem.collected) continue;
-            ctx.fillStyle = COLORS.gem;
-            ctx.fillRect(gem.x * scale - 2, gem.y * scale - 2, 4, 4);
-        }
-
         // Draw monsters
         for (const m of monsters) {
             if (!m.alive) continue;
@@ -691,6 +961,18 @@ class World {
         if (this.ladyOfLake && !this.ladyOfLake.excaliburGiven) {
             ctx.fillStyle = "#88ccff";
             ctx.fillRect(this.ladyOfLake.x * scale - 2, this.ladyOfLake.y * scale - 2, 4, 4);
+        }
+
+        // Draw Merlin
+        if (this.merlin) {
+            ctx.fillStyle = "#aa66ff";
+            ctx.fillRect(this.merlin.x * scale - 2, this.merlin.y * scale - 2, 4, 4);
+        }
+
+        // Draw Merlin's Hut
+        if (this.merlinHut) {
+            ctx.fillStyle = "#aa66ff";
+            ctx.fillRect(this.merlinHut.x * scale - 2, this.merlinHut.y * scale - 2, 4, 4);
         }
 
         // Draw player
@@ -746,21 +1028,6 @@ class World {
             ctx.fillText(shop.name, sx, sy - 8);
         }
 
-        // Draw gem locations
-        for (const gem of this.gems) {
-            if (gem.collected) continue;
-            const gx = gem.x * scale + offsetX;
-            const gy = gem.y * scale + offsetY;
-            ctx.fillStyle = COLORS.gem;
-            ctx.beginPath();
-            ctx.moveTo(gx, gy - 5);
-            ctx.lineTo(gx + 4, gy);
-            ctx.lineTo(gx, gy + 5);
-            ctx.lineTo(gx - 4, gy);
-            ctx.closePath();
-            ctx.fill();
-        }
-
         // Castle marker
         const cz = ZONES.castle;
         const ccx = (cz.x + cz.w / 2) * TILE_SIZE * scale + offsetX;
@@ -790,6 +1057,32 @@ class World {
             ctx.fillText("Lady of the Lake", lx, ly - 8);
         }
 
+        // Merlin marker
+        if (this.merlin) {
+            const mx = this.merlin.x * scale + offsetX;
+            const my = this.merlin.y * scale + offsetY;
+            ctx.fillStyle = "#aa66ff";
+            ctx.beginPath();
+            ctx.arc(mx, my, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.font = "9px monospace";
+            ctx.fillText("Merlin", mx, my - 8);
+        }
+
+        // Merlin's Hut marker
+        if (this.merlinHut) {
+            const hx = this.merlinHut.x * scale + offsetX;
+            const hy = this.merlinHut.y * scale + offsetY;
+            ctx.fillStyle = "#aa66ff";
+            ctx.beginPath();
+            ctx.arc(hx, hy, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.font = "8px monospace";
+            ctx.fillText("Merlin's Hut", hx, hy - 7);
+        }
+
         // Player position
         const px = player.x * scale + offsetX;
         const py = player.y * scale + offsetY;
@@ -810,9 +1103,7 @@ class World {
         ctx.fillStyle = "#aaa"; ctx.fillText("You", 22, ly + 8);
         ctx.fillStyle = COLORS.shopMarker; ctx.fillRect(60, ly, 8, 8);
         ctx.fillStyle = "#aaa"; ctx.fillText("Shop", 72, ly + 8);
-        ctx.fillStyle = COLORS.gem; ctx.fillRect(120, ly, 8, 8);
-        ctx.fillStyle = "#aaa"; ctx.fillText("Blue Gem", 132, ly + 8);
-        ctx.fillStyle = "#ffd700"; ctx.fillRect(210, ly, 8, 8);
-        ctx.fillStyle = "#aaa"; ctx.fillText("Castle", 222, ly + 8);
+        ctx.fillStyle = "#ffd700"; ctx.fillRect(120, ly, 8, 8);
+        ctx.fillStyle = "#aaa"; ctx.fillText("Castle", 132, ly + 8);
     }
 }

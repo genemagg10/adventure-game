@@ -47,9 +47,13 @@ class Game {
         this.nearShop = null;
         this.nearGem = null;
         this.nearLady = false;
+        this.nearMerlin = false;
 
         // Lady of the Lake quest state
         this.ladyQuestState = "none"; // none, given, sheath_acquired, complete
+
+        // Merlin quest state
+        this.merlinQuestState = "none"; // none, given, wand_acquired, complete
 
         // Monster gem drops (2 from monsters total)
         this.monsterGemDrops = 0;
@@ -133,6 +137,7 @@ class Game {
         // Sheath Guardian Troll
         this.sheathTroll = null;
         this.ladyQuestState = "none";
+        this.merlinQuestState = "none";
         this.spawnSheathTroll();
 
         this.ui.showHud();
@@ -156,6 +161,7 @@ class Game {
         this.ui.hideBossHealth();
         this.ui.hideHud();
         this.ladyQuestState = "none";
+        this.merlinQuestState = "none";
         this.state = "title";
         document.getElementById("title-screen").classList.remove("hidden");
     }
@@ -249,7 +255,7 @@ class Game {
         this.touchControls.applyInput();
 
         // Don't update during dialogs, menus
-        const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive || this.ui.isRiddleOpen();
+        const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive || this.ui.isRiddleOpen() || this.ui.isEnchantOpen();
 
         // Handle menu input
         if (this.keyJustPressed.map) {
@@ -275,6 +281,7 @@ class Game {
             if (this.ui.isShopOpen()) this.ui.closeShop();
             else if (this.ui.isInventoryOpen()) this.ui.closeInventory();
             else if (this.ui.isMapOpen()) this.ui.toggleMap();
+            else if (this.ui.isEnchantOpen()) this.ui.closeEnchant();
         }
 
         if (inMenu) return;
@@ -476,7 +483,6 @@ class Game {
         // Gold
         this.player.gold += drops.gold;
         this.sound.goldCollect();
-        this.ui.showNotification(`+${drops.gold} gold`);
         this.ui.showNotification(`+${drops.gold} gold  +${arrowDrop} arrows`);
 
         // Weapon drop
@@ -547,6 +553,23 @@ class Game {
                 this.nearLady = true;
             }
         }
+
+        // Check Merlin
+        this.nearMerlin = false;
+        const merlin = this.world.merlin;
+        if (merlin) {
+            if (dist(this.player.x, this.player.y, merlin.x, merlin.y) < MERLIN.interactRange) {
+                this.nearMerlin = true;
+            }
+        }
+
+        // Check Merlin's wand at hut (auto-collect on proximity)
+        if (this.merlinQuestState === "given" && this.world.merlinHut && !this.world.merlinHut.wandCollected) {
+            const hut = this.world.merlinHut;
+            if (dist(this.player.x, this.player.y, hut.x, hut.y) < 50) {
+                this.collectMerlinWand();
+            }
+        }
     }
 
     collectWorldGem(gem) {
@@ -573,6 +596,12 @@ class Game {
         // Lady of the Lake interaction
         if (this.nearLady) {
             this.startLadyQuest();
+            return;
+        }
+
+        // Merlin interaction
+        if (this.nearMerlin) {
+            this.startMerlinQuest();
         }
     }
 
@@ -628,6 +657,50 @@ class Game {
         this.sheathTroll.weaponDrop = null;
         this.sheathTroll.gemDrop = false;
         this.monsters.push(this.sheathTroll);
+    }
+
+    startMerlinQuest() {
+        if (this.merlinQuestState === "none") {
+            this.ui.showDialog("\"Ah, Ingoizer! I am Merlin, the great wizard of these swamps.\"", () => {
+                this.ui.showDialog("\"I have lost my wand, you see. Without it, my powers are... diminished.\"", () => {
+                    this.ui.showDialog("\"I left it in my old hut, near the gates of Ing Castle. Could you retrieve it for me?\"", () => {
+                        this.ui.showDialog("\"Bring my wand back and I shall reward you with my Enchanter's Mallet - a tool of great power!\"", () => {
+                            this.merlinQuestState = "given";
+                            this.world.merlinHut.showWand = true;
+                            this.ui.showNotification("Quest: Retrieve Merlin's Wand!");
+                        });
+                    });
+                });
+            });
+        } else if (this.merlinQuestState === "given") {
+            this.ui.showDialog("\"My wand is in my old hut, near Ing Castle. Please hurry, Ingoizer!\"");
+        } else if (this.merlinQuestState === "wand_acquired") {
+            // Player has the wand - give reward
+            this.merlinQuestState = "complete";
+            this.player.hasMallet = true;
+            this.player.hasMerlinWand = false;
+            this.ui.showDialog("\"You found my wand! Splendid! Thank you, brave Ingoizer!\"", () => {
+                this.ui.showDialog("\"As promised, take this Enchanter's Mallet. With it, you can enchant one weapon with elemental power!\"", () => {
+                    this.ui.showDialog("\"Open your inventory and use the mallet to imbue a weapon with fire, water, ice, or lightning.\"");
+                    this.ui.showNotification("Enchanter's Mallet obtained!");
+                });
+            });
+        } else if (this.merlinQuestState === "complete") {
+            if (this.player.hasMallet && !this.player.malletUsed) {
+                this.ui.showDialog("\"Remember to use the Enchanter's Mallet from your inventory, Ingoizer!\"");
+            } else {
+                this.ui.showDialog("\"May the enchantment serve you well on your quest, Ingoizer!\"");
+            }
+        }
+    }
+
+    collectMerlinWand() {
+        this.world.merlinHut.wandCollected = true;
+        this.player.hasMerlinWand = true;
+        this.merlinQuestState = "wand_acquired";
+        this.sound.gemCollect();
+        this.ui.showNotification("Merlin's Wand collected! Return to Merlin.");
+        this.ui.showDialog("You found Merlin's wand! It hums with arcane energy. Return it to Merlin in the swamp.");
     }
 
     updateBurningTrees(dt) {
@@ -803,6 +876,8 @@ class Game {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to enter shop" : "Press E to enter shop");
         } else if (this.nearLady) {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to speak with the Lady" : "Press E to speak with the Lady of the Lake");
+        } else if (this.nearMerlin) {
+            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to speak with Merlin" : "Press E to speak with Merlin");
         }
 
         // Render minimap

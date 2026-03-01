@@ -972,10 +972,6 @@ body {
     #hud-bottom {
         padding: 6px 8px;
         padding-bottom: max(6px, env(safe-area-inset-bottom));
-        /* Stack weapon and elements on the left to avoid overlap with action buttons */
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
     }
 
     #weapon-display {
@@ -983,14 +979,18 @@ body {
     }
 
     #element-display {
-        /* Move elements to left side so they don't sit behind action buttons */
-        order: -1;
+        /* Center element powerups at bottom-center, between joystick and action buttons */
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 25;
     }
 
     .element-slot {
-        width: 28px;
-        height: 28px;
-        font-size: 13px;
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
         pointer-events: auto;
         z-index: 25;
         position: relative;
@@ -1245,12 +1245,16 @@ body {
     }
 
     .element-slot {
-        width: 24px;
-        height: 24px;
-        font-size: 11px;
+        width: 26px;
+        height: 26px;
+        font-size: 12px;
         pointer-events: auto;
         z-index: 25;
         position: relative;
+    }
+
+    #element-display {
+        bottom: 10px;
     }
 
     #minimap-container {

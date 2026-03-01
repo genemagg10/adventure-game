@@ -312,15 +312,29 @@ class UIManager {
         this.invBows.innerHTML = "<h3 style='color:#cc8844;width:100%;text-align:center;margin-bottom:8px;'>Bows (Arrows: " + player.arrows + ")</h3>";
         this.invGems.innerHTML = "<h3 style='color:#4488ff;width:100%;text-align:center;margin-bottom:8px;'>Blue Gems: " + player.blueGems + " / 5</h3>";
 
+        // Show sheath if acquired
+        if (player.hasSheath) {
+            const sheathEl = document.createElement("div");
+            sheathEl.className = "inv-item equipped";
+            sheathEl.style.borderColor = "#ffd700";
+            sheathEl.innerHTML = `
+                <span class="inv-item-icon">🗡️</span>
+                <span class="inv-item-name">Jewel Sheath</span>
+                <span class="inv-item-name" style="color:#ffd700;font-size:10px;">+${SHEATH_DAMAGE_BONUS} DMG (all weapons)</span>
+            `;
+            this.invWeapons.appendChild(sheathEl);
+        }
+
         for (const wid of player.weapons) {
             const w = WEAPONS[wid];
+            const dmg = player.hasSheath ? w.damage + SHEATH_DAMAGE_BONUS : w.damage;
             const isEquipped = player.currentWeapon === wid;
             const el = document.createElement("div");
             el.className = "inv-item" + (isEquipped ? " equipped" : "");
             el.innerHTML = `
                 <span class="inv-item-icon">${w.icon}</span>
                 <span class="inv-item-name">${w.name}</span>
-                <span class="inv-item-name" style="color:#aaa;font-size:10px;">DMG: ${w.damage}</span>
+                <span class="inv-item-name" style="color:#aaa;font-size:10px;">DMG: ${dmg}${player.hasSheath ? " (+2)" : ""}</span>
             `;
             el.addEventListener("click", () => {
                 player.equipWeapon(wid);
@@ -333,13 +347,14 @@ class UIManager {
         // Show bows
         for (const bid of player.bows) {
             const b = BOWS[bid];
+            const dmgBow = player.hasSheath ? b.damage + SHEATH_DAMAGE_BONUS : b.damage;
             const isEquipped = player.currentBow === bid;
             const el = document.createElement("div");
             el.className = "inv-item" + (isEquipped ? " equipped" : "");
             el.innerHTML = `
                 <span class="inv-item-icon">${b.icon}</span>
                 <span class="inv-item-name">${b.name}</span>
-                <span class="inv-item-name" style="color:#aaa;font-size:10px;">DMG: ${b.damage}</span>
+                <span class="inv-item-name" style="color:#aaa;font-size:10px;">DMG: ${dmgBow}${player.hasSheath ? " (+2)" : ""}</span>
             `;
             el.addEventListener("click", () => {
                 player.equipBow(bid);

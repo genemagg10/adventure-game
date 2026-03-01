@@ -43,6 +43,7 @@ const TILE = {
     CASTLE_WALL: 12,
     SHOP_FLOOR: 13,
     LAVA: 14,
+    BURNING_TREE: 15,
 };
 
 // Tile colors
@@ -62,10 +63,11 @@ const TILE_COLORS = {
     [TILE.CASTLE_WALL]: "#2a2a3a",
     [TILE.SHOP_FLOOR]: "#6a5a3a",
     [TILE.LAVA]: "#cc3300",
+    [TILE.BURNING_TREE]: "#1a5a12",
 };
 
 // Solid tiles (can't walk through)
-const SOLID_TILES = new Set([TILE.TREE, TILE.WATER, TILE.WALL, TILE.MOUNTAIN, TILE.CASTLE_WALL, TILE.LAVA]);
+const SOLID_TILES = new Set([TILE.TREE, TILE.WATER, TILE.WALL, TILE.MOUNTAIN, TILE.CASTLE_WALL, TILE.LAVA, TILE.BURNING_TREE]);
 
 // Weapons
 const WEAPONS = {
@@ -199,34 +201,26 @@ const GEM_SPAWN_POINTS = [
 const LADY_OF_LAKE = {
     x: 50, y: 68, // tile coordinates - on the shore of Crystal Lake
     interactRange: 50,
-    riddles: [
-        {
-            question: "What castle stands at the edge of the realm, where darkness gathers and a great evil dwells?",
-            choices: ["Dragon Keep", "Ing Castle", "Camelot", "The Black Tower"],
-            answer: 1,
-        },
-        {
-            question: "How many Blue Gems must a hero gather before the final battle can begin?",
-            choices: ["Three", "Four", "Five", "Seven"],
-            answer: 2,
-        },
-        {
-            question: "Which of these lands is home to the Crystal Lake?",
-            choices: ["The Darklands", "Scorched Wastes", "Between Camelot Village and Dark Forest", "Dragon Mountains"],
-            answer: 2,
-        },
-        {
-            question: "What foul knight clad in shadow guards the gates of Ing Castle?",
-            choices: ["The Red Knight", "The Black Knight", "The Iron Knight", "The Pale Knight"],
-            answer: 1,
-        },
-        {
-            question: "What ancient power do the Blue Gems bestow upon their bearer?",
-            choices: ["Invisibility", "Flight", "Elemental Powers", "Immortality"],
-            answer: 2,
-        },
-    ],
 };
+
+// Sheath Guardian Troll - guards the jewel-encrusted sheath of Excalibur
+const SHEATH_TROLL = {
+    name: "Sheath Guardian",
+    icon: "👹",
+    hp: 120,
+    damage: 18,
+    speed: 0.8,
+    size: 22,
+    color: "#447744",
+    xp: 50,
+    goldDrop: [30, 50],
+    spawnTile: { x: 80, y: 40 }, // in the Dark Forest
+    aggroRange: 120,
+    leashRange: 200,
+};
+
+// Sheath damage bonus when in inventory
+const SHEATH_DAMAGE_BONUS = 2;
 
 const COLORS = {
     player: "#3388ff",

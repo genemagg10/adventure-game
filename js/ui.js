@@ -21,6 +21,7 @@ class UIManager {
         this.mapOverlay = document.getElementById("map-overlay");
         this.shopOverlay = document.getElementById("shop-overlay");
         this.shopTitle = document.getElementById("shop-title");
+        this.shopGoldCount = document.getElementById("shop-gold-count");
         this.shopItems = document.getElementById("shop-items");
         this.inventoryOverlay = document.getElementById("inventory-overlay");
         this.invWeapons = document.getElementById("inventory-weapons");
@@ -198,6 +199,7 @@ class UIManager {
     // Shop
     openShop(shop, player) {
         this.shopTitle.textContent = shop.name;
+        this.shopGoldCount.textContent = player.gold;
         this.shopItems.innerHTML = "";
         this.shopOverlay.classList.remove("hidden");
 
@@ -231,7 +233,7 @@ class UIManager {
             }
 
             const el = document.createElement("div");
-            el.className = "shop-item" + (owned ? " owned" : "");
+            el.className = "shop-item" + (owned ? " owned" : (!canAfford ? " too-expensive" : ""));
             el.innerHTML = `
                 <span class="shop-item-icon">${item.icon}</span>
                 <span class="shop-item-name">${item.name}</span>

@@ -483,7 +483,6 @@ class Game {
         // Gold
         this.player.gold += drops.gold;
         this.sound.goldCollect();
-        this.ui.showNotification(`+${drops.gold} gold`);
         this.ui.showNotification(`+${drops.gold} gold  +${arrowDrop} arrows`);
 
         // Weapon drop

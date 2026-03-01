@@ -217,13 +217,33 @@ class World {
     }
 
     placeGems() {
-        this.gems = GEM_SPAWN_POINTS.map(g => ({
-            x: g.x * TILE_SIZE + TILE_SIZE / 2,
-            y: g.y * TILE_SIZE + TILE_SIZE / 2,
-            zone: g.zone,
-            collected: false,
-            pulsePhase: Math.random() * Math.PI * 2,
-        }));
+        // Randomly place 3 gems in different biomes, evenly spread
+        const gemZones = ["meadow", "forest", "desert", "swamp", "mountains", "ruins", "darklands"];
+        // Shuffle
+        for (let i = gemZones.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [gemZones[i], gemZones[j]] = [gemZones[j], gemZones[i]];
+        }
+        const selectedZones = gemZones.slice(0, 3);
+
+        this.gems = [];
+        for (const zoneName of selectedZones) {
+            const zone = ZONES[zoneName];
+            for (let attempt = 0; attempt < 50; attempt++) {
+                const tx = zone.x + Math.floor(Math.random() * (zone.w - 4)) + 2;
+                const ty = zone.y + Math.floor(Math.random() * (zone.h - 4)) + 2;
+                if (!this.isSolid(tx, ty)) {
+                    this.gems.push({
+                        x: tx * TILE_SIZE + TILE_SIZE / 2,
+                        y: ty * TILE_SIZE + TILE_SIZE / 2,
+                        zone: zoneName,
+                        collected: false,
+                        pulsePhase: Math.random() * Math.PI * 2,
+                    });
+                    break;
+                }
+            }
+        }
     }
 
     placeLadyOfLake() {
@@ -242,7 +262,6 @@ class World {
             x: l.x * TILE_SIZE + TILE_SIZE / 2,
             y: l.y * TILE_SIZE + TILE_SIZE / 2,
             excaliburGiven: false,
-            riddleActive: false,
         };
     }
 
@@ -918,13 +937,6 @@ class World {
             ctx.fillRect(shop.worldX * scale - 2, shop.worldY * scale - 2, 4, 4);
         }
 
-        // Draw gem markers
-        for (const gem of this.gems) {
-            if (gem.collected) continue;
-            ctx.fillStyle = COLORS.gem;
-            ctx.fillRect(gem.x * scale - 2, gem.y * scale - 2, 4, 4);
-        }
-
         // Draw monsters
         for (const m of monsters) {
             if (!m.alive) continue;
@@ -1016,21 +1028,6 @@ class World {
             ctx.fillText(shop.name, sx, sy - 8);
         }
 
-        // Draw gem locations
-        for (const gem of this.gems) {
-            if (gem.collected) continue;
-            const gx = gem.x * scale + offsetX;
-            const gy = gem.y * scale + offsetY;
-            ctx.fillStyle = COLORS.gem;
-            ctx.beginPath();
-            ctx.moveTo(gx, gy - 5);
-            ctx.lineTo(gx + 4, gy);
-            ctx.lineTo(gx, gy + 5);
-            ctx.lineTo(gx - 4, gy);
-            ctx.closePath();
-            ctx.fill();
-        }
-
         // Castle marker
         const cz = ZONES.castle;
         const ccx = (cz.x + cz.w / 2) * TILE_SIZE * scale + offsetX;
@@ -1106,9 +1103,7 @@ class World {
         ctx.fillStyle = "#aaa"; ctx.fillText("You", 22, ly + 8);
         ctx.fillStyle = COLORS.shopMarker; ctx.fillRect(60, ly, 8, 8);
         ctx.fillStyle = "#aaa"; ctx.fillText("Shop", 72, ly + 8);
-        ctx.fillStyle = COLORS.gem; ctx.fillRect(120, ly, 8, 8);
-        ctx.fillStyle = "#aaa"; ctx.fillText("Blue Gem", 132, ly + 8);
-        ctx.fillStyle = "#ffd700"; ctx.fillRect(210, ly, 8, 8);
-        ctx.fillStyle = "#aaa"; ctx.fillText("Castle", 222, ly + 8);
+        ctx.fillStyle = "#ffd700"; ctx.fillRect(120, ly, 8, 8);
+        ctx.fillStyle = "#aaa"; ctx.fillText("Castle", 132, ly + 8);
     }
 }

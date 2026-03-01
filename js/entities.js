@@ -48,7 +48,6 @@ class Player {
         this.knockbackVy = 0;
 
         // Items
-        this.potions = [];
         this.shieldActive = false;
         this.shieldHits = 0;
         this.hasSheath = false; // Jewel-encrusted sheath of Excalibur

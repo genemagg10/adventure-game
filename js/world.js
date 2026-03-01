@@ -329,7 +329,7 @@ class World {
             this.renderGem(ctx, sx, sy, time, gem);
         }
 
-        // Render Lady of the Lake
+        // Render Lady of the Lake (visible until Excalibur is given)
         if (this.ladyOfLake && !this.ladyOfLake.excaliburGiven) {
             const lx = this.ladyOfLake.x - camera.x;
             const ly = this.ladyOfLake.y - camera.y;
@@ -412,6 +412,40 @@ class World {
                 const pulse = Math.sin(time * 0.003 + tx + ty) * 20;
                 ctx.fillStyle = `rgb(${204 + pulse}, ${51 + pulse * 0.5}, 0)`;
                 ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+                break;
+            }
+
+            case TILE.BURNING_TREE: {
+                // Charred trunk
+                ctx.fillStyle = "#3a2010";
+                ctx.fillRect(sx + 12, sy + 18, 8, 14);
+                // Burning canopy with animated flames
+                const flicker = Math.sin(time * 0.01 + tx * 3 + ty * 5) * 2;
+                const flicker2 = Math.cos(time * 0.008 + tx * 2) * 3;
+                // Outer flames
+                ctx.fillStyle = "#ff4400";
+                ctx.beginPath();
+                ctx.arc(sx + 16 + flicker, sy + 12, 14, 0, Math.PI * 2);
+                ctx.fill();
+                // Inner flames
+                ctx.fillStyle = "#ff8800";
+                ctx.beginPath();
+                ctx.arc(sx + 14 + flicker2, sy + 10, 10, 0, Math.PI * 2);
+                ctx.fill();
+                // Core glow
+                ctx.fillStyle = "#ffcc00";
+                ctx.beginPath();
+                ctx.arc(sx + 16, sy + 14 + flicker, 6, 0, Math.PI * 2);
+                ctx.fill();
+                // Fire glow effect
+                ctx.save();
+                ctx.shadowColor = "#ff4400";
+                ctx.shadowBlur = 15;
+                ctx.fillStyle = "rgba(255, 100, 0, 0.3)";
+                ctx.beginPath();
+                ctx.arc(sx + 16, sy + 14, 18, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
                 break;
             }
         }

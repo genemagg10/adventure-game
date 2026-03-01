@@ -230,7 +230,7 @@ class CombatSystem {
         this.arrowProjectiles.push(arrowData);
     }
 
-    updateArrows(dt, monsters, boss) {
+    updateArrows(dt, monsters, boss, world) {
         const hits = [];
         for (let i = this.arrowProjectiles.length - 1; i >= 0; i--) {
             const a = this.arrowProjectiles[i];
@@ -254,6 +254,41 @@ class CombatSystem {
             if (a.distTraveled >= a.range) {
                 this.arrowProjectiles.splice(i, 1);
                 continue;
+            }
+
+            // Fire arrow hitting a tree - set it on fire
+            if (a.isFireArrow && world) {
+                const tile = worldToTile(a.x, a.y);
+                if (tile.x >= 0 && tile.x < WORLD_W && tile.y >= 0 && tile.y < WORLD_H) {
+                    if (world.tiles[tile.y][tile.x] === TILE.TREE) {
+                        // Check if the tree is adjacent to water
+                        let touchingWater = false;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                if (dx === 0 && dy === 0) continue;
+                                const nx = tile.x + dx;
+                                const ny = tile.y + dy;
+                                if (nx >= 0 && nx < WORLD_W && ny >= 0 && ny < WORLD_H) {
+                                    if (world.tiles[ny][nx] === TILE.WATER) {
+                                        touchingWater = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (touchingWater) break;
+                        }
+
+                        if (!touchingWater) {
+                            world.tiles[tile.y][tile.x] = TILE.BURNING_TREE;
+                            if (!world.burningTrees) world.burningTrees = {};
+                            world.burningTrees[`${tile.x},${tile.y}`] = { timer: 8000 };
+                            this.spawnHitParticles(a.x, a.y, "#ff4400", 10);
+                        }
+
+                        this.arrowProjectiles.splice(i, 1);
+                        continue;
+                    }
+                }
             }
 
             let removed = false;

@@ -48,10 +48,8 @@ class Game {
         this.nearGem = null;
         this.nearLady = false;
 
-        // Lady of the Lake riddle state
-        this.riddleIndex = 0;
-        this.riddleFailed = false;
-        this.riddleCooldown = 0;
+        // Lady of the Lake quest state
+        this.ladyQuestState = "none"; // none, given, sheath_acquired, complete
 
         // Monster gem drops (2 from monsters total)
         this.monsterGemDrops = 0;
@@ -132,6 +130,11 @@ class Game {
         this.bossDefeated = false;
         this.monsterGemDrops = 0;
 
+        // Sheath Guardian Troll
+        this.sheathTroll = null;
+        this.ladyQuestState = "none";
+        this.spawnSheathTroll();
+
         this.ui.showHud();
         this.running = true;
 
@@ -152,9 +155,7 @@ class Game {
     restart() {
         this.ui.hideBossHealth();
         this.ui.hideHud();
-        this.riddleIndex = 0;
-        this.riddleFailed = false;
-        this.riddleCooldown = 0;
+        this.ladyQuestState = "none";
         this.state = "title";
         document.getElementById("title-screen").classList.remove("hidden");
     }
@@ -366,7 +367,7 @@ class Game {
         }
 
         // Update arrow projectiles
-        const arrowHits = this.combat.updateArrows(dt, this.monsters, this.boss);
+        const arrowHits = this.combat.updateArrows(dt, this.monsters, this.boss, this.world);
         for (const hit of arrowHits) {
             if (hit.killed) {
                 this.onEntityKilled(hit.target, hit.isBoss);
@@ -399,10 +400,8 @@ class Game {
             this.footstepTimer = 200; // ready to play on next move
         }
 
-        // Riddle cooldown
-        if (this.riddleCooldown > 0) {
-            this.riddleCooldown -= dt;
-        }
+        // Update burning trees (damage nearby monsters/boss)
+        this.updateBurningTrees(dt);
 
         // Check proximity for interactions
         this.checkProximity();
@@ -455,6 +454,19 @@ class Game {
 
         this.sound.monsterDeath();
         this.player.monstersKilled++;
+
+        // Check if this was the sheath guardian troll
+        if (entity.isSheathGuardian) {
+            this.player.hasSheath = true;
+            if (this.ladyQuestState === "given") {
+                this.ladyQuestState = "sheath_acquired";
+            }
+            this.ui.showNotification("Jewel-encrusted Sheath obtained! (+2 weapon damage)");
+            this.ui.showDialog("The troll falls and drops a magnificent sheath encrusted with jewels. It radiates power!", () => {
+                this.ui.showDialog("The sheath empowers your weapons! Return to the Lady of the Lake to claim Excalibur.");
+            });
+        }
+
         const drops = entity.getDrops();
 
         // Arrow drops (1-3 arrows per kill)
@@ -520,7 +532,7 @@ class Game {
         // Check Lady of the Lake
         this.nearLady = false;
         const lady = this.world.ladyOfLake;
-        if (lady && !lady.excaliburGiven) {
+        if (lady && this.ladyQuestState !== "complete") {
             if (dist(this.player.x, this.player.y, lady.x, lady.y) < LADY_OF_LAKE.interactRange) {
                 this.nearLady = true;
             }
@@ -549,40 +561,144 @@ class Game {
         }
 
         // Lady of the Lake interaction
-        if (this.nearLady && this.riddleCooldown <= 0) {
-            this.startLadyRiddle();
+        if (this.nearLady) {
+            this.startLadyQuest();
         }
     }
 
-    startLadyRiddle() {
-        const riddles = LADY_OF_LAKE.riddles;
-        // Pick a random riddle the player hasn't answered correctly yet
-        const riddle = riddles[this.riddleIndex % riddles.length];
-
-        this.ui.showDialog("\"I am the Lady of the Lake. I hold Excalibur, the mightiest blade ever forged.\"", () => {
-            this.ui.showDialog("\"Answer my riddle, brave Ingoizer, and the sword shall be yours.\"", () => {
-                this.ui.openRiddle(
-                    riddle,
-                    // On correct
-                    () => {
-                        this.sound.riddleCorrect();
-                        this.world.ladyOfLake.excaliburGiven = true;
-                        this.player.addWeapon("excalibur");
-                        this.player.equipWeapon("excalibur");
-                        this.sound.excaliburReveal();
-                        this.ui.showDialog("\"You have proven your wisdom, Ingoizer. Take Excalibur - the legendary sword of kings!\"");
-                        this.ui.showDialog("Excalibur has been added to your inventory and equipped! Its golden blade gleams with power.");
-                        this.ui.showNotification("Excalibur obtained!");
-                    },
-                    // On wrong
-                    () => {
-                        this.sound.riddleWrong();
-                        this.riddleIndex++;
-                        this.riddleCooldown = 3000;
-                    }
-                );
+    startLadyQuest() {
+        if (this.ladyQuestState === "none") {
+            // First meeting - give the quest
+            this.ui.showDialog("\"I am the Lady of the Lake. I hold Excalibur, the mightiest blade ever forged.\"", () => {
+                this.ui.showDialog("\"But before I entrust it to you, brave Ingoizer, you must prove your valor.\"", () => {
+                    this.ui.showDialog("\"A fearsome troll guards the jewel-encrusted sheath of Excalibur deep in the Dark Forest.\"", () => {
+                        this.ui.showDialog("\"Defeat the troll and bring the sheath back to me. Only then shall the sword be yours.\"", () => {
+                            this.ladyQuestState = "given";
+                            this.ui.showNotification("Quest: Defeat the Sheath Guardian!");
+                        });
+                    });
+                });
             });
-        });
+        } else if (this.ladyQuestState === "given") {
+            // Quest given but sheath not yet acquired
+            this.ui.showDialog("\"The troll still guards the sheath in the Dark Forest. Seek it out and prove your strength, Ingoizer.\"");
+        } else if (this.ladyQuestState === "sheath_acquired") {
+            // Player has the sheath - give Excalibur
+            this.sound.excaliburReveal();
+            this.world.ladyOfLake.excaliburGiven = true;
+            this.player.addWeapon("excalibur");
+            this.player.equipWeapon("excalibur");
+            this.ladyQuestState = "complete";
+            this.ui.showDialog("\"You have defeated the guardian and recovered the sheath! You are truly worthy, Ingoizer.\"", () => {
+                this.ui.showDialog("\"Take Excalibur - the legendary sword of kings! Together with its sheath, you shall be unstoppable.\"");
+                this.ui.showNotification("Excalibur obtained!");
+            });
+        } else if (this.ladyQuestState === "complete") {
+            this.ui.showDialog("\"Go forth with Excalibur, brave Ingoizer. The realm depends on you.\"");
+        }
+    }
+
+    spawnSheathTroll() {
+        const cfg = SHEATH_TROLL;
+        const pos = tileToWorld(cfg.spawnTile.x, cfg.spawnTile.y);
+        this.sheathTroll = new Monster("troll", pos.x, pos.y);
+        // Override stats with guardian-specific values
+        this.sheathTroll.name = cfg.name;
+        this.sheathTroll.hp = cfg.hp;
+        this.sheathTroll.maxHp = cfg.hp;
+        this.sheathTroll.damage = cfg.damage;
+        this.sheathTroll.speed = cfg.speed;
+        this.sheathTroll.size = cfg.size;
+        this.sheathTroll.color = cfg.color;
+        this.sheathTroll.xp = cfg.xp;
+        this.sheathTroll.goldDrop = cfg.goldDrop;
+        this.sheathTroll.aggroRange = cfg.aggroRange;
+        this.sheathTroll.leashRange = cfg.leashRange;
+        this.sheathTroll.isSheathGuardian = true;
+        this.sheathTroll.weaponDrop = null;
+        this.sheathTroll.gemDrop = false;
+        this.monsters.push(this.sheathTroll);
+    }
+
+    updateBurningTrees(dt) {
+        // Check for burning trees and damage nearby monsters
+        const playerTile = worldToTile(this.player.x, this.player.y);
+        const checkRadius = 10; // tiles around player to check
+
+        for (let ty = playerTile.y - checkRadius; ty <= playerTile.y + checkRadius; ty++) {
+            for (let tx = playerTile.x - checkRadius; tx <= playerTile.x + checkRadius; tx++) {
+                if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
+                if (this.world.tiles[ty][tx] !== TILE.BURNING_TREE) continue;
+
+                const treeWorldX = tx * TILE_SIZE + TILE_SIZE / 2;
+                const treeWorldY = ty * TILE_SIZE + TILE_SIZE / 2;
+
+                // Update burn timer
+                if (!this.world.burningTrees) this.world.burningTrees = {};
+                const key = `${tx},${ty}`;
+                if (!this.world.burningTrees[key]) {
+                    this.world.burningTrees[key] = { timer: 8000 }; // burns for 8 seconds
+                }
+                this.world.burningTrees[key].timer -= dt;
+
+                // Fire is out - turn to path/ash
+                if (this.world.burningTrees[key].timer <= 0) {
+                    this.world.tiles[ty][tx] = TILE.PATH;
+                    delete this.world.burningTrees[key];
+                    continue;
+                }
+
+                // Damage monsters that touch the burning tree
+                const damageRange = TILE_SIZE * 1.2;
+                for (const m of this.monsters) {
+                    if (!m.alive) continue;
+                    if (dist(m.x, m.y, treeWorldX, treeWorldY) < damageRange) {
+                        if (!m._lastBurnTime || Date.now() - m._lastBurnTime > 500) {
+                            m._lastBurnTime = Date.now();
+                            const fireDmg = 8;
+                            const killed = m.takeDamage(fireDmg, treeWorldX, treeWorldY);
+                            this.combat.addDamageNumber(m.x, m.y, fireDmg, false);
+                            this.combat.spawnHitParticles(m.x, m.y, "#ff6600", 3);
+                            if (killed) {
+                                this.onEntityKilled(m, false);
+                            }
+                        }
+                    }
+                }
+
+                // Also damage boss
+                if (this.boss && this.boss.alive && this.boss.spawned) {
+                    if (dist(this.boss.x, this.boss.y, treeWorldX, treeWorldY) < damageRange) {
+                        if (!this.boss._lastBurnTime || Date.now() - this.boss._lastBurnTime > 500) {
+                            this.boss._lastBurnTime = Date.now();
+                            const fireDmg = 8;
+                            const killed = this.boss.takeDamage(fireDmg, treeWorldX, treeWorldY);
+                            this.combat.addDamageNumber(this.boss.x, this.boss.y, fireDmg, false);
+                            if (killed) {
+                                this.onEntityKilled(this.boss, true);
+                            }
+                        }
+                    }
+                }
+
+                // Damage player too
+                if (dist(this.player.x, this.player.y, treeWorldX, treeWorldY) < damageRange) {
+                    this.player.takeDamage(5, treeWorldX, treeWorldY);
+                }
+
+                // Spawn fire particles for visual effect
+                this.combat.particles.push({
+                    x: treeWorldX + randFloat(-8, 8),
+                    y: treeWorldY + randFloat(-16, 0),
+                    vx: randFloat(-0.3, 0.3),
+                    vy: randFloat(-1.5, -0.5),
+                    life: 300,
+                    maxLife: 300,
+                    size: randFloat(2, 5),
+                    color: choose(["#ff4400", "#ff8800", "#ffaa00", "#ffcc00"]),
+                });
+            }
+        }
     }
 
     checkBossTrigger() {

@@ -51,6 +51,7 @@ class Player {
         this.potions = [];
         this.shieldActive = false;
         this.shieldHits = 0;
+        this.hasSheath = false; // Jewel-encrusted sheath of Excalibur
 
         // Element cooldown
         this.elementCooldown = 0;
@@ -65,7 +66,11 @@ class Player {
     }
 
     getWeapon() {
-        return WEAPONS[this.currentWeapon];
+        const weapon = WEAPONS[this.currentWeapon];
+        if (this.hasSheath) {
+            return { ...weapon, damage: weapon.damage + SHEATH_DAMAGE_BONUS };
+        }
+        return weapon;
     }
 
     equipWeapon(weaponId) {
@@ -85,7 +90,11 @@ class Player {
     }
 
     getBow() {
-        return BOWS[this.currentBow];
+        const bow = BOWS[this.currentBow];
+        if (this.hasSheath) {
+            return { ...bow, damage: bow.damage + SHEATH_DAMAGE_BONUS };
+        }
+        return bow;
     }
 
     addBow(bowId) {

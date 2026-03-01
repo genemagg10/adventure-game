@@ -929,10 +929,12 @@ body {
     }
 
     #game-container {
-        /* Fill the entire screen */
+        /* Fill screen while maintaining 4:3 aspect ratio to prevent stretching */
         width: 100vw;
         height: 100vh;
         height: 100dvh;
+        max-width: calc(100dvh * 800 / 600);
+        max-height: calc(100vw * 600 / 800);
         border: none;
         border-radius: 0;
         box-shadow: none;
@@ -970,16 +972,28 @@ body {
     #hud-bottom {
         padding: 6px 8px;
         padding-bottom: max(6px, env(safe-area-inset-bottom));
+        /* Stack weapon and elements on the left to avoid overlap with action buttons */
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
     }
 
     #weapon-display {
         font-size: 12px;
     }
 
+    #element-display {
+        /* Move elements to left side so they don't sit behind action buttons */
+        order: -1;
+    }
+
     .element-slot {
         width: 28px;
         height: 28px;
         font-size: 13px;
+        pointer-events: auto;
+        z-index: 25;
+        position: relative;
     }
 
     #minimap-container {
@@ -1234,6 +1248,9 @@ body {
         width: 24px;
         height: 24px;
         font-size: 11px;
+        pointer-events: auto;
+        z-index: 25;
+        position: relative;
     }
 
     #minimap-container {

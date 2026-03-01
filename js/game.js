@@ -489,6 +489,16 @@ class Game {
             }
         }
 
+        // Armor drop
+        if (drops.armor) {
+            if (this.player.addArmor(drops.armor)) {
+                const a = ARMOR[drops.armor];
+                this.sound.weaponPickup();
+                this.ui.showNotification(`Found ${a.name}! (DEF +${a.defense})`);
+                this.ui.showDialog(`You picked up ${a.name}! ${a.description}. DEF: ${a.defense}. Open inventory (I) to equip it.`);
+            }
+        }
+
         // Gem drop
         if (drops.gem && this.monsterGemDrops < this.maxMonsterGemDrops && this.player.blueGems < 5) {
             this.monsterGemDrops++;

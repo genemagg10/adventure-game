@@ -88,6 +88,16 @@ const BOWS = {
     longbow: { name: "Longbow", icon: "🏹", damage: 22, speed: 1.1, range: 350, price: 200, description: "Powerful and precise", projectileSpeed: 7 },
 };
 
+// Armor
+const ARMOR = {
+    cloth_tunic: { name: "Cloth Tunic", icon: "👕", defense: 0, price: 0, description: "Basic clothing, no protection" },
+    leather_armor: { name: "Leather Armor", icon: "🦺", defense: 3, price: 60, description: "Light and flexible" },
+    chain_mail: { name: "Chain Mail", icon: "⛓️", defense: 5, price: 130, description: "Linked metal rings" },
+    iron_plate: { name: "Iron Plate", icon: "🛡️", defense: 8, price: 220, description: "Heavy but sturdy" },
+    knights_armor: { name: "Knight's Armor", icon: "🏰", defense: 12, price: 350, description: "Armor of the Round Table" },
+    shadow_cloak: { name: "Shadow Cloak", icon: "🧥", defense: 10, price: 0, description: "Woven from darkness" },
+};
+
 // Elements / Gem powers
 const ELEMENTS = {
     fire: { name: "Fire", icon: "🔥", color: "#ff4400", gemColor: "#ff6644", damage: 25, manaCost: 20 },
@@ -106,7 +116,7 @@ const MONSTER_TYPES = {
     skeleton: {
         name: "Skeleton Knight", icon: "💀", hp: 50, damage: 10, speed: 1.0,
         xp: 20, goldDrop: [10, 25], color: "#ccccaa", size: 13,
-        zones: ["ruins", "darklands"], weaponDrop: "iron_sword", gemDrop: true, gemChance: 0.2
+        zones: ["ruins", "darklands"], weaponDrop: "iron_sword", gemDrop: true, gemChance: 0.2, armorDrop: "chain_mail"
     },
     wolf: {
         name: "Dire Wolf", icon: "🐺", hp: 35, damage: 8, speed: 2.0,
@@ -116,22 +126,22 @@ const MONSTER_TYPES = {
     troll: {
         name: "Cave Troll", icon: "👹", hp: 80, damage: 15, speed: 0.7,
         xp: 35, goldDrop: [20, 40], color: "#558844", size: 18,
-        zones: ["mountains", "swamp"], weaponDrop: "battle_axe", gemDrop: true, gemChance: 0.3
+        zones: ["mountains", "swamp"], weaponDrop: "battle_axe", gemDrop: true, gemChance: 0.3, armorDrop: "iron_plate"
     },
     wraith: {
         name: "Dark Wraith", icon: "👻", hp: 60, damage: 12, speed: 1.5,
         xp: 30, goldDrop: [15, 35], color: "#4444aa", size: 14,
-        zones: ["darklands", "ruins"], weaponDrop: "dark_blade", gemDrop: true, gemChance: 0.25
+        zones: ["darklands", "ruins"], weaponDrop: "dark_blade", gemDrop: true, gemChance: 0.25, armorDrop: "shadow_cloak"
     },
     dragon_whelp: {
         name: "Dragon Whelp", icon: "🐉", hp: 70, damage: 18, speed: 1.3,
         xp: 40, goldDrop: [25, 50], color: "#cc4422", size: 16,
-        zones: ["mountains", "desert"], weaponDrop: "knights_blade", gemDrop: true, gemChance: 0.35
+        zones: ["mountains", "desert"], weaponDrop: "knights_blade", gemDrop: true, gemChance: 0.35, armorDrop: "knights_armor"
     },
     bandit: {
         name: "Bandit", icon: "🥷", hp: 40, damage: 9, speed: 1.4,
         xp: 18, goldDrop: [15, 30], color: "#886644", size: 13,
-        zones: ["forest", "meadow", "desert"], weaponDrop: "mace", gemDrop: false
+        zones: ["forest", "meadow", "desert"], weaponDrop: "mace", gemDrop: false, armorDrop: "leather_armor"
     },
     swamp_creature: {
         name: "Swamp Creature", icon: "🐸", hp: 45, damage: 10, speed: 0.9,
@@ -184,8 +194,8 @@ const MONSTER_SPAWN_INTERVAL = 5000; // ms
 
 // Shop locations (tile coordinates)
 const SHOP_LOCATIONS = [
-    { x: 15, y: 60, name: "Camelot Armory", inventory: ["iron_sword", "mace", "spear", "hunters_bow", "health_potion", "mana_potion", "arrows_bundle"] },
-    { x: 130, y: 20, name: "Desert Trader", inventory: ["battle_axe", "knights_blade", "longbow", "greater_health", "shield_potion", "arrows_bundle"] },
+    { x: 15, y: 60, name: "Camelot Armory", inventory: ["iron_sword", "mace", "spear", "hunters_bow", "leather_armor", "chain_mail", "health_potion", "mana_potion", "arrows_bundle"] },
+    { x: 130, y: 20, name: "Desert Trader", inventory: ["battle_axe", "knights_blade", "longbow", "iron_plate", "knights_armor", "greater_health", "shield_potion", "arrows_bundle"] },
     { x: 75, y: 70, name: "Swamp Witch", inventory: ["health_potion", "greater_health", "mana_potion", "shield_potion", "arrows_bundle"] },
 ];
 

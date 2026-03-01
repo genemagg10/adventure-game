@@ -544,7 +544,7 @@ body {
     margin-bottom: 15px;
 }
 
-#inventory-weapons, #inventory-bows, #inventory-gems {
+#inventory-weapons, #inventory-bows, #inventory-armor, #inventory-gems {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -1160,7 +1160,7 @@ body {
         margin-bottom: 4px;
     }
 
-    #inventory-weapons, #inventory-bows, #inventory-gems {
+    #inventory-weapons, #inventory-bows, #inventory-armor, #inventory-gems {
         max-width: 95%;
         gap: 3px;
         flex-direction: column;

@@ -22,6 +22,10 @@ class Player {
         this.weapons = ["rusty_sword"];
         this.currentWeapon = "rusty_sword";
 
+        // Armor
+        this.armors = ["cloth_tunic"];
+        this.currentArmor = "cloth_tunic";
+
         // Bows & Arrows
         this.bows = ["rusty_bow"];
         this.currentBow = "rusty_bow";
@@ -115,6 +119,26 @@ class Player {
     equipBow(bowId) {
         if (this.bows.includes(bowId)) {
             this.currentBow = bowId;
+            return true;
+        }
+        return false;
+    }
+
+    getArmor() {
+        return ARMOR[this.currentArmor];
+    }
+
+    addArmor(armorId) {
+        if (!this.armors.includes(armorId)) {
+            this.armors.push(armorId);
+            return true;
+        }
+        return false;
+    }
+
+    equipArmor(armorId) {
+        if (this.armors.includes(armorId)) {
+            this.currentArmor = armorId;
             return true;
         }
         return false;
@@ -299,7 +323,10 @@ class Player {
             return false;
         }
 
-        this.hp -= amount;
+        // Armor damage reduction
+        const armor = this.getArmor();
+        const reduced = Math.max(1, amount - armor.defense);
+        this.hp -= reduced;
         this.invincible = true;
         this.invincibleTimer = PLAYER_DEFAULTS.iframes;
         this.flashTimer = 200;
@@ -532,6 +559,7 @@ class Monster {
         this.color = def.color;
         this.size = def.size;
         this.weaponDrop = def.weaponDrop;
+        this.armorDrop = def.armorDrop || null;
         this.gemDrop = def.gemDrop;
         this.gemChance = def.gemChance || 0;
 
@@ -706,11 +734,16 @@ class Monster {
         const drops = {
             gold: randInt(this.goldDrop[0], this.goldDrop[1]),
             weapon: null,
+            armor: null,
             gem: false,
         };
 
         if (this.weaponDrop && Math.random() < 0.3) {
             drops.weapon = this.weaponDrop;
+        }
+
+        if (this.armorDrop && Math.random() < 0.3) {
+            drops.armor = this.armorDrop;
         }
 
         if (this.gemDrop && Math.random() < this.gemChance) {

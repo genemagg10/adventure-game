@@ -55,6 +55,7 @@ class UIManager {
             water: document.getElementById("elem-water"),
             ice: document.getElementById("elem-ice"),
             lightning: document.getElementById("elem-lightning"),
+            earth: document.getElementById("elem-earth"),
         };
 
         this.setupButtons();
@@ -700,7 +701,7 @@ class UIManager {
         }
         this.enchantElementDesc.textContent = `Enchant ${itemName} with:`;
 
-        const elements = ["fire", "water", "ice", "lightning"];
+        const elements = ["fire", "water", "ice", "lightning", "earth"];
         for (const en of elements) {
             const elem = ELEMENTS[en];
             const el = document.createElement("div");

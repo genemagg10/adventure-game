@@ -91,6 +91,7 @@ class Game {
             "Digit2": "elem2",
             "Digit3": "elem3",
             "Digit4": "elem4",
+            "Digit5": "elem5",
             "Escape": "pause",
         };
 
@@ -289,9 +290,9 @@ class Game {
         if (inMenu) return;
 
         // Element selection
-        const elemKeys = ["elem1", "elem2", "elem3", "elem4"];
-        const elemNames = ["fire", "water", "ice", "lightning"];
-        for (let i = 0; i < 4; i++) {
+        const elemKeys = ["elem1", "elem2", "elem3", "elem4", "elem5"];
+        const elemNames = ["fire", "water", "ice", "lightning", "earth"];
+        for (let i = 0; i < 5; i++) {
             if (this.keyJustPressed[elemKeys[i]]) {
                 if (this.player.elements[elemNames[i]]) {
                     this.player.activeElement = this.player.activeElement === elemNames[i] ? null : elemNames[i];
@@ -335,6 +336,7 @@ class Game {
                     case "water": this.sound.waterSplash(); break;
                     case "ice": this.sound.iceFreeze(); break;
                     case "lightning": this.sound.lightningStrike(); break;
+                    case "earth": this.sound.earthQuake(); break;
                 }
                 const results = this.combat.useElement(this.player, elemUsed, this.monsters, this.boss);
                 for (const r of results) {

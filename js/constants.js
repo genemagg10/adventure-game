@@ -104,6 +104,7 @@ const ELEMENTS = {
     water: { name: "Water", icon: "💧", color: "#2288ff", gemColor: "#44aaff", damage: 15, manaCost: 15, heal: 20 },
     ice: { name: "Ice", icon: "❄️", color: "#88ddff", gemColor: "#aaeeff", damage: 20, manaCost: 18, slowDuration: 3000 },
     lightning: { name: "Lightning", icon: "⚡", color: "#ffee00", gemColor: "#ffff44", damage: 35, manaCost: 30 },
+    earth: { name: "Earth", icon: "🪨", color: "#8b6914", gemColor: "#aa8833", damage: 22, manaCost: 22, stunDuration: 2000 },
 };
 
 // Monster types
@@ -256,7 +257,7 @@ const MERLIN_LORE = [
     {
         title: "The Five Blue Gems",
         icon: "💎",
-        text: "Long ago, five Blue Gems of immense power were forged in the heart of Crystal Lake by the ancient elemental spirits. Each gem holds the essence of a primal force — Fire, Water, Ice, and Lightning — while the fifth binds them all together. Scattered across the land by a great cataclysm, the gems call out to those brave enough to seek them. When united, they grant the bearer mastery over the elements and the strength to challenge even the darkest of foes. Monsters who have absorbed their energy may carry gem fragments within."
+        text: "Long ago, five Blue Gems of immense power were forged in the heart of Crystal Lake by the ancient elemental spirits. Each gem holds the essence of a primal force — Fire, Water, Ice, Lightning, and Earth. Scattered across the land by a great cataclysm, the gems call out to those brave enough to seek them. When united, they grant the bearer mastery over all five elements and the strength to challenge even the darkest of foes. Monsters who have absorbed their energy may carry gem fragments within."
     },
     {
         title: "Merlin the Wizard",
@@ -281,7 +282,7 @@ const MERLIN_LORE = [
     {
         title: "The Elemental Powers",
         icon: "✨",
-        text: "The four elements — Fire, Water, Ice, and Lightning — are the fundamental forces that shaped this world. Fire burns with untamed fury, consuming all in its path. Water heals and cleanses, but strikes with the force of crashing waves. Ice freezes foes in their tracks, cold and merciless. Lightning strikes with devastating precision, the wrath of storms made manifest. As Ingoizer collects the Blue Gems, these powers awaken within him, each more formidable than the last. Master them all, and no enemy shall stand."
+        text: "The five elements — Fire, Water, Ice, Lightning, and Earth — are the fundamental forces that shaped this world. Fire burns with untamed fury, consuming all in its path. Water heals and cleanses, but strikes with the force of crashing waves. Ice freezes foes in their tracks, cold and merciless. Lightning strikes with devastating precision, the wrath of storms made manifest. Earth, the most ancient power, shakes the ground itself, stunning all who stand upon it. As Ingoizer collects the Blue Gems, these powers awaken within him. Master them all, and no enemy shall stand."
     },
     {
         title: "The Lands of the Realm",

@@ -37,7 +37,7 @@ class Player {
         // Elements
         this.elements = {};
         this.activeElement = null;
-        this.elementUnlockOrder = ["fire", "water", "ice", "lightning"];
+        this.elementUnlockOrder = ["fire", "water", "ice", "lightning", "earth"];
         this.nextElementIndex = 0;
 
         // Combat state

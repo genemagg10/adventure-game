@@ -172,6 +172,7 @@ class TouchControls {
                     "elem-water": "elem2",
                     "elem-ice": "elem3",
                     "elem-lightning": "elem4",
+                    "elem-earth": "elem5",
                 };
                 const action = elemMap[slot.id];
                 if (action) {

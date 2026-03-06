@@ -193,6 +193,35 @@ class CombatSystem {
                 }
                 this.spawnElementEffect(player.x, player.y, "lightning", 600);
                 break;
+
+            case "earth":
+                // Earth quake - AoE ground slam that damages and stuns all nearby enemies
+                this.spawnElementEffect(player.x, player.y, "earth", 1000);
+                for (const m of monsters) {
+                    if (!m.alive) continue;
+                    if (dist(player.x, player.y, m.x, m.y) < 110) {
+                        const killed = m.takeDamage(elem.damage, player.x, player.y);
+                        m.slowTimer = elem.stunDuration; // stun via slow
+                        results.push({ target: m, damage: elem.damage, killed });
+                        this.addDamageNumber(m.x, m.y, elem.damage, false);
+                        this.spawnHitParticles(m.x, m.y, "#8b6914", 6);
+                        // Knockback away from player
+                        const norm = normalize(m.x - player.x, m.y - player.y);
+                        m.knockbackVx += norm.x * 8;
+                        m.knockbackVy += norm.y * 8;
+                    }
+                }
+                if (boss && boss.alive && dist(player.x, player.y, boss.x, boss.y) < 110) {
+                    const killed = boss.takeDamage(elem.damage, player.x, player.y);
+                    results.push({ target: boss, damage: elem.damage, killed, isBoss: true });
+                    this.addDamageNumber(boss.x, boss.y, elem.damage, false);
+                    this.spawnHitParticles(boss.x, boss.y, "#8b6914", 8);
+                    // Knockback boss
+                    const norm = normalize(boss.x - player.x, boss.y - player.y);
+                    boss.knockbackVx += norm.x * 5;
+                    boss.knockbackVy += norm.y * 5;
+                }
+                break;
         }
 
         return results;
@@ -260,6 +289,20 @@ class CombatSystem {
                 this.spawnLightningBolt(source.x, source.y, target.x, target.y);
                 this.spawnHitParticles(target.x, target.y, "#ffee00", 8);
                 break;
+            case "earth":
+                this.spawnElementEffect(target.x, target.y, "earth", 500);
+                this.spawnHitParticles(target.x, target.y, "#8b6914", 6);
+                // Knockback target
+                if (target.knockbackVx !== undefined) {
+                    const norm = normalize(target.x - source.x, target.y - source.y);
+                    target.knockbackVx += norm.x * 5;
+                    target.knockbackVy += norm.y * 5;
+                }
+                // Stun via slow
+                if (target.slowTimer !== undefined) {
+                    target.slowTimer = 1000;
+                }
+                break;
         }
     }
 
@@ -288,6 +331,11 @@ class CombatSystem {
                 }
                 this.spawnElementEffect(player.x, player.y, "enchant_lightning_shield", 500);
                 this.spawnHitParticles(player.x, player.y, "#ffee00", 8);
+                break;
+            case "earth":
+                // Earth shield - ground tremor knocking attackers back
+                this.spawnElementEffect(player.x, player.y, "enchant_earth_shield", 600);
+                this.spawnHitParticles(player.x, player.y, "#8b6914", 8);
                 break;
         }
     }
@@ -596,6 +644,42 @@ class CombatSystem {
                     break;
                 }
 
+                case "earth": {
+                    // Expanding shockwave ring on the ground
+                    const eRadius = 100 * Math.min(progress * 1.5, 1);
+                    const eAlpha = 0.7 - progress * 0.7;
+                    // Ground crack ring
+                    ctx.strokeStyle = `rgba(139, 105, 20, ${eAlpha})`;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, eRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    // Inner shockwave
+                    ctx.strokeStyle = `rgba(160, 130, 50, ${eAlpha * 0.7})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, eRadius * 0.6, 0, Math.PI * 2);
+                    ctx.stroke();
+                    // Dirt/rock debris flying up
+                    for (let i = 0; i < 8; i++) {
+                        const a = (i / 8) * Math.PI * 2 + time * 0.001;
+                        const r = eRadius * (0.3 + Math.random() * 0.6);
+                        const debrisSize = 2 + Math.random() * 4;
+                        const debrisY = sy + Math.sin(a) * r - progress * 30 * (1 - progress);
+                        ctx.fillStyle = `rgba(${100 + Math.random() * 60}, ${80 + Math.random() * 40}, ${20 + Math.random() * 30}, ${eAlpha})`;
+                        ctx.fillRect(sx + Math.cos(a) * r - debrisSize / 2, debrisY - debrisSize / 2, debrisSize, debrisSize);
+                    }
+                    // Ground dust cloud
+                    const dustGradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, eRadius * 0.8);
+                    dustGradient.addColorStop(0, `rgba(139, 105, 20, ${eAlpha * 0.3})`);
+                    dustGradient.addColorStop(1, "rgba(139, 105, 20, 0)");
+                    ctx.fillStyle = dustGradient;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, eRadius * 0.8, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                }
+
                 case "enchant_fire_shield": {
                     // Fire shield burst radiating outward
                     const fRadius = 30 + 20 * progress;
@@ -706,6 +790,34 @@ class CombatSystem {
                         ctx.stroke();
                     }
                     ctx.shadowBlur = 0;
+                    break;
+                }
+
+                case "enchant_earth_shield": {
+                    // Earth defense - ground tremor ripple
+                    const erRadius = 30 + 20 * progress;
+                    const erAlpha = 0.6 - progress * 0.6;
+                    // Brown shockwave ring
+                    ctx.strokeStyle = `rgba(139, 105, 20, ${erAlpha})`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, erRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    // Ground dust
+                    const erGradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, erRadius * 0.7);
+                    erGradient.addColorStop(0, `rgba(139, 105, 20, ${erAlpha * 0.4})`);
+                    erGradient.addColorStop(1, "rgba(139, 105, 20, 0)");
+                    ctx.fillStyle = erGradient;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, erRadius * 0.7, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Rock debris
+                    for (let i = 0; i < 5; i++) {
+                        const a = (i / 5) * Math.PI * 2 + time * 0.005;
+                        const r = erRadius * 0.6;
+                        ctx.fillStyle = `rgba(120, 90, 30, ${erAlpha})`;
+                        ctx.fillRect(sx + Math.cos(a) * r - 2, sy + Math.sin(a) * r - 2 - progress * 15, 4, 4);
+                    }
                     break;
                 }
 

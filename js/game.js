@@ -48,6 +48,7 @@ class Game {
         this.nearGem = null;
         this.nearLady = false;
         this.nearMerlin = false;
+        this.nearMerlinHut = false;
 
         // Lady of the Lake quest state
         this.ladyQuestState = "none"; // none, given, sheath_acquired, complete
@@ -90,6 +91,7 @@ class Game {
             "Digit2": "elem2",
             "Digit3": "elem3",
             "Digit4": "elem4",
+            "Digit5": "elem5",
             "Escape": "pause",
         };
 
@@ -255,7 +257,7 @@ class Game {
         this.touchControls.applyInput();
 
         // Don't update during dialogs, menus
-        const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive || this.ui.isRiddleOpen() || this.ui.isEnchantOpen();
+        const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive || this.ui.isRiddleOpen() || this.ui.isEnchantOpen() || this.ui.isLoreOpen();
 
         // Handle menu input
         if (this.keyJustPressed.map) {
@@ -282,14 +284,15 @@ class Game {
             else if (this.ui.isInventoryOpen()) this.ui.closeInventory();
             else if (this.ui.isMapOpen()) this.ui.toggleMap();
             else if (this.ui.isEnchantOpen()) this.ui.closeEnchant();
+            else if (this.ui.isLoreOpen()) this.ui.closeLore();
         }
 
         if (inMenu) return;
 
         // Element selection
-        const elemKeys = ["elem1", "elem2", "elem3", "elem4"];
-        const elemNames = ["fire", "water", "ice", "lightning"];
-        for (let i = 0; i < 4; i++) {
+        const elemKeys = ["elem1", "elem2", "elem3", "elem4", "elem5"];
+        const elemNames = ["fire", "water", "ice", "lightning", "earth"];
+        for (let i = 0; i < 5; i++) {
             if (this.keyJustPressed[elemKeys[i]]) {
                 if (this.player.elements[elemNames[i]]) {
                     this.player.activeElement = this.player.activeElement === elemNames[i] ? null : elemNames[i];
@@ -333,6 +336,7 @@ class Game {
                     case "water": this.sound.waterSplash(); break;
                     case "ice": this.sound.iceFreeze(); break;
                     case "lightning": this.sound.lightningStrike(); break;
+                    case "earth": this.sound.earthQuake(); break;
                 }
                 const results = this.combat.useElement(this.player, elemUsed, this.monsters, this.boss);
                 for (const r of results) {
@@ -355,6 +359,14 @@ class Game {
                 this.combat.addDamageNumber(this.player.x, this.player.y, result.damage, false);
                 this.sound.playerHurt();
                 this.sound.monsterAttack();
+                // Armor enchantment defensive effect
+                if (this.player.lastHitArmorEnchant) {
+                    this.combat.spawnArmorDefenseEffect(
+                        this.player.lastHitArmorEnchant, this.player,
+                        this.player.lastHitFromX, this.player.lastHitFromY
+                    );
+                    this.player.lastHitArmorEnchant = null;
+                }
             }
         }
 
@@ -363,6 +375,7 @@ class Game {
             const prevCharging = this.boss.charging;
             const prevSpinning = this.boss.spinning;
             const prevProjCount = this.boss.projectiles.length;
+            const prevPlayerHp = this.player.hp;
             this.boss.update(dt, this.player, this.world);
             if (this.boss.alive) {
                 this.ui.showBossHealth(this.boss);
@@ -370,6 +383,14 @@ class Game {
                 if (!prevCharging && this.boss.charging) this.sound.bossCharge();
                 if (!prevSpinning && this.boss.spinning) this.sound.bossSpin();
                 if (this.boss.projectiles.length > prevProjCount) this.sound.bossProjectile();
+                // Armor enchantment defensive effect on boss hit
+                if (this.player.hp < prevPlayerHp && this.player.lastHitArmorEnchant) {
+                    this.combat.spawnArmorDefenseEffect(
+                        this.player.lastHitArmorEnchant, this.player,
+                        this.player.lastHitFromX, this.player.lastHitFromY
+                    );
+                    this.player.lastHitArmorEnchant = null;
+                }
             }
         }
 
@@ -570,6 +591,15 @@ class Game {
                 this.collectMerlinWand();
             }
         }
+
+        // Check Merlin's Hut (for lore access)
+        this.nearMerlinHut = false;
+        if (this.world.merlinHut) {
+            const hut = this.world.merlinHut;
+            if (dist(this.player.x, this.player.y, hut.x, hut.y) < MERLIN_HUT_INTERACT_RANGE) {
+                this.nearMerlinHut = true;
+            }
+        }
     }
 
     collectWorldGem(gem) {
@@ -602,6 +632,13 @@ class Game {
         // Merlin interaction
         if (this.nearMerlin) {
             this.startMerlinQuest();
+            return;
+        }
+
+        // Merlin's Hut lore interaction
+        if (this.nearMerlinHut) {
+            this.sound.menuSelect();
+            this.ui.openLore();
         }
     }
 
@@ -680,13 +717,13 @@ class Game {
             this.player.hasMallet = true;
             this.player.hasMerlinWand = false;
             this.ui.showDialog("\"You found my wand! Splendid! Thank you, brave Ingoizer!\"", () => {
-                this.ui.showDialog("\"As promised, take this Enchanter's Mallet. With it, you can enchant one weapon with elemental power!\"", () => {
-                    this.ui.showDialog("\"Open your inventory and use the mallet to imbue a weapon with fire, water, ice, or lightning.\"");
+                this.ui.showDialog("\"As promised, take this Enchanter's Mallet. With it, you can enchant a weapon AND armor with elemental power!\"", () => {
+                    this.ui.showDialog("\"Open your inventory and use the mallet to imbue your gear with fire, water, ice, or lightning.\"");
                     this.ui.showNotification("Enchanter's Mallet obtained!");
                 });
             });
         } else if (this.merlinQuestState === "complete") {
-            if (this.player.hasMallet && !this.player.malletUsed) {
+            if (this.player.hasMallet && (!this.player.malletUsedWeapon || !this.player.malletUsedArmor)) {
                 this.ui.showDialog("\"Remember to use the Enchanter's Mallet from your inventory, Ingoizer!\"");
             } else {
                 this.ui.showDialog("\"May the enchantment serve you well on your quest, Ingoizer!\"");
@@ -878,6 +915,8 @@ class Game {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to speak with the Lady" : "Press E to speak with the Lady of the Lake");
         } else if (this.nearMerlin) {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to speak with Merlin" : "Press E to speak with Merlin");
+        } else if (this.nearMerlinHut) {
+            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to enter hut" : "Press E to read ancient lore");
         }
 
         // Render minimap

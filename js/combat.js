@@ -18,6 +18,7 @@ class CombatSystem {
         const attackAngle = player.attackAngle;
         const range = weapon.range;
         const hits = [];
+        const enchantElement = player.enchantments[player.currentWeapon];
 
         // Check monsters
         for (const monster of monsters) {
@@ -48,6 +49,11 @@ class CombatSystem {
             // Hit particles
             this.spawnHitParticles(monster.x, monster.y, "#ff4444", 5);
 
+            // Enchantment hit effect
+            if (enchantElement) {
+                this.spawnEnchantHitEffect(enchantElement, player, monster);
+            }
+
             // Damage number
             this.addDamageNumber(monster.x, monster.y, damage, crit);
         }
@@ -75,6 +81,11 @@ class CombatSystem {
 
                     this.spawnHitParticles(boss.x, boss.y, "#ff8800", 8);
                     this.addDamageNumber(boss.x, boss.y, damage, crit);
+
+                    // Enchantment hit effect
+                    if (enchantElement) {
+                        this.spawnEnchantHitEffect(enchantElement, player, boss);
+                    }
                 }
             }
         }
@@ -182,6 +193,35 @@ class CombatSystem {
                 }
                 this.spawnElementEffect(player.x, player.y, "lightning", 600);
                 break;
+
+            case "earth":
+                // Earth quake - AoE ground slam that damages and stuns all nearby enemies
+                this.spawnElementEffect(player.x, player.y, "earth", 1000);
+                for (const m of monsters) {
+                    if (!m.alive) continue;
+                    if (dist(player.x, player.y, m.x, m.y) < 110) {
+                        const killed = m.takeDamage(elem.damage, player.x, player.y);
+                        m.slowTimer = elem.stunDuration; // stun via slow
+                        results.push({ target: m, damage: elem.damage, killed });
+                        this.addDamageNumber(m.x, m.y, elem.damage, false);
+                        this.spawnHitParticles(m.x, m.y, "#8b6914", 6);
+                        // Knockback away from player
+                        const norm = normalize(m.x - player.x, m.y - player.y);
+                        m.knockbackVx += norm.x * 8;
+                        m.knockbackVy += norm.y * 8;
+                    }
+                }
+                if (boss && boss.alive && dist(player.x, player.y, boss.x, boss.y) < 110) {
+                    const killed = boss.takeDamage(elem.damage, player.x, player.y);
+                    results.push({ target: boss, damage: elem.damage, killed, isBoss: true });
+                    this.addDamageNumber(boss.x, boss.y, elem.damage, false);
+                    this.spawnHitParticles(boss.x, boss.y, "#8b6914", 8);
+                    // Knockback boss
+                    const norm = normalize(boss.x - player.x, boss.y - player.y);
+                    boss.knockbackVx += norm.x * 5;
+                    boss.knockbackVy += norm.y * 5;
+                }
+                break;
         }
 
         return results;
@@ -223,6 +263,81 @@ class CombatSystem {
             x: x1, y: y1, element: "lightning_bolt", duration: 400, maxDuration: 400,
             segments: segments,
         });
+    }
+
+    // Spawn enchantment visual effect when an enchanted weapon/bow hits a target
+    spawnEnchantHitEffect(element, source, target) {
+        const elem = ELEMENTS[element];
+        switch (element) {
+            case "fire":
+                this.spawnElementEffect(target.x, target.y, "fire", 500);
+                this.spawnHitParticles(target.x, target.y, "#ff4400", 6);
+                break;
+            case "water":
+                this.spawnElementEffect(target.x, target.y, "water", 500);
+                this.spawnHitParticles(target.x, target.y, "#2288ff", 6);
+                break;
+            case "ice":
+                this.spawnElementEffect(target.x, target.y, "ice", 600);
+                this.spawnHitParticles(target.x, target.y, "#88ddff", 6);
+                // Apply slow to target if it has a slowTimer
+                if (target.slowTimer !== undefined) {
+                    target.slowTimer = 1500;
+                }
+                break;
+            case "lightning":
+                this.spawnLightningBolt(source.x, source.y, target.x, target.y);
+                this.spawnHitParticles(target.x, target.y, "#ffee00", 8);
+                break;
+            case "earth":
+                this.spawnElementEffect(target.x, target.y, "earth", 500);
+                this.spawnHitParticles(target.x, target.y, "#8b6914", 6);
+                // Knockback target
+                if (target.knockbackVx !== undefined) {
+                    const norm = normalize(target.x - source.x, target.y - source.y);
+                    target.knockbackVx += norm.x * 5;
+                    target.knockbackVy += norm.y * 5;
+                }
+                // Stun via slow
+                if (target.slowTimer !== undefined) {
+                    target.slowTimer = 1000;
+                }
+                break;
+        }
+    }
+
+    // Spawn defensive visual effect when enchanted armor blocks damage
+    spawnArmorDefenseEffect(element, player, fromX, fromY) {
+        switch (element) {
+            case "fire":
+                // Fire burst radiating outward from player
+                this.spawnElementEffect(player.x, player.y, "enchant_fire_shield", 600);
+                this.spawnHitParticles(player.x, player.y, "#ff4400", 8);
+                break;
+            case "water":
+                // Water shield ripple around player
+                this.spawnElementEffect(player.x, player.y, "enchant_water_shield", 600);
+                this.spawnHitParticles(player.x, player.y, "#2288ff", 8);
+                break;
+            case "ice":
+                // Ice barrier frost effect
+                this.spawnElementEffect(player.x, player.y, "enchant_ice_shield", 700);
+                this.spawnHitParticles(player.x, player.y, "#88ddff", 8);
+                break;
+            case "lightning":
+                // Lightning discharge toward attacker
+                if (fromX !== undefined && fromY !== undefined) {
+                    this.spawnLightningBolt(player.x, player.y, fromX, fromY);
+                }
+                this.spawnElementEffect(player.x, player.y, "enchant_lightning_shield", 500);
+                this.spawnHitParticles(player.x, player.y, "#ffee00", 8);
+                break;
+            case "earth":
+                // Earth shield - ground tremor knocking attackers back
+                this.spawnElementEffect(player.x, player.y, "enchant_earth_shield", 600);
+                this.spawnHitParticles(player.x, player.y, "#8b6914", 8);
+                break;
+        }
     }
 
     // Arrow projectile system
@@ -309,6 +424,10 @@ class CombatSystem {
                     if (a.isFireArrow) {
                         this.spawnElementEffect(m.x, m.y, "fire", 500);
                     }
+                    // Bow enchantment hit effect
+                    if (a.bowEnchant) {
+                        this.spawnEnchantHitEffect(a.bowEnchant, { x: a.x, y: a.y }, m);
+                    }
                     hits.push({ target: m, damage, killed, crit });
                     this.arrowProjectiles.splice(i, 1);
                     removed = true;
@@ -332,6 +451,10 @@ class CombatSystem {
                     this.addDamageNumber(boss.x, boss.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(boss.x, boss.y, "fire", 500);
+                    }
+                    // Bow enchantment hit effect
+                    if (a.bowEnchant) {
+                        this.spawnEnchantHitEffect(a.bowEnchant, { x: a.x, y: a.y }, boss);
                     }
                     hits.push({ target: boss, damage, killed, crit, isBoss: true });
                     this.arrowProjectiles.splice(i, 1);
@@ -518,6 +641,183 @@ class CombatSystem {
                     ctx.beginPath();
                     ctx.arc(sx, sy, 30, 0, Math.PI * 2);
                     ctx.fill();
+                    break;
+                }
+
+                case "earth": {
+                    // Expanding shockwave ring on the ground
+                    const eRadius = 100 * Math.min(progress * 1.5, 1);
+                    const eAlpha = 0.7 - progress * 0.7;
+                    // Ground crack ring
+                    ctx.strokeStyle = `rgba(139, 105, 20, ${eAlpha})`;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, eRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    // Inner shockwave
+                    ctx.strokeStyle = `rgba(160, 130, 50, ${eAlpha * 0.7})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, eRadius * 0.6, 0, Math.PI * 2);
+                    ctx.stroke();
+                    // Dirt/rock debris flying up
+                    for (let i = 0; i < 8; i++) {
+                        const a = (i / 8) * Math.PI * 2 + time * 0.001;
+                        const r = eRadius * (0.3 + Math.random() * 0.6);
+                        const debrisSize = 2 + Math.random() * 4;
+                        const debrisY = sy + Math.sin(a) * r - progress * 30 * (1 - progress);
+                        ctx.fillStyle = `rgba(${100 + Math.random() * 60}, ${80 + Math.random() * 40}, ${20 + Math.random() * 30}, ${eAlpha})`;
+                        ctx.fillRect(sx + Math.cos(a) * r - debrisSize / 2, debrisY - debrisSize / 2, debrisSize, debrisSize);
+                    }
+                    // Ground dust cloud
+                    const dustGradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, eRadius * 0.8);
+                    dustGradient.addColorStop(0, `rgba(139, 105, 20, ${eAlpha * 0.3})`);
+                    dustGradient.addColorStop(1, "rgba(139, 105, 20, 0)");
+                    ctx.fillStyle = dustGradient;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, eRadius * 0.8, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                }
+
+                case "enchant_fire_shield": {
+                    // Fire shield burst radiating outward
+                    const fRadius = 30 + 20 * progress;
+                    const fAlpha = 0.6 - progress * 0.6;
+                    ctx.strokeStyle = `rgba(255, 68, 0, ${fAlpha})`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, fRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    // Inner fire glow
+                    const fGradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, fRadius * 0.6);
+                    fGradient.addColorStop(0, `rgba(255, 100, 0, ${fAlpha * 0.5})`);
+                    fGradient.addColorStop(1, "rgba(255, 50, 0, 0)");
+                    ctx.fillStyle = fGradient;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, fRadius * 0.6, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Fire wisps
+                    for (let i = 0; i < 4; i++) {
+                        const a = (i / 4) * Math.PI * 2 + time * 0.008;
+                        const wr = fRadius * 0.8;
+                        ctx.fillStyle = `rgba(255, ${150 + Math.random() * 100}, 0, ${fAlpha})`;
+                        ctx.beginPath();
+                        ctx.arc(sx + Math.cos(a) * wr, sy + Math.sin(a) * wr, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    break;
+                }
+
+                case "enchant_water_shield": {
+                    // Water shield ripple
+                    const wRadius = 25 + 25 * progress;
+                    const wAlpha = 0.7 - progress * 0.7;
+                    ctx.strokeStyle = `rgba(34, 136, 255, ${wAlpha})`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, wRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.strokeStyle = `rgba(68, 170, 255, ${wAlpha * 0.6})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, wRadius * 0.6, 0, Math.PI * 2);
+                    ctx.stroke();
+                    // Water droplets
+                    for (let i = 0; i < 6; i++) {
+                        const a = (i / 6) * Math.PI * 2 + time * 0.003;
+                        ctx.fillStyle = `rgba(100, 200, 255, ${wAlpha * 0.8})`;
+                        ctx.beginPath();
+                        ctx.arc(sx + Math.cos(a) * wRadius * 0.8, sy + Math.sin(a) * wRadius * 0.8, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    break;
+                }
+
+                case "enchant_ice_shield": {
+                    // Ice barrier with frost crystals
+                    const iRadius = 28 + 18 * progress;
+                    const iAlpha = 0.6 - progress * 0.5;
+                    // Frost circle
+                    ctx.fillStyle = `rgba(136, 221, 255, ${iAlpha * 0.3})`;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, iRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Ice crystal spikes radiating outward
+                    for (let i = 0; i < 8; i++) {
+                        const a = (i / 8) * Math.PI * 2 + time * 0.002;
+                        const innerR = iRadius * 0.5;
+                        const outerR = iRadius;
+                        ctx.strokeStyle = `rgba(200, 240, 255, ${iAlpha})`;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(sx + Math.cos(a) * innerR, sy + Math.sin(a) * innerR);
+                        ctx.lineTo(sx + Math.cos(a) * outerR, sy + Math.sin(a) * outerR);
+                        ctx.stroke();
+                    }
+                    // Outer ring
+                    ctx.strokeStyle = `rgba(200, 240, 255, ${iAlpha * 0.5})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, iRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    break;
+                }
+
+                case "enchant_lightning_shield": {
+                    // Lightning discharge flash
+                    const lRadius = 25 + 15 * progress;
+                    const lAlpha = 0.5 - progress * 0.5;
+                    ctx.fillStyle = `rgba(255, 238, 0, ${lAlpha * 0.4})`;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, lRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Electric arcs around player
+                    ctx.strokeStyle = `rgba(255, 238, 0, ${lAlpha})`;
+                    ctx.lineWidth = 2;
+                    ctx.shadowColor = "#ffee00";
+                    ctx.shadowBlur = 6;
+                    for (let i = 0; i < 4; i++) {
+                        const a1 = Math.random() * Math.PI * 2;
+                        const a2 = a1 + randFloat(0.3, 0.8);
+                        const r1 = lRadius * 0.6;
+                        const r2 = lRadius;
+                        ctx.beginPath();
+                        ctx.moveTo(sx + Math.cos(a1) * r1, sy + Math.sin(a1) * r1);
+                        ctx.lineTo(sx + Math.cos((a1 + a2) / 2) * r2 + randFloat(-5, 5),
+                                   sy + Math.sin((a1 + a2) / 2) * r2 + randFloat(-5, 5));
+                        ctx.lineTo(sx + Math.cos(a2) * r1, sy + Math.sin(a2) * r1);
+                        ctx.stroke();
+                    }
+                    ctx.shadowBlur = 0;
+                    break;
+                }
+
+                case "enchant_earth_shield": {
+                    // Earth defense - ground tremor ripple
+                    const erRadius = 30 + 20 * progress;
+                    const erAlpha = 0.6 - progress * 0.6;
+                    // Brown shockwave ring
+                    ctx.strokeStyle = `rgba(139, 105, 20, ${erAlpha})`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, erRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    // Ground dust
+                    const erGradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, erRadius * 0.7);
+                    erGradient.addColorStop(0, `rgba(139, 105, 20, ${erAlpha * 0.4})`);
+                    erGradient.addColorStop(1, "rgba(139, 105, 20, 0)");
+                    ctx.fillStyle = erGradient;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, erRadius * 0.7, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Rock debris
+                    for (let i = 0; i < 5; i++) {
+                        const a = (i / 5) * Math.PI * 2 + time * 0.005;
+                        const r = erRadius * 0.6;
+                        ctx.fillStyle = `rgba(120, 90, 30, ${erAlpha})`;
+                        ctx.fillRect(sx + Math.cos(a) * r - 2, sy + Math.sin(a) * r - 2 - progress * 15, 4, 4);
+                    }
                     break;
                 }
 

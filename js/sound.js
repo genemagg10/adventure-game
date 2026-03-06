@@ -298,6 +298,62 @@ class SoundSystem {
         osc.stop(t + 0.3);
     }
 
+    earthQuake() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+
+        // Deep rumble
+        const osc = this.ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(60, t);
+        osc.frequency.linearRampToValueAtTime(40, t + 0.6);
+        const gain = this.createGain(0.25);
+        gain.gain.setValueAtTime(0.05 * this.masterVolume, t);
+        gain.gain.linearRampToValueAtTime(0.25 * this.masterVolume, t + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = 200;
+        osc.connect(filter);
+        filter.connect(gain);
+        osc.start(t);
+        osc.stop(t + 0.6);
+
+        // Impact thud
+        const osc2 = this.ctx.createOscillator();
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(120, t);
+        osc2.frequency.exponentialRampToValueAtTime(30, t + 0.3);
+        const gain2 = this.createGain(0.3);
+        gain2.gain.setValueAtTime(0.3 * this.masterVolume, t);
+        gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        osc2.connect(gain2);
+        osc2.start(t);
+        osc2.stop(t + 0.3);
+
+        // Crumbling debris noise
+        const bufSize = this.ctx.sampleRate * 0.4;
+        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) {
+            const env = Math.pow(1 - i / bufSize, 1.5);
+            d[i] = (Math.random() * 2 - 1) * env * (Math.random() < 0.08 ? 1 : 0.3);
+        }
+        const ns = this.ctx.createBufferSource();
+        ns.buffer = buf;
+        const nFilter = this.ctx.createBiquadFilter();
+        nFilter.type = "lowpass";
+        nFilter.frequency.setValueAtTime(800, t);
+        nFilter.frequency.exponentialRampToValueAtTime(200, t + 0.4);
+        const nGain = this.createGain(0.2);
+        nGain.gain.setValueAtTime(0.2 * this.masterVolume, t + 0.05);
+        nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+        ns.connect(nFilter);
+        nFilter.connect(nGain);
+        ns.start(t + 0.05);
+        ns.stop(t + 0.5);
+    }
+
     // --- MONSTER SOUNDS ---
 
     monsterHit() {

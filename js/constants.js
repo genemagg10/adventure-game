@@ -104,6 +104,7 @@ const ELEMENTS = {
     water: { name: "Water", icon: "💧", color: "#2288ff", gemColor: "#44aaff", damage: 15, manaCost: 15, heal: 20 },
     ice: { name: "Ice", icon: "❄️", color: "#88ddff", gemColor: "#aaeeff", damage: 20, manaCost: 18, slowDuration: 3000 },
     lightning: { name: "Lightning", icon: "⚡", color: "#ffee00", gemColor: "#ffff44", damage: 35, manaCost: 30 },
+    earth: { name: "Earth", icon: "🪨", color: "#8b6914", gemColor: "#aa8833", damage: 22, manaCost: 22, stunDuration: 2000 },
 };
 
 // Monster types
@@ -245,3 +246,50 @@ const COLORS = {
     gold: "#ffd700",
     shopMarker: "#ffaa00",
 };
+
+// Merlin's Hut Lore - Ancient texts and game story
+const MERLIN_LORE = [
+    {
+        title: "The Legend of Ingoizer",
+        icon: "⚔️",
+        text: "In an age of shadow and fading hope, a young knight named Ingoizer arose from the humble Green Meadow. Though armed with only a rusty sword and bow, his heart burned with courage that no darkness could extinguish. Destiny chose him to reclaim the stolen Blue Gems and restore peace to a land gripped by evil. His journey would take him through treacherous forests, scorching deserts, and haunted ruins — but Ingoizer would not falter, for the fate of the realm rested upon his shoulders."
+    },
+    {
+        title: "The Five Blue Gems",
+        icon: "💎",
+        text: "Long ago, five Blue Gems of immense power were forged in the heart of Crystal Lake by the ancient elemental spirits. Each gem holds the essence of a primal force — Fire, Water, Ice, Lightning, and Earth. Scattered across the land by a great cataclysm, the gems call out to those brave enough to seek them. When united, they grant the bearer mastery over all five elements and the strength to challenge even the darkest of foes. Monsters who have absorbed their energy may carry gem fragments within."
+    },
+    {
+        title: "Merlin the Wizard",
+        icon: "🧙",
+        text: "I, Merlin, have walked these lands for centuries, watching kingdoms rise and fall. My swamp may seem humble, but it is steeped in ancient magic. I once served as advisor to the great kings of Ing Castle, until the Black Knight drove me into exile. My Enchanter's Mallet, a relic of the old world, can imbue weapons and armor with elemental fury. Though my powers have waned without my wand, my knowledge endures. Seek wisdom, young Ingoizer, for brute strength alone will not save the realm."
+    },
+    {
+        title: "The Black Knight",
+        icon: "🖤",
+        text: "None know the Black Knight's true name — only that he appeared from the shadows when the gems were scattered. Clad in armor darker than midnight, with eyes that glow like embers of hate, he seized Ing Castle and claimed the gems as his own. His power grows with each passing day, feeding on the fear of the land. He commands legions of monsters and dark magic that grows stronger the longer the gems remain apart. Only one who carries all five gems can force him from the shadows to face battle."
+    },
+    {
+        title: "Ing Castle",
+        icon: "🏰",
+        text: "Ing Castle once stood as a beacon of hope and justice, home to noble kings who ruled with wisdom and compassion. Its walls were built from enchanted stone, said to be unbreakable by mortal weapons. When the Black Knight conquered the castle, a dark shroud fell over its towers, and the once-golden banners turned to ash. The castle gates remain sealed to all but those who carry the five Blue Gems. Beyond those gates, the Black Knight waits, drawing power from the very stones that once protected the realm."
+    },
+    {
+        title: "The Lady of the Lake",
+        icon: "🌊",
+        text: "At the heart of Crystal Lake dwells the Lady of the Lake, an ethereal guardian who has watched over Excalibur since time immemorial. She is neither mortal nor spirit, but something in between — a keeper of ancient promises. The legendary sword Excalibur, forged by gods and tempered in starlight, rests in her care. She will bestow it only upon a warrior who proves their worth by recovering its jewel-encrusted sheath from the fearsome Sheath Guardian Troll that lurks in the Dark Forest."
+    },
+    {
+        title: "The Elemental Powers",
+        icon: "✨",
+        text: "The five elements — Fire, Water, Ice, Lightning, and Earth — are the fundamental forces that shaped this world. Fire burns with untamed fury, consuming all in its path. Water heals and cleanses, but strikes with the force of crashing waves. Ice freezes foes in their tracks, cold and merciless. Lightning strikes with devastating precision, the wrath of storms made manifest. Earth, the most ancient power, shakes the ground itself, stunning all who stand upon it. As Ingoizer collects the Blue Gems, these powers awaken within him. Master them all, and no enemy shall stand."
+    },
+    {
+        title: "The Lands of the Realm",
+        icon: "🗺️",
+        text: "The realm stretches from the peaceful Green Meadow in the west to the dread Darklands in the east. Camelot Village shelters honest folk and merchants. The Dark Forest hides dangers and treasures in equal measure. The Scorched Wastes bake under an unforgiving sun, while the Dragon Mountains pierce the clouds with jagged peaks. Merlin's Swamp bubbles with arcane energy, and the Ancient Ruins hold secrets of civilizations long forgotten. Each land harbors unique monsters and challenges for those who dare explore."
+    },
+];
+
+// Merlin's Hut interaction range (same as shops)
+const MERLIN_HUT_INTERACT_RANGE = 50;

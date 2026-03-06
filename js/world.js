@@ -872,6 +872,11 @@ class World {
         ctx.font = "9px monospace";
         ctx.textAlign = "center";
         ctx.fillText("Merlin's Hut", sx, sy - 44);
+
+        // Lore hint
+        ctx.fillStyle = "rgba(170, 136, 255, 0.6)";
+        ctx.font = "9px monospace";
+        ctx.fillText("[E] Ancient Lore", sx, sy + 24);
     }
 
     renderMerlinWand(ctx, sx, sy, time) {

@@ -37,7 +37,7 @@ class Player {
         // Elements
         this.elements = {};
         this.activeElement = null;
-        this.elementUnlockOrder = ["fire", "water", "ice", "lightning"];
+        this.elementUnlockOrder = ["fire", "water", "ice", "lightning", "earth"];
         this.nextElementIndex = 0;
 
         // Combat state
@@ -59,8 +59,11 @@ class Player {
         // Merlin quest items
         this.hasMerlinWand = false;
         this.hasMallet = false;
-        this.malletUsed = false;
-        this.enchantments = {}; // weaponId -> element name
+        this.malletUsedWeapon = false;
+        this.malletUsedArmor = false;
+        this.enchantments = {}; // weaponId/bowId -> element name
+        this.armorEnchantment = null; // element name for current armor enchantment
+        this.armorEnchantedId = null; // which armor piece is enchanted
 
         // Element cooldown
         this.elementCooldown = 0;
@@ -125,7 +128,11 @@ class Player {
     }
 
     getArmor() {
-        return ARMOR[this.currentArmor];
+        const armor = ARMOR[this.currentArmor];
+        if (this.armorEnchantedId === this.currentArmor && this.armorEnchantment) {
+            return { ...armor, enchantment: this.armorEnchantment };
+        }
+        return armor;
     }
 
     addArmor(armorId) {
@@ -158,6 +165,7 @@ class Player {
 
         const isFireArrow = this.activeElement === "fire" && this.elements.fire;
         const fireDamage = isFireArrow ? Math.floor(ELEMENTS.fire.damage * 0.5) : 0;
+        const bowEnchant = this.enchantments[this.currentBow] || null;
 
         return {
             x: this.x + this.facing.x * 10,
@@ -168,6 +176,7 @@ class Player {
             range: bow.range,
             distTraveled: 0,
             isFireArrow: isFireArrow,
+            bowEnchant: bowEnchant,
         };
     }
 
@@ -331,6 +340,11 @@ class Player {
         this.invincibleTimer = PLAYER_DEFAULTS.iframes;
         this.flashTimer = 200;
 
+        // Track armor enchantment trigger for visual effects
+        this.lastHitArmorEnchant = armor.enchantment || null;
+        this.lastHitFromX = fromX;
+        this.lastHitFromY = fromY;
+
         // Knockback
         if (fromX !== undefined && fromY !== undefined) {
             const norm = normalize(this.x - fromX, this.y - fromY);
@@ -432,6 +446,18 @@ class Player {
             ctx.globalAlpha = 0.4 + Math.sin(time * 0.005) * 0.2;
             ctx.beginPath();
             ctx.arc(sx, sy, this.size + 4, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+
+        // Enchanted armor subtle glow
+        if (this.armorEnchantedId === this.currentArmor && this.armorEnchantment) {
+            const armorElem = ELEMENTS[this.armorEnchantment];
+            ctx.strokeStyle = armorElem.color;
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.2 + Math.sin(time * 0.004) * 0.1;
+            ctx.beginPath();
+            ctx.arc(sx, sy + 2, this.size + 8, 0, Math.PI * 2);
             ctx.stroke();
             ctx.globalAlpha = 1;
         }

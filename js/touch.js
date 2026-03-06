@@ -206,7 +206,7 @@ class TouchControls {
         // Check if the touch target is within a UI overlay that should handle its own events
         const overlayIds = ["shop-overlay", "inventory-overlay", "riddle-overlay",
                            "map-overlay", "title-screen", "controls-screen",
-                           "game-over-screen"];
+                           "game-over-screen", "lore-overlay", "enchant-overlay"];
         for (const id of overlayIds) {
             const el = document.getElementById(id);
             if (el && !el.classList.contains("hidden") && el.contains(target)) {
@@ -215,7 +215,8 @@ class TouchControls {
         }
         // Also allow menu buttons through
         if (target.classList.contains("menu-btn") || target.classList.contains("shop-item") ||
-            target.classList.contains("riddle-choice") || target.classList.contains("inv-item")) {
+            target.classList.contains("riddle-choice") || target.classList.contains("inv-item") ||
+            target.classList.contains("lore-nav-btn")) {
             return true;
         }
         return false;

@@ -56,6 +56,11 @@ class World {
         this.placeMerlin();
         this.placeMerlinHut();
 
+        // Green Knight's Domain (initially blocked)
+        this.greenCastleBuilt = false;
+        this.greenGems = [];
+        this.greenKnightCastle = null;
+
         // Add decorations
         this.generateDecorations(rng);
     }
@@ -118,6 +123,11 @@ class World {
             case "darklands":
                 if (rng() < 0.05) return TILE.LAVA;
                 if (rng() < z.treeChance) return TILE.TREE;
+                return TILE.DARK_GRASS;
+
+            case "greenlands":
+                if (rng() < 0.10) return TILE.TREE;
+                if (rng() < 0.03) return TILE.WALL;
                 return TILE.DARK_GRASS;
 
             default:
@@ -317,6 +327,102 @@ class World {
         };
     }
 
+    unlockGreenlands() {
+        if (this.greenCastleBuilt) return;
+        this.greenCastleBuilt = true;
+
+        const rng = seededRandom(99);
+        const gz = ZONES.greenlands;
+
+        // Generate greenlands terrain
+        for (let y = gz.y; y < gz.y + gz.h; y++) {
+            for (let x = gz.x; x < gz.x + gz.w; x++) {
+                if (x >= 0 && x < WORLD_W && y >= 0 && y < WORLD_H) {
+                    this.tiles[y][x] = this.getTileForPosition(x, y, rng);
+                }
+            }
+        }
+
+        // Carve path from ruins area to greenlands
+        this.carvePath(25, 110, 60, 130, rng);
+        // Carve path from darklands to greenlands
+        this.carvePath(110, 120, 90, 130, rng);
+
+        // Build Green Knight Castle
+        this.buildGreenCastle();
+
+        // Place green gems
+        this.placeGreenGems(rng);
+    }
+
+    buildGreenCastle() {
+        const cx = GREEN_CASTLE_POS.x;
+        const cy = GREEN_CASTLE_POS.y;
+        const cw = 12, ch = 12;
+
+        // Castle walls (outer ring)
+        for (let y = cy; y < cy + ch; y++) {
+            for (let x = cx; x < cx + cw; x++) {
+                if (x >= 0 && x < WORLD_W && y >= 0 && y < WORLD_H) {
+                    if (y === cy || y === cy + ch - 1 || x === cx || x === cx + cw - 1) {
+                        this.tiles[y][x] = TILE.CASTLE_WALL;
+                    } else {
+                        this.tiles[y][x] = TILE.CASTLE_FLOOR;
+                    }
+                }
+            }
+        }
+
+        // Castle gate (south side, middle)
+        const gateX = cx + Math.floor(cw / 2);
+        for (let dx = -1; dx <= 1; dx++) {
+            const gx = gateX + dx;
+            if (cy + ch - 1 >= 0 && cy + ch - 1 < WORLD_H && gx >= 0 && gx < WORLD_W) {
+                this.tiles[cy + ch - 1][gx] = TILE.PATH;
+            }
+        }
+
+        // Path to gate
+        for (let y = cy + ch; y < cy + ch + 4; y++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                if (y >= 0 && y < WORLD_H && gateX + dx >= 0 && gateX + dx < WORLD_W) {
+                    this.tiles[y][gateX + dx] = TILE.PATH;
+                }
+            }
+        }
+
+        this.greenKnightCastle = {
+            x: gateX * TILE_SIZE + TILE_SIZE / 2,
+            y: (cy + ch + 2) * TILE_SIZE + TILE_SIZE / 2,
+        };
+        this.greenBossSpawnPoint = tileToWorld(gateX, cy + ch + 2);
+    }
+
+    placeGreenGems(rng) {
+        const gz = ZONES.greenlands;
+        this.greenGems = [];
+
+        // Place 2 green gems in the greenlands zone
+        for (let i = 0; i < 2; i++) {
+            for (let attempt = 0; attempt < 50; attempt++) {
+                const tx = gz.x + Math.floor(rng() * (gz.w - 6)) + 3;
+                const ty = gz.y + Math.floor(rng() * (gz.h - 6)) + 3;
+                // Don't place too close to the castle
+                const castleDist = dist(tx * TILE_SIZE, ty * TILE_SIZE, GREEN_CASTLE_POS.x * TILE_SIZE, GREEN_CASTLE_POS.y * TILE_SIZE);
+                if (!this.isSolid(tx, ty) && castleDist > 200) {
+                    this.greenGems.push({
+                        x: tx * TILE_SIZE + TILE_SIZE / 2,
+                        y: ty * TILE_SIZE + TILE_SIZE / 2,
+                        type: i === 0 ? "attack" : "defense",
+                        collected: false,
+                        pulsePhase: Math.random() * Math.PI * 2,
+                    });
+                    break;
+                }
+            }
+        }
+    }
+
     generateDecorations(rng) {
         // Add flowers, rocks, etc. as visual decorations
         for (let i = 0; i < 500; i++) {
@@ -410,6 +516,24 @@ class World {
             const ly = this.ladyOfLake.y - camera.y;
             if (lx > -60 && lx < CANVAS_W + 60 && ly > -60 && ly < CANVAS_H + 60) {
                 this.renderLadyOfLake(ctx, lx, ly, time);
+            }
+        }
+
+        // Render green gems
+        for (const gem of this.greenGems) {
+            if (gem.collected) continue;
+            const gsx = gem.x - camera.x;
+            const gsy = gem.y - camera.y;
+            if (gsx < -20 || gsx > CANVAS_W + 20 || gsy < -20 || gsy > CANVAS_H + 20) continue;
+            this.renderGreenGem(ctx, gsx, gsy, time, gem);
+        }
+
+        // Render Green Knight Castle
+        if (this.greenKnightCastle && this.greenCastleBuilt) {
+            const gcx = this.greenKnightCastle.x - camera.x;
+            const gcy = this.greenKnightCastle.y - camera.y;
+            if (gcx > -100 && gcx < CANVAS_W + 100 && gcy > -100 && gcy < CANVAS_H + 100) {
+                this.renderGreenCastle(ctx, gcx, gcy - 80, time);
             }
         }
 
@@ -911,6 +1035,85 @@ class World {
         ctx.restore();
     }
 
+    renderGreenGem(ctx, sx, sy, time, gem) {
+        const pulse = Math.sin(time * 0.004 + gem.pulsePhase) * 0.3 + 0.7;
+        const glow = Math.sin(time * 0.003 + gem.pulsePhase) * 5 + 10;
+
+        ctx.save();
+        ctx.shadowColor = "#44ff44";
+        ctx.shadowBlur = glow;
+
+        // Diamond shape (green)
+        ctx.fillStyle = "#22aa22";
+        ctx.globalAlpha = pulse;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - 10);
+        ctx.lineTo(sx + 7, sy);
+        ctx.lineTo(sx, sy + 10);
+        ctx.lineTo(sx - 7, sy);
+        ctx.closePath();
+        ctx.fill();
+
+        // Inner shine
+        ctx.fillStyle = "#88ff88";
+        ctx.globalAlpha = pulse * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - 5);
+        ctx.lineTo(sx + 3, sy);
+        ctx.lineTo(sx, sy + 5);
+        ctx.lineTo(sx - 3, sy);
+        ctx.closePath();
+        ctx.fill();
+
+        // Label
+        ctx.globalAlpha = 0.7;
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#88ff88";
+        ctx.font = "8px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(gem.type === "attack" ? "ATK" : "DEF", sx, sy + 18);
+
+        ctx.restore();
+    }
+
+    renderGreenCastle(ctx, sx, sy, time) {
+        // Castle walls
+        ctx.fillStyle = "#1a4a1a";
+        ctx.fillRect(sx - 24, sy - 20, 48, 36);
+
+        // Roof with green tiles
+        ctx.fillStyle = "#0a3a0a";
+        ctx.beginPath();
+        ctx.moveTo(sx - 30, sy - 20);
+        ctx.lineTo(sx, sy - 42);
+        ctx.lineTo(sx + 30, sy - 20);
+        ctx.fill();
+
+        // Door
+        ctx.fillStyle = "#0a2a0a";
+        ctx.fillRect(sx - 6, sy + 2, 12, 14);
+
+        // Windows with green glow
+        const glow = Math.sin(time * 0.002) * 0.15 + 0.35;
+        ctx.fillStyle = "#2a5a2a";
+        ctx.fillRect(sx - 18, sy - 10, 8, 8);
+        ctx.fillRect(sx + 10, sy - 10, 8, 8);
+        ctx.fillStyle = `rgba(0, 255, 0, ${glow})`;
+        ctx.fillRect(sx - 17, sy - 9, 6, 6);
+        ctx.fillRect(sx + 11, sy - 9, 6, 6);
+
+        // Sign
+        ctx.fillStyle = "#44ff44";
+        ctx.font = "9px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("Green Knight's Castle", sx, sy - 46);
+
+        // Banners
+        ctx.fillStyle = "#0a5a0a";
+        ctx.fillRect(sx - 28, sy - 18, 4, 14);
+        ctx.fillRect(sx + 24, sy - 18, 4, 14);
+    }
+
     hexToRgb(hex) {
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result ? {
@@ -920,7 +1123,7 @@ class World {
         } : { r: 0, g: 0, b: 0 };
     }
 
-    renderMinimap(ctx, player, monsters, boss) {
+    renderMinimap(ctx, player, monsters, boss, greenKnight) {
         const mmW = 150, mmH = 150;
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, mmW, mmH);
@@ -978,6 +1181,18 @@ class World {
         if (this.merlinHut) {
             ctx.fillStyle = "#aa66ff";
             ctx.fillRect(this.merlinHut.x * scale - 2, this.merlinHut.y * scale - 2, 4, 4);
+        }
+
+        // Draw Green Knight Castle
+        if (this.greenKnightCastle && this.greenCastleBuilt) {
+            ctx.fillStyle = "#44ff44";
+            ctx.fillRect(this.greenKnightCastle.x * scale - 3, this.greenKnightCastle.y * scale - 3, 6, 6);
+        }
+
+        // Draw Green Knight
+        if (greenKnight && greenKnight.alive) {
+            ctx.fillStyle = "#00ff00";
+            ctx.fillRect(greenKnight.x * scale - 3, greenKnight.y * scale - 3, 6, 6);
         }
 
         // Draw player
@@ -1086,6 +1301,20 @@ class World {
             ctx.fillStyle = "#fff";
             ctx.font = "8px monospace";
             ctx.fillText("Merlin's Hut", hx, hy - 7);
+        }
+
+        // Green Knight Castle marker
+        if (this.greenKnightCastle && this.greenCastleBuilt) {
+            const gx = this.greenKnightCastle.x * scale + offsetX;
+            const gy = this.greenKnightCastle.y * scale + offsetY;
+            ctx.fillStyle = "#44ff44";
+            ctx.beginPath();
+            ctx.arc(gx, gy, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.font = "9px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("Green Castle", gx, gy - 8);
         }
 
         // Player position

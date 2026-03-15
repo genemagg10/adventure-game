@@ -397,6 +397,8 @@ class UIManager {
             let dmg = player.hasSheath ? w.damage + SHEATH_DAMAGE_BONUS : w.damage;
             const enchant = player.enchantments[wid];
             if (enchant) dmg += ENCHANT_DAMAGE_BONUS;
+            if (player.greenGemAttack) dmg += GREEN_GEM_ATTACK.bonus;
+            if (player.hasMagicCharm) dmg += MAGIC_CHARM.damageBonus;
             const isEquipped = player.currentWeapon === wid;
             const el = document.createElement("div");
             el.className = "inv-item" + (isEquipped ? " equipped" : "");
@@ -415,7 +417,8 @@ class UIManager {
         }
 
         // Show armor
-        this.invArmor.innerHTML = "<h3 style='color:#88aacc;width:100%;text-align:center;margin-bottom:8px;'>Armor (DEF: " + player.getArmor().defense + ")</h3>";
+        const totalDef = player.getArmor().defense + (player.greenGemDefense ? GREEN_GEM_DEFENSE.bonus : 0);
+        this.invArmor.innerHTML = "<h3 style='color:#88aacc;width:100%;text-align:center;margin-bottom:8px;'>Armor (DEF: " + totalDef + ")</h3>";
         for (const aid of player.armors) {
             const a = ARMOR[aid];
             const isEquipped = player.currentArmor === aid;
@@ -442,6 +445,8 @@ class UIManager {
             let dmgBow = player.hasSheath ? b.damage + SHEATH_DAMAGE_BONUS : b.damage;
             const enchant = player.enchantments[bid];
             if (enchant) dmgBow += ENCHANT_DAMAGE_BONUS;
+            if (player.greenGemAttack) dmgBow += GREEN_GEM_ATTACK.bonus;
+            if (player.hasMagicCharm) dmgBow += MAGIC_CHARM.damageBonus;
             const isEquipped = player.currentBow === bid;
             const el = document.createElement("div");
             el.className = "inv-item" + (isEquipped ? " equipped" : "");
@@ -457,6 +462,49 @@ class UIManager {
                 this.showNotification(`Equipped ${b.name}`);
             });
             this.invBows.appendChild(el);
+        }
+
+        // Show green gems and magic charm
+        if (player.greenGemAttack || player.greenGemDefense || player.hasMagicCharm) {
+            const specialHeader = document.createElement("h3");
+            specialHeader.style.cssText = "color:#44ff44;width:100%;text-align:center;margin-bottom:8px;margin-top:12px;";
+            specialHeader.textContent = "Special Items";
+            this.invGems.appendChild(specialHeader);
+
+            if (player.greenGemAttack) {
+                const el = document.createElement("div");
+                el.className = "inv-item equipped";
+                el.style.borderColor = "#44ff44";
+                el.innerHTML = `
+                    <span class="inv-item-icon">${GREEN_GEM_ATTACK.icon}</span>
+                    <span class="inv-item-name">${GREEN_GEM_ATTACK.name}</span>
+                    <span class="inv-item-name" style="color:#44ff44;font-size:10px;">+${GREEN_GEM_ATTACK.bonus} ATK (all weapons)</span>
+                `;
+                this.invGems.appendChild(el);
+            }
+            if (player.greenGemDefense) {
+                const el = document.createElement("div");
+                el.className = "inv-item equipped";
+                el.style.borderColor = "#44ff44";
+                el.innerHTML = `
+                    <span class="inv-item-icon">${GREEN_GEM_DEFENSE.icon}</span>
+                    <span class="inv-item-name">${GREEN_GEM_DEFENSE.name}</span>
+                    <span class="inv-item-name" style="color:#44ff44;font-size:10px;">+${GREEN_GEM_DEFENSE.bonus} DEF (all armor)</span>
+                `;
+                this.invGems.appendChild(el);
+            }
+            if (player.hasMagicCharm) {
+                const el = document.createElement("div");
+                el.className = "inv-item equipped";
+                el.style.borderColor = "#aa66ff";
+                el.style.boxShadow = "0 0 8px rgba(160, 100, 255, 0.4)";
+                el.innerHTML = `
+                    <span class="inv-item-icon">${MAGIC_CHARM.icon}</span>
+                    <span class="inv-item-name">${MAGIC_CHARM.name}</span>
+                    <span class="inv-item-name" style="color:#aa66ff;font-size:10px;">+${MAGIC_CHARM.damageBonus} DMG (all weapons)</span>
+                `;
+                this.invGems.appendChild(el);
+            }
         }
 
         // Show element gems
@@ -548,15 +596,33 @@ class UIManager {
         if (victory) {
             this.gameOverScreen.classList.add("victory");
             this.gameOverTitle.textContent = "Victory!";
+            // Add continue button for victories
+            let continueBtn = document.getElementById("continueBtn");
+            if (!continueBtn) {
+                continueBtn = document.createElement("button");
+                continueBtn.id = "continueBtn";
+                continueBtn.className = "menu-btn";
+                continueBtn.textContent = "Continue Exploring";
+                continueBtn.style.marginTop = "8px";
+                document.getElementById("restartBtn").parentNode.insertBefore(continueBtn, document.getElementById("restartBtn"));
+            }
+            continueBtn.classList.remove("hidden");
+            continueBtn.onclick = () => {
+                this.gameOverScreen.classList.add("hidden");
+                this.gameOverScreen.classList.remove("victory");
+                continueBtn.classList.add("hidden");
+            };
         } else {
             this.gameOverScreen.classList.remove("victory");
             this.gameOverTitle.textContent = "Game Over";
+            const continueBtn = document.getElementById("continueBtn");
+            if (continueBtn) continueBtn.classList.add("hidden");
         }
         this.gameOverText.textContent = text;
     }
 
     // Boss health
-    showBossHealth(boss) {
+    showBossHealth(boss, bossName) {
         let container = document.getElementById("boss-health-container");
         if (!container) {
             container = document.createElement("div");
@@ -566,6 +632,11 @@ class UIManager {
                 <div id="boss-health-bar"><div id="boss-health-fill"></div></div>
             `;
             document.getElementById("game-container").appendChild(container);
+        }
+
+        const nameEl = document.getElementById("boss-name");
+        if (nameEl && bossName) {
+            nameEl.textContent = bossName;
         }
 
         const fill = document.getElementById("boss-health-fill");

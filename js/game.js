@@ -33,6 +33,12 @@ class Game {
         this.bossDefeated = false;
         this.combat = null;
 
+        // Green Knight
+        this.greenKnight = null;
+        this.greenKnightSpawned = false;
+        this.greenKnightDefeated = false;
+        this.greenlandsUnlocked = false;
+
         // Camera
         this.camera = { x: 0, y: 0 };
 
@@ -142,6 +148,12 @@ class Game {
         this.merlinQuestState = "none";
         this.spawnSheathTroll();
 
+        // Green Knight
+        this.greenKnight = null;
+        this.greenKnightSpawned = false;
+        this.greenKnightDefeated = false;
+        this.greenlandsUnlocked = false;
+
         this.ui.showHud();
         this.running = true;
 
@@ -221,6 +233,48 @@ class Game {
                         // Don't spawn near player
                         if (dist(pos.x, pos.y, this.player.x, this.player.y) > 300) {
                             this.monsters.push(new Monster(type, pos.x, pos.y));
+                            break;
+                        }
+                    }
+                    attempts++;
+                }
+            }
+        }
+
+        // Spawn green monsters if greenlands unlocked
+        if (this.greenlandsUnlocked) {
+            for (const [type, def] of Object.entries(GREEN_MONSTER_TYPES)) {
+                const zone = ZONES.greenlands;
+                if (!zone) continue;
+                const count = this.monsters.filter(m =>
+                    m.alive && m.type === type && getZoneAt(
+                        Math.floor(m.x / TILE_SIZE),
+                        Math.floor(m.y / TILE_SIZE)
+                    ) === "greenlands"
+                ).length;
+                if (count >= MAX_MONSTERS_PER_ZONE) continue;
+                if (Math.random() > MONSTER_SPAWN_RATE) continue;
+                let attempts = 0;
+                while (attempts < 10) {
+                    const tx = zone.x + randInt(2, zone.w - 3);
+                    const ty = zone.y + randInt(2, zone.h - 3);
+                    if (!this.world.isSolid(tx, ty)) {
+                        const pos = tileToWorld(tx, ty);
+                        if (dist(pos.x, pos.y, this.player.x, this.player.y) > 300) {
+                            const m = new Monster("goblin", pos.x, pos.y);
+                            m.type = type;
+                            m.name = def.name;
+                            m.hp = def.hp;
+                            m.maxHp = def.hp;
+                            m.damage = def.damage;
+                            m.speed = def.speed;
+                            m.xp = def.xp;
+                            m.goldDrop = def.goldDrop;
+                            m.color = def.color;
+                            m.size = def.size;
+                            m.weaponDrop = def.weaponDrop;
+                            m.gemDrop = def.gemDrop;
+                            this.monsters.push(m);
                             break;
                         }
                     }
@@ -338,7 +392,7 @@ class Game {
                     case "lightning": this.sound.lightningStrike(); break;
                     case "earth": this.sound.earthQuake(); break;
                 }
-                const results = this.combat.useElement(this.player, elemUsed, this.monsters, this.boss);
+                const results = this.combat.useElement(this.player, elemUsed, this.monsters, this.boss, this.greenKnight);
                 for (const r of results) {
                     if (r.killed) {
                         this.onEntityKilled(r.target, r.isBoss);
@@ -378,7 +432,7 @@ class Game {
             const prevPlayerHp = this.player.hp;
             this.boss.update(dt, this.player, this.world);
             if (this.boss.alive) {
-                this.ui.showBossHealth(this.boss);
+                this.ui.showBossHealth(this.boss, "The Black Knight");
                 // Boss attack sounds
                 if (!prevCharging && this.boss.charging) this.sound.bossCharge();
                 if (!prevSpinning && this.boss.spinning) this.sound.bossSpin();
@@ -394,8 +448,30 @@ class Game {
             }
         }
 
+        // Update Green Knight
+        if (this.greenKnight && this.greenKnight.spawned) {
+            const prevCharging = this.greenKnight.charging;
+            const prevSpinning = this.greenKnight.spinning;
+            const prevProjCount = this.greenKnight.projectiles.length;
+            const prevPlayerHp = this.player.hp;
+            this.greenKnight.update(dt, this.player, this.world);
+            if (this.greenKnight.alive) {
+                this.ui.showBossHealth(this.greenKnight, "The Green Knight");
+                if (!prevCharging && this.greenKnight.charging) this.sound.bossCharge();
+                if (!prevSpinning && this.greenKnight.spinning) this.sound.bossSpin();
+                if (this.greenKnight.projectiles.length > prevProjCount) this.sound.bossProjectile();
+                if (this.player.hp < prevPlayerHp && this.player.lastHitArmorEnchant) {
+                    this.combat.spawnArmorDefenseEffect(
+                        this.player.lastHitArmorEnchant, this.player,
+                        this.player.lastHitFromX, this.player.lastHitFromY
+                    );
+                    this.player.lastHitArmorEnchant = null;
+                }
+            }
+        }
+
         // Update arrow projectiles
-        const arrowHits = this.combat.updateArrows(dt, this.monsters, this.boss, this.world);
+        const arrowHits = this.combat.updateArrows(dt, this.monsters, this.boss, this.world, this.greenKnight);
         for (const hit of arrowHits) {
             if (hit.killed) {
                 this.onEntityKilled(hit.target, hit.isBoss);
@@ -404,7 +480,7 @@ class Game {
 
         // Combat attack hits (continued swings)
         if (this.player.attacking) {
-            const hits = this.combat.checkPlayerAttack(this.player, this.monsters, this.boss);
+            const hits = this.combat.checkPlayerAttack(this.player, this.monsters, this.boss, this.greenKnight);
             for (const hit of hits) {
                 if (hit.crit) {
                     this.sound.criticalHit();
@@ -459,23 +535,58 @@ class Game {
             this.checkBossTrigger();
         }
 
+        // Check Green Knight trigger (both green gems + near green castle)
+        if (this.greenlandsUnlocked && !this.greenKnightSpawned && !this.greenKnightDefeated
+            && this.player.greenGemAttack && this.player.greenGemDefense) {
+            this.checkGreenKnightTrigger();
+        }
+
         // Update HUD
         this.ui.updateHud(this.player);
     }
 
     onEntityKilled(entity, isBoss) {
-        if (isBoss) {
+        // Green Knight killed
+        if (isBoss && entity === this.greenKnight) {
+            this.greenKnightDefeated = true;
+            this.ui.hideBossHealth();
+            this.sound.bossDefeat();
+            // Drop Magic Charm
+            this.player.hasMagicCharm = true;
+            setTimeout(() => {
+                this.ui.showNotification(`${MAGIC_CHARM.icon} ${MAGIC_CHARM.name} obtained! (+${MAGIC_CHARM.damageBonus} DMG all weapons)`);
+                this.ui.showDialog("The Green Knight crumbles and drops a shimmering Magic Charm!", () => {
+                    this.ui.showDialog(`The ${MAGIC_CHARM.name} empowers all your weapons with +${MAGIC_CHARM.damageBonus} attack damage!`, () => {
+                        this.ui.showGameOver(true,
+                            "The Green Knight has been vanquished! Ingoizer is the true champion of the realm. " +
+                            "Both the Black Knight and the Green Knight have fallen. The land is forever free! " +
+                            `Monsters defeated: ${this.player.monstersKilled}. ` +
+                            "You may continue exploring with all your gear!"
+                        );
+                    });
+                });
+            }, 2000);
+            return;
+        }
+
+        // Black Knight killed
+        if (isBoss && entity === this.boss) {
             this.bossDefeated = true;
             this.ui.hideBossHealth();
             this.sound.bossDefeat();
             setTimeout(() => {
-                this.state = "gameover";
                 this.sound.victoryFanfare();
-                this.ui.showGameOver(true,
-                    "The Black Knight has been vanquished! Ingoizer stands victorious. " +
-                    "The realm is saved and peace returns to the land. " +
-                    `Monsters defeated: ${this.player.monstersKilled}`
-                );
+                // Unlock greenlands
+                this.greenlandsUnlocked = true;
+                this.world.unlockGreenlands();
+                // Spawn green monster types
+                this.spawnGreenMonsters();
+                this.ui.showDialog("The Black Knight has been vanquished! But a new path opens...", () => {
+                    this.ui.showDialog("A mysterious green domain has appeared to the south! Legends speak of the Green Knight and powerful Green Gems within.", () => {
+                        this.ui.showDialog("Find the two Green Gems - one grants attack power, the other grants defense. Collect both to challenge the Green Knight!");
+                        this.ui.showNotification("Green Knight's Domain unlocked!");
+                    });
+                });
             }, 3000);
             return;
         }
@@ -592,6 +703,16 @@ class Game {
             }
         }
 
+        // Check green gems (auto-collect on proximity)
+        if (this.greenlandsUnlocked && this.world.greenGems) {
+            for (const gem of this.world.greenGems) {
+                if (gem.collected) continue;
+                if (dist(this.player.x, this.player.y, gem.x, gem.y) < 30) {
+                    this.collectGreenGem(gem);
+                }
+            }
+        }
+
         // Check Merlin's Hut (for lore access)
         this.nearMerlinHut = false;
         if (this.world.merlinHut) {
@@ -696,6 +817,41 @@ class Game {
         this.monsters.push(this.sheathTroll);
     }
 
+    spawnGreenMonsters() {
+        for (const [type, def] of Object.entries(GREEN_MONSTER_TYPES)) {
+            const zone = ZONES.greenlands;
+            if (!zone) continue;
+            const count = randInt(4, MAX_MONSTERS_PER_ZONE);
+            for (let i = 0; i < count; i++) {
+                let attempts = 0;
+                while (attempts < 20) {
+                    const tx = zone.x + randInt(2, zone.w - 3);
+                    const ty = zone.y + randInt(2, zone.h - 3);
+                    if (!this.world.isSolid(tx, ty)) {
+                        const pos = tileToWorld(tx, ty);
+                        const m = new Monster("goblin", pos.x, pos.y);
+                        // Override with green monster stats
+                        m.type = type;
+                        m.name = def.name;
+                        m.hp = def.hp;
+                        m.maxHp = def.hp;
+                        m.damage = def.damage;
+                        m.speed = def.speed;
+                        m.xp = def.xp;
+                        m.goldDrop = def.goldDrop;
+                        m.color = def.color;
+                        m.size = def.size;
+                        m.weaponDrop = def.weaponDrop;
+                        m.gemDrop = def.gemDrop;
+                        this.monsters.push(m);
+                        break;
+                    }
+                    attempts++;
+                }
+            }
+        }
+    }
+
     startMerlinQuest() {
         if (this.merlinQuestState === "none") {
             this.ui.showDialog("\"Ah, Ingoizer! I am Merlin, the great wizard of these swamps.\"", () => {
@@ -728,6 +884,24 @@ class Game {
             } else {
                 this.ui.showDialog("\"May the enchantment serve you well on your quest, Ingoizer!\"");
             }
+        }
+    }
+
+    collectGreenGem(gem) {
+        gem.collected = true;
+        this.sound.gemCollect();
+        if (gem.type === "attack") {
+            this.player.greenGemAttack = true;
+            this.ui.showNotification(`${GREEN_GEM_ATTACK.icon} ${GREEN_GEM_ATTACK.name} found! (+${GREEN_GEM_ATTACK.bonus} ATK)`);
+            this.ui.showDialog(`You found the ${GREEN_GEM_ATTACK.name}! It adds +${GREEN_GEM_ATTACK.bonus} attack damage to all your weapons.`);
+        } else {
+            this.player.greenGemDefense = true;
+            this.ui.showNotification(`${GREEN_GEM_DEFENSE.icon} ${GREEN_GEM_DEFENSE.name} found! (+${GREEN_GEM_DEFENSE.bonus} DEF)`);
+            this.ui.showDialog(`You found the ${GREEN_GEM_DEFENSE.name}! It adds +${GREEN_GEM_DEFENSE.bonus} defense to all your armor.`);
+        }
+        // Check if both gems collected
+        if (this.player.greenGemAttack && this.player.greenGemDefense) {
+            this.ui.showDialog("You have both Green Gems! Journey to the Green Knight's Castle to face the champion!");
         }
     }
 
@@ -786,6 +960,21 @@ class Game {
                     }
                 }
 
+                // Also damage Green Knight
+                if (this.greenKnight && this.greenKnight.alive && this.greenKnight.spawned) {
+                    if (dist(this.greenKnight.x, this.greenKnight.y, treeWorldX, treeWorldY) < damageRange) {
+                        if (!this.greenKnight._lastBurnTime || Date.now() - this.greenKnight._lastBurnTime > 500) {
+                            this.greenKnight._lastBurnTime = Date.now();
+                            const fireDmg = 8;
+                            const killed = this.greenKnight.takeDamage(fireDmg, treeWorldX, treeWorldY);
+                            this.combat.addDamageNumber(this.greenKnight.x, this.greenKnight.y, fireDmg, false);
+                            if (killed) {
+                                this.onEntityKilled(this.greenKnight, true);
+                            }
+                        }
+                    }
+                }
+
                 // Also damage boss
                 if (this.boss && this.boss.alive && this.boss.spawned) {
                     if (dist(this.boss.x, this.boss.y, treeWorldX, treeWorldY) < damageRange) {
@@ -832,6 +1021,21 @@ class Game {
             this.ui.showDialog("A dark figure emerges from the shadows of Ing Castle...");
             this.ui.showDialog("\"I am The Black Knight! Those gems belong to me, Ingoizer. Prepare to die!\"");
             this.ui.showDialog("The battle for the realm begins! Defeat The Black Knight!");
+        }
+    }
+
+    checkGreenKnightTrigger() {
+        const spawnPoint = this.world.greenBossSpawnPoint;
+        if (!spawnPoint) return;
+        if (dist(this.player.x, this.player.y, spawnPoint.x, spawnPoint.y) < 200) {
+            this.greenKnightSpawned = true;
+            this.greenKnight = new GreenKnight(spawnPoint.x, spawnPoint.y);
+            this.greenKnight.spawn();
+            this.sound.bossRoar();
+
+            this.ui.showDialog("The ground trembles as a towering figure in green armor emerges...");
+            this.ui.showDialog("\"I am The Green Knight! You dare enter my domain, Ingoizer? Prepare yourself!\"");
+            this.ui.showDialog("The battle for the Green Knight's Domain begins!");
         }
     }
 
@@ -886,6 +1090,11 @@ class Game {
             renderables.push({ y: this.boss.y, render: () => this.boss.render(ctx, this.camera, this.time) });
         }
 
+        // Green Knight
+        if (this.greenKnight && this.greenKnight.spawned) {
+            renderables.push({ y: this.greenKnight.y, render: () => this.greenKnight.render(ctx, this.camera, this.time) });
+        }
+
         // Sort by Y and render
         renderables.sort((a, b) => a.y - b.y);
         for (const r of renderables) {
@@ -920,7 +1129,7 @@ class Game {
         }
 
         // Render minimap
-        this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss);
+        this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss, this.greenKnight);
 
         // Render world map if open
         if (this.ui.isMapOpen()) {
@@ -929,6 +1138,21 @@ class Game {
             const mapHint = document.querySelector(".map-hint");
             if (mapHint) {
                 mapHint.textContent = isMobile ? "Tap MAP to close" : "Press M to close";
+            }
+        }
+
+        // Green Knight approaching warning
+        if (this.greenlandsUnlocked && !this.greenKnightSpawned && !this.greenKnightDefeated
+            && this.player.greenGemAttack && this.player.greenGemDefense && this.world.greenBossSpawnPoint) {
+            const gp = this.world.greenBossSpawnPoint;
+            const gd = dist(this.player.x, this.player.y, gp.x, gp.y);
+            if (gd < 400 && gd > 200) {
+                ctx.save();
+                ctx.fillStyle = `rgba(0, 200, 0, ${0.3 + Math.sin(this.time * 0.005) * 0.15})`;
+                ctx.font = "bold 18px monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("You sense a powerful presence within the castle...", CANVAS_W / 2, 80);
+                ctx.restore();
             }
         }
 

@@ -465,12 +465,23 @@ class UIManager {
         }
 
         // Show green gems and magic charm
-        if (player.greenGemAttack || player.greenGemDefense || player.hasMagicCharm) {
+        if (player.hasDarkCrest || player.greenGemAttack || player.greenGemDefense || player.hasMagicCharm) {
             const specialHeader = document.createElement("h3");
             specialHeader.style.cssText = "color:#44ff44;width:100%;text-align:center;margin-bottom:8px;margin-top:12px;";
             specialHeader.textContent = "Special Items";
             this.invGems.appendChild(specialHeader);
 
+            if (player.hasDarkCrest) {
+                const el = document.createElement("div");
+                el.className = "inv-item equipped";
+                el.style.borderColor = "#cc4444";
+                el.innerHTML = `
+                    <span class="inv-item-icon">${DARK_CREST.icon}</span>
+                    <span class="inv-item-name">${DARK_CREST.name}</span>
+                    <span class="inv-item-name" style="color:#cc4444;font-size:10px;">+${DARK_CREST.maxHpBonus} Max HP</span>
+                `;
+                this.invGems.appendChild(el);
+            }
             if (player.greenGemAttack) {
                 const el = document.createElement("div");
                 el.className = "inv-item equipped";

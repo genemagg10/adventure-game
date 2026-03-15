@@ -574,14 +574,19 @@ class Game {
             this.bossDefeated = true;
             this.ui.hideBossHealth();
             this.sound.bossDefeat();
+            // Drop Dark Knight's Crest
+            this.player.hasDarkCrest = true;
+            this.player.maxHp += DARK_CREST.maxHpBonus;
+            this.player.hp = Math.min(this.player.hp + DARK_CREST.maxHpBonus, this.player.maxHp);
             setTimeout(() => {
                 this.sound.victoryFanfare();
+                this.ui.showNotification(`${DARK_CREST.icon} ${DARK_CREST.name} obtained! (+${DARK_CREST.maxHpBonus} Max HP)`);
                 // Unlock greenlands
                 this.greenlandsUnlocked = true;
                 this.world.unlockGreenlands();
                 // Spawn green monster types
                 this.spawnGreenMonsters();
-                this.ui.showDialog("The Black Knight has been vanquished! But a new path opens...", () => {
+                this.ui.showDialog(`The Black Knight drops the ${DARK_CREST.name}! Your max HP increases by ${DARK_CREST.maxHpBonus}!`, () => {
                     this.ui.showDialog("A mysterious green domain has appeared to the south! Legends speak of the Green Knight and powerful Green Gems within.", () => {
                         this.ui.showDialog("Find the two Green Gems - one grants attack power, the other grants defense. Collect both to challenge the Green Knight!");
                         this.ui.showNotification("Green Knight's Domain unlocked!");

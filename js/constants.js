@@ -311,6 +311,14 @@ const GREEN_KNIGHT = {
     ],
 };
 
+// Black Knight power-up drop
+const DARK_CREST = {
+    name: "Dark Knight's Crest",
+    icon: "🛡️",
+    maxHpBonus: 30,
+    description: "A dark emblem of power. Permanently increases max HP by 30.",
+};
+
 // Green Knight Castle location (tile coordinates)
 const GREEN_CASTLE_POS = { x: 80, y: 130 };
 

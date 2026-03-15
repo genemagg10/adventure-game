@@ -77,6 +77,7 @@ class Player {
         this.greenGemAttack = false;
         this.greenGemDefense = false;
         this.hasMagicCharm = false;
+        this.hasDarkCrest = false;
 
         // Stats
         this.monstersKilled = 0;

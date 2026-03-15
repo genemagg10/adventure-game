@@ -221,14 +221,14 @@ class CombatSystem {
                         closest = m;
                     }
                 }
-                if (boss && boss.alive) {
+                if (boss && boss.alive && boss.spawned) {
                     const d = dist(player.x, player.y, boss.x, boss.y);
                     if (d < closestDist) {
                         closest = boss;
                         closestDist = d;
                     }
                 }
-                if (greenKnight && greenKnight.alive) {
+                if (greenKnight && greenKnight.alive && greenKnight.spawned) {
                     const d = dist(player.x, player.y, greenKnight.x, greenKnight.y);
                     if (d < closestDist) {
                         closest = greenKnight;

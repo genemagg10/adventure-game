@@ -11,7 +11,7 @@ class CombatSystem {
     }
 
     // Check player attack hitting monsters
-    checkPlayerAttack(player, monsters, boss) {
+    checkPlayerAttack(player, monsters, boss, greenKnight) {
         if (!player.attacking) return [];
 
         const weapon = player.getWeapon();
@@ -90,11 +90,42 @@ class CombatSystem {
             }
         }
 
+        // Check Green Knight
+        if (greenKnight && greenKnight.alive && greenKnight.spawned && greenKnight.spawnAnimation <= 0) {
+            if (player.attackHitTargets && player.attackHitTargets.has(greenKnight)) return hits;
+            const d = dist(player.x, player.y, greenKnight.x, greenKnight.y);
+            if (d <= range + greenKnight.size) {
+                const angleToTarget = dirToAngle(greenKnight.x - player.x, greenKnight.y - player.y);
+                let angleDiff = Math.abs(angleToTarget - attackAngle);
+                if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+
+                if (angleDiff <= Math.PI / 3) {
+                    if (player.attackHitTargets) player.attackHitTargets.add(greenKnight);
+                    let damage = weapon.damage;
+                    let crit = false;
+                    if (Math.random() < 0.12) {
+                        damage = Math.floor(damage * 1.6);
+                        crit = true;
+                    }
+
+                    const killed = greenKnight.takeDamage(damage, player.x, player.y);
+                    hits.push({ target: greenKnight, damage, killed, crit, isBoss: true });
+
+                    this.spawnHitParticles(greenKnight.x, greenKnight.y, "#44ff44", 8);
+                    this.addDamageNumber(greenKnight.x, greenKnight.y, damage, crit);
+
+                    if (enchantElement) {
+                        this.spawnEnchantHitEffect(enchantElement, player, greenKnight);
+                    }
+                }
+            }
+        }
+
         return hits;
     }
 
     // Use elemental power
-    useElement(player, elementName, monsters, boss) {
+    useElement(player, elementName, monsters, boss, greenKnight) {
         const elem = ELEMENTS[elementName];
         const results = [];
 
@@ -124,6 +155,11 @@ class CombatSystem {
                     results.push({ target: boss, damage: elem.damage, killed, isBoss: true });
                     this.addDamageNumber(boss.x, boss.y, elem.damage, false);
                 }
+                if (greenKnight && greenKnight.alive && dist(player.x, player.y, greenKnight.x, greenKnight.y) < 100) {
+                    const killed = greenKnight.takeDamage(elem.damage, player.x, player.y);
+                    results.push({ target: greenKnight, damage: elem.damage, killed, isBoss: true });
+                    this.addDamageNumber(greenKnight.x, greenKnight.y, elem.damage, false);
+                }
                 break;
 
             case "water":
@@ -142,6 +178,10 @@ class CombatSystem {
                 if (boss && boss.alive && dist(player.x, player.y, boss.x, boss.y) < 80) {
                     boss.takeDamage(elem.damage, player.x, player.y);
                     this.addDamageNumber(boss.x, boss.y, elem.damage, false);
+                }
+                if (greenKnight && greenKnight.alive && dist(player.x, player.y, greenKnight.x, greenKnight.y) < 80) {
+                    greenKnight.takeDamage(elem.damage, player.x, player.y);
+                    this.addDamageNumber(greenKnight.x, greenKnight.y, elem.damage, false);
                 }
                 break;
 
@@ -163,6 +203,10 @@ class CombatSystem {
                     boss.takeDamage(elem.damage, player.x, player.y);
                     this.addDamageNumber(boss.x, boss.y, elem.damage, false);
                 }
+                if (greenKnight && greenKnight.alive && dist(player.x, player.y, greenKnight.x, greenKnight.y) < 120) {
+                    greenKnight.takeDamage(elem.damage, player.x, player.y);
+                    this.addDamageNumber(greenKnight.x, greenKnight.y, elem.damage, false);
+                }
                 break;
 
             case "lightning":
@@ -177,17 +221,24 @@ class CombatSystem {
                         closest = m;
                     }
                 }
-                if (boss && boss.alive) {
+                if (boss && boss.alive && boss.spawned) {
                     const d = dist(player.x, player.y, boss.x, boss.y);
                     if (d < closestDist) {
                         closest = boss;
                         closestDist = d;
                     }
                 }
+                if (greenKnight && greenKnight.alive && greenKnight.spawned) {
+                    const d = dist(player.x, player.y, greenKnight.x, greenKnight.y);
+                    if (d < closestDist) {
+                        closest = greenKnight;
+                        closestDist = d;
+                    }
+                }
                 if (closest) {
                     this.spawnLightningBolt(player.x, player.y, closest.x, closest.y);
                     const killed = closest.takeDamage(elem.damage, player.x, player.y);
-                    results.push({ target: closest, damage: elem.damage, killed, isBoss: closest === boss });
+                    results.push({ target: closest, damage: elem.damage, killed, isBoss: closest === boss || closest === greenKnight });
                     this.addDamageNumber(closest.x, closest.y, elem.damage, true);
                     this.spawnHitParticles(closest.x, closest.y, "#ffee00", 10);
                 }
@@ -216,10 +267,18 @@ class CombatSystem {
                     results.push({ target: boss, damage: elem.damage, killed, isBoss: true });
                     this.addDamageNumber(boss.x, boss.y, elem.damage, false);
                     this.spawnHitParticles(boss.x, boss.y, "#8b6914", 8);
-                    // Knockback boss
                     const norm = normalize(boss.x - player.x, boss.y - player.y);
                     boss.knockbackVx += norm.x * 5;
                     boss.knockbackVy += norm.y * 5;
+                }
+                if (greenKnight && greenKnight.alive && dist(player.x, player.y, greenKnight.x, greenKnight.y) < 110) {
+                    const killed = greenKnight.takeDamage(elem.damage, player.x, player.y);
+                    results.push({ target: greenKnight, damage: elem.damage, killed, isBoss: true });
+                    this.addDamageNumber(greenKnight.x, greenKnight.y, elem.damage, false);
+                    this.spawnHitParticles(greenKnight.x, greenKnight.y, "#8b6914", 8);
+                    const norm = normalize(greenKnight.x - player.x, greenKnight.y - player.y);
+                    greenKnight.knockbackVx += norm.x * 5;
+                    greenKnight.knockbackVy += norm.y * 5;
                 }
                 break;
         }
@@ -345,7 +404,7 @@ class CombatSystem {
         this.arrowProjectiles.push(arrowData);
     }
 
-    updateArrows(dt, monsters, boss, world) {
+    updateArrows(dt, monsters, boss, world, greenKnight) {
         const hits = [];
         for (let i = this.arrowProjectiles.length - 1; i >= 0; i--) {
             const a = this.arrowProjectiles[i];
@@ -452,11 +511,34 @@ class CombatSystem {
                     if (a.isFireArrow) {
                         this.spawnElementEffect(boss.x, boss.y, "fire", 500);
                     }
-                    // Bow enchantment hit effect
                     if (a.bowEnchant) {
                         this.spawnEnchantHitEffect(a.bowEnchant, { x: a.x, y: a.y }, boss);
                     }
                     hits.push({ target: boss, damage, killed, crit, isBoss: true });
+                    this.arrowProjectiles.splice(i, 1);
+                    continue;
+                }
+            }
+
+            // Check Green Knight collision
+            if (greenKnight && greenKnight.alive && greenKnight.spawned && greenKnight.spawnAnimation <= 0) {
+                if (dist(a.x, a.y, greenKnight.x, greenKnight.y) < greenKnight.size + 4) {
+                    let damage = a.damage;
+                    let crit = false;
+                    if (Math.random() < 0.12) {
+                        damage = Math.floor(damage * 1.6);
+                        crit = true;
+                    }
+                    const killed = greenKnight.takeDamage(damage, a.x, a.y);
+                    this.spawnHitParticles(greenKnight.x, greenKnight.y, a.isFireArrow ? "#ff6600" : "#44ff44", 8);
+                    this.addDamageNumber(greenKnight.x, greenKnight.y, damage, crit);
+                    if (a.isFireArrow) {
+                        this.spawnElementEffect(greenKnight.x, greenKnight.y, "fire", 500);
+                    }
+                    if (a.bowEnchant) {
+                        this.spawnEnchantHitEffect(a.bowEnchant, { x: a.x, y: a.y }, greenKnight);
+                    }
+                    hits.push({ target: greenKnight, damage, killed, crit, isBoss: true });
                     this.arrowProjectiles.splice(i, 1);
                 }
             }

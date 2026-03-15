@@ -73,6 +73,12 @@ class Player {
         this.walkTimer = 0;
         this.flashTimer = 0;
 
+        // Green gems & charm
+        this.greenGemAttack = false;
+        this.greenGemDefense = false;
+        this.hasMagicCharm = false;
+        this.hasDarkCrest = false;
+
         // Stats
         this.monstersKilled = 0;
     }
@@ -82,6 +88,8 @@ class Player {
         let dmg = weapon.damage;
         if (this.hasSheath) dmg += SHEATH_DAMAGE_BONUS;
         if (this.enchantments[this.currentWeapon]) dmg += ENCHANT_DAMAGE_BONUS;
+        if (this.greenGemAttack) dmg += GREEN_GEM_ATTACK.bonus;
+        if (this.hasMagicCharm) dmg += MAGIC_CHARM.damageBonus;
         if (dmg !== weapon.damage) return { ...weapon, damage: dmg };
         return weapon;
     }
@@ -107,6 +115,8 @@ class Player {
         let dmg = bow.damage;
         if (this.hasSheath) dmg += SHEATH_DAMAGE_BONUS;
         if (this.enchantments[this.currentBow]) dmg += ENCHANT_DAMAGE_BONUS;
+        if (this.greenGemAttack) dmg += GREEN_GEM_ATTACK.bonus;
+        if (this.hasMagicCharm) dmg += MAGIC_CHARM.damageBonus;
         if (dmg !== bow.damage) return { ...bow, damage: dmg };
         return bow;
     }
@@ -129,8 +139,11 @@ class Player {
 
     getArmor() {
         const armor = ARMOR[this.currentArmor];
-        if (this.armorEnchantedId === this.currentArmor && this.armorEnchantment) {
-            return { ...armor, enchantment: this.armorEnchantment };
+        let def = armor.defense;
+        if (this.greenGemDefense) def += GREEN_GEM_DEFENSE.bonus;
+        const hasEnchant = this.armorEnchantedId === this.currentArmor && this.armorEnchantment;
+        if (def !== armor.defense || hasEnchant) {
+            return { ...armor, defense: def, enchantment: hasEnchant ? this.armorEnchantment : undefined };
         }
         return armor;
     }
@@ -1381,6 +1394,452 @@ class Boss {
         // Dark aura
         const auraPhase = Math.sin(time * 0.003);
         ctx.strokeStyle = `rgba(136, 0, 0, ${0.2 + auraPhase * 0.1})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sx, sy + bob, this.size + 10 + auraPhase * 5, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+}
+
+class GreenKnight {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.hp = GREEN_KNIGHT.hp;
+        this.maxHp = GREEN_KNIGHT.hp;
+        this.damage = GREEN_KNIGHT.damage;
+        this.size = GREEN_KNIGHT.size;
+        this.speed = GREEN_KNIGHT.speed;
+        this.alive = true;
+        this.spawned = false;
+
+        this.phase = 0;
+        this.state = "idle";
+        this.lastAttackTime = 0;
+        this.facing = { x: 0, y: 1 };
+
+        // Charge attack
+        this.charging = false;
+        this.chargeDir = { x: 0, y: 0 };
+        this.chargeTimer = 0;
+        this.chargeWindup = 0;
+
+        // Spin attack
+        this.spinning = false;
+        this.spinAngle = 0;
+        this.spinTimer = 0;
+
+        // Visual
+        this.flashTimer = 0;
+        this.walkFrame = 0;
+        this.walkTimer = 0;
+        this.deathTimer = 0;
+        this.spawnAnimation = 0;
+
+        // Knockback
+        this.knockbackVx = 0;
+        this.knockbackVy = 0;
+
+        // Projectiles (poison orbs)
+        this.projectiles = [];
+    }
+
+    getCurrentPhase() {
+        const hpPercent = this.hp / this.maxHp;
+        for (let i = GREEN_KNIGHT.phases.length - 1; i >= 0; i--) {
+            if (hpPercent <= GREEN_KNIGHT.phases[i].hpThreshold) {
+                return GREEN_KNIGHT.phases[i];
+            }
+        }
+        return GREEN_KNIGHT.phases[0];
+    }
+
+    spawn() {
+        this.spawned = true;
+        this.spawnAnimation = 2000;
+    }
+
+    update(dt, player, world) {
+        if (!this.alive || !this.spawned) return null;
+
+        if (this.spawnAnimation > 0) {
+            this.spawnAnimation -= dt;
+            return null;
+        }
+
+        const phase = this.getCurrentPhase();
+        const distToPlayer = dist(this.x, this.y, player.x, player.y);
+        const now = Date.now();
+        const spd = this.speed * phase.speed;
+
+        // Update projectiles
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const p = this.projectiles[i];
+            p.x += p.vx * dt * 0.1;
+            p.y += p.vy * dt * 0.1;
+            p.life -= dt;
+            if (p.life <= 0) {
+                this.projectiles.splice(i, 1);
+                continue;
+            }
+            if (circleOverlap(p.x, p.y, 8, player.x, player.y, player.size)) {
+                if (player.takeDamage(18, p.x, p.y)) {
+                    this.projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        // Charge attack
+        if (this.charging) {
+            this.chargeTimer -= dt;
+            this.x += this.chargeDir.x * spd * 4;
+            this.y += this.chargeDir.y * spd * 4;
+            if (distToPlayer < this.size + player.size) {
+                player.takeDamage(this.damage * 1.5, this.x, this.y);
+            }
+            if (this.chargeTimer <= 0) this.charging = false;
+            return null;
+        }
+
+        if (this.chargeWindup > 0) {
+            this.chargeWindup -= dt;
+            if (this.chargeWindup <= 0) {
+                this.charging = true;
+                this.chargeTimer = 600;
+                this.chargeDir = normalize(player.x - this.x, player.y - this.y);
+            }
+            return null;
+        }
+
+        // Spin attack
+        if (this.spinning) {
+            this.spinTimer -= dt;
+            this.spinAngle += dt * 0.02;
+            if (distToPlayer < this.size + 40) {
+                player.takeDamage(this.damage * 0.5, this.x, this.y);
+            }
+            if (this.spinTimer <= 0) this.spinning = false;
+            return null;
+        }
+
+        // Chase player
+        const norm = normalize(player.x - this.x, player.y - this.y);
+        this.x += norm.x * spd;
+        this.y += norm.y * spd;
+        this.facing = norm;
+
+        this.walkTimer += dt;
+        if (this.walkTimer > 180) {
+            this.walkFrame = (this.walkFrame + 1) % 4;
+            this.walkTimer = 0;
+        }
+
+        // Knockback
+        this.x += this.knockbackVx;
+        this.y += this.knockbackVy;
+        this.knockbackVx *= 0.9;
+        this.knockbackVy *= 0.9;
+        if (Math.abs(this.knockbackVx) < 0.1) this.knockbackVx = 0;
+        if (Math.abs(this.knockbackVy) < 0.1) this.knockbackVy = 0;
+
+        // Attack patterns
+        if (now - this.lastAttackTime > phase.attackRate) {
+            this.lastAttackTime = now;
+
+            switch (phase.pattern) {
+                case "chase":
+                    if (distToPlayer < this.size + player.size + 10) {
+                        player.takeDamage(this.damage, this.x, this.y);
+                    }
+                    break;
+                case "charge":
+                    if (Math.random() < 0.4) {
+                        this.chargeWindup = 700;
+                    } else if (distToPlayer < 50) {
+                        player.takeDamage(this.damage, this.x, this.y);
+                    }
+                    break;
+                case "poison":
+                    if (Math.random() < 0.35) {
+                        this.spinning = true;
+                        this.spinTimer = 1500;
+                        this.spinAngle = 0;
+                    } else if (Math.random() < 0.4) {
+                        // Poison spread - 5 projectiles in a fan
+                        for (let i = -2; i <= 2; i++) {
+                            this.fireProjectile(player, i * 0.25);
+                        }
+                    } else {
+                        this.chargeWindup = 500;
+                    }
+                    break;
+                case "frenzy":
+                    if (Math.random() < 0.25) {
+                        this.spinning = true;
+                        this.spinTimer = 2000;
+                    } else if (Math.random() < 0.3) {
+                        this.chargeWindup = 350;
+                    } else {
+                        // Poison barrage - 8 projectiles in all directions
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (i / 8) * Math.PI * 2;
+                            this.projectiles.push({
+                                x: this.x, y: this.y,
+                                vx: Math.cos(angle) * 2.5,
+                                vy: Math.sin(angle) * 2.5,
+                                life: 3000,
+                            });
+                        }
+                    }
+                    break;
+            }
+        }
+
+        if (this.flashTimer > 0) this.flashTimer -= dt;
+        return null;
+    }
+
+    fireProjectile(player, angleOffset = 0) {
+        const angle = dirToAngle(player.x - this.x, player.y - this.y) + angleOffset;
+        this.projectiles.push({
+            x: this.x, y: this.y,
+            vx: Math.cos(angle) * 3,
+            vy: Math.sin(angle) * 3,
+            life: 3000,
+        });
+    }
+
+    takeDamage(amount, fromX, fromY) {
+        this.hp -= amount;
+        this.flashTimer = 150;
+        if (fromX !== undefined) {
+            const norm = normalize(this.x - fromX, this.y - fromY);
+            this.knockbackVx = norm.x * 3;
+            this.knockbackVy = norm.y * 3;
+        }
+        if (this.hp <= 0) {
+            this.alive = false;
+            this.deathTimer = 3000;
+            return true;
+        }
+        return false;
+    }
+
+    render(ctx, camera, time) {
+        const sx = this.x - camera.x;
+        const sy = this.y - camera.y;
+
+        if (!this.spawned) return;
+
+        // Spawn animation
+        if (this.spawnAnimation > 0) {
+            const progress = 1 - this.spawnAnimation / 2000;
+            ctx.save();
+            ctx.globalAlpha = progress;
+            // Green energy vortex
+            ctx.strokeStyle = "#00aa00";
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 5; i++) {
+                const a = time * 0.005 + i * Math.PI * 0.4;
+                const r = (1 - progress) * 100 + 20;
+                ctx.beginPath();
+                ctx.arc(sx + Math.cos(a) * r, sy + Math.sin(a) * r, 5, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            this.renderBody(ctx, sx, sy, time);
+            ctx.restore();
+            return;
+        }
+
+        // Death animation
+        if (!this.alive) {
+            if (this.deathTimer > 0) {
+                ctx.save();
+                ctx.globalAlpha = this.deathTimer / 3000;
+                for (let i = 0; i < 8; i++) {
+                    const a = (i / 8) * Math.PI * 2 + time * 0.003;
+                    const r = (1 - this.deathTimer / 3000) * 80;
+                    ctx.fillStyle = i % 2 === 0 ? "#00aa00" : "#88ff44";
+                    ctx.beginPath();
+                    ctx.arc(sx + Math.cos(a) * r, sy + Math.sin(a) * r, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                this.renderBody(ctx, sx, sy, time);
+                ctx.restore();
+            }
+            return;
+        }
+
+        if (this.flashTimer > 0 && Math.floor(time / 60) % 2 === 0) {
+            ctx.save();
+            ctx.globalCompositeOperation = "lighter";
+            this.renderBody(ctx, sx, sy, time);
+            ctx.restore();
+            return;
+        }
+
+        // Charge windup indicator
+        if (this.chargeWindup > 0) {
+            ctx.strokeStyle = "#00ff00";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            const n = normalize(this.facing.x, this.facing.y);
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx + n.x * 200, sy + n.y * 200);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        this.renderBody(ctx, sx, sy, time);
+
+        // Spin attack visual
+        if (this.spinning) {
+            ctx.strokeStyle = "#00aa00";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(sx, sy, this.size + 35, this.spinAngle, this.spinAngle + Math.PI * 1.5);
+            ctx.stroke();
+        }
+
+        // Render projectiles (poison orbs)
+        for (const p of this.projectiles) {
+            const px = p.x - camera.x;
+            const py = p.y - camera.y;
+            ctx.fillStyle = "#005500";
+            ctx.beginPath();
+            ctx.arc(px, py, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#44ff44";
+            ctx.beginPath();
+            ctx.arc(px, py, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    renderBody(ctx, sx, sy, time) {
+        const bob = Math.sin(this.walkFrame * Math.PI / 2) * 2;
+
+        // Shadow
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + this.size + 4, this.size * 0.9, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Legs
+        const legSpread = Math.sin(this.walkFrame * Math.PI / 2) * 4;
+        ctx.fillStyle = "#0a2a0a";
+        ctx.fillRect(sx - 8 - legSpread, sy + 6, 6, 16);
+        ctx.fillRect(sx + 2 + legSpread, sy + 6, 6, 16);
+
+        // Body - green armor
+        ctx.fillStyle = GREEN_KNIGHT.color;
+        ctx.fillRect(sx - 14, sy - 10 + bob, 28, 22);
+
+        // Armor plates
+        ctx.fillStyle = "#0a4a0a";
+        ctx.fillRect(sx - 12, sy - 8 + bob, 24, 18);
+
+        // Armor trim
+        ctx.strokeStyle = "#44ff44";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx - 12, sy - 8 + bob, 24, 18);
+
+        // Chest emblem (leaf/vine pattern)
+        ctx.fillStyle = "#22aa22";
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - 6 + bob);
+        ctx.lineTo(sx + 5, sy + 2 + bob);
+        ctx.lineTo(sx, sy + 6 + bob);
+        ctx.lineTo(sx - 5, sy + 2 + bob);
+        ctx.closePath();
+        ctx.fill();
+
+        // Cape
+        ctx.fillStyle = "#004400";
+        const capeWave = Math.sin(time * 0.003) * 3;
+        ctx.beginPath();
+        ctx.moveTo(sx - 12, sy - 8 + bob);
+        ctx.lineTo(sx - 16 + capeWave, sy + 20);
+        ctx.lineTo(sx + 16 - capeWave, sy + 20);
+        ctx.lineTo(sx + 12, sy - 8 + bob);
+        ctx.fill();
+
+        // Shoulders
+        ctx.fillStyle = "#0a3a0a";
+        ctx.beginPath();
+        ctx.ellipse(sx - 14, sy - 6 + bob, 8, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(sx + 14, sy - 6 + bob, 8, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Shoulder spikes (vine-like)
+        ctx.fillStyle = "#1a5a1a";
+        ctx.beginPath();
+        ctx.moveTo(sx - 18, sy - 8 + bob);
+        ctx.lineTo(sx - 20, sy - 18 + bob);
+        ctx.lineTo(sx - 14, sy - 8 + bob);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(sx + 18, sy - 8 + bob);
+        ctx.lineTo(sx + 20, sy - 18 + bob);
+        ctx.lineTo(sx + 14, sy - 8 + bob);
+        ctx.fill();
+
+        // Helmet
+        ctx.fillStyle = "#0a3a0a";
+        ctx.beginPath();
+        ctx.arc(sx, sy - 16 + bob, 11, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Visor
+        ctx.fillStyle = "#051a05";
+        ctx.fillRect(sx - 8, sy - 18 + bob, 16, 6);
+
+        // Glowing green eyes
+        ctx.fillStyle = "#00ff00";
+        ctx.shadowColor = "#00ff00";
+        ctx.shadowBlur = 8;
+        ctx.fillRect(sx - 5, sy - 16 + bob, 3, 2);
+        ctx.fillRect(sx + 2, sy - 16 + bob, 3, 2);
+        ctx.shadowBlur = 0;
+
+        // Helmet crest
+        ctx.fillStyle = "#22aa22";
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - 27 + bob);
+        ctx.lineTo(sx - 3, sy - 16 + bob);
+        ctx.lineTo(sx + 3, sy - 16 + bob);
+        ctx.fill();
+
+        // Green sword
+        const swordAngle = this.charging ?
+            dirToAngle(this.chargeDir.x, this.chargeDir.y) :
+            dirToAngle(this.facing.x, this.facing.y);
+
+        const swx = sx + Math.cos(swordAngle) * 16;
+        const swy = sy - 4 + bob + Math.sin(swordAngle) * 16;
+        const sex = swx + Math.cos(swordAngle) * 30;
+        const sey = swy + Math.sin(swordAngle) * 30;
+
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(swx, swy);
+        ctx.lineTo(sex, sey);
+        ctx.stroke();
+
+        ctx.strokeStyle = "#006622";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(swx + Math.cos(swordAngle) * 8, swy + Math.sin(swordAngle) * 8);
+        ctx.lineTo(sex, sey);
+        ctx.stroke();
+
+        // Green aura
+        const auraPhase = Math.sin(time * 0.003);
+        ctx.strokeStyle = `rgba(0, 170, 0, ${0.2 + auraPhase * 0.1})`;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(sx, sy + bob, this.size + 10 + auraPhase * 5, 0, Math.PI * 2);

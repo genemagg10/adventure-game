@@ -24,6 +24,7 @@ const ZONES = {
     castle: { name: "Ing Castle", x: 160, y: 40, w: 40, h: 40, color: "#3a3a4a", treeChance: 0.01 },
     ruins: { name: "Ancient Ruins", x: 0, y: 90, w: 50, h: 40, color: "#5a5a4a", treeChance: 0.03 },
     darklands: { name: "The Darklands", x: 110, y: 100, w: 60, h: 50, color: "#1a1a2e", treeChance: 0.04 },
+    greenlands: { name: "Green Knight's Domain", x: 50, y: 120, w: 60, h: 30, color: "#0a3a0e", treeChance: 0.06, locked: true },
 };
 
 // Tile types
@@ -293,3 +294,67 @@ const MERLIN_LORE = [
 
 // Merlin's Hut interaction range (same as shops)
 const MERLIN_HUT_INTERACT_RANGE = 50;
+
+// Green Knight Boss
+const GREEN_KNIGHT = {
+    name: "The Green Knight",
+    hp: 700,
+    damage: 30,
+    speed: 1.1,
+    size: 26,
+    color: "#0a3a0a",
+    phases: [
+        { hpThreshold: 1.0, speed: 1.0, attackRate: 1400, pattern: "chase" },
+        { hpThreshold: 0.75, speed: 1.2, attackRate: 1100, pattern: "charge" },
+        { hpThreshold: 0.5, speed: 1.4, attackRate: 900, pattern: "poison" },
+        { hpThreshold: 0.25, speed: 1.7, attackRate: 650, pattern: "frenzy" },
+    ],
+};
+
+// Black Knight power-up drop
+const DARK_CREST = {
+    name: "Dark Knight's Crest",
+    icon: "🛡️",
+    maxHpBonus: 30,
+    description: "A dark emblem of power. Permanently increases max HP by 30.",
+};
+
+// Green Knight Castle location (tile coordinates)
+const GREEN_CASTLE_POS = { x: 80, y: 130 };
+
+// Green Gems - scattered in the Green Knight's Domain
+const GREEN_GEM_ATTACK = {
+    name: "Green Gem of Power",
+    icon: "💚",
+    bonus: 5,
+    description: "Adds +5 attack damage to all weapons",
+};
+
+const GREEN_GEM_DEFENSE = {
+    name: "Green Gem of Fortitude",
+    icon: "💚",
+    bonus: 4,
+    description: "Adds +4 defense to all armor",
+};
+
+// Magic Charm - dropped by the Green Knight
+const MAGIC_CHARM = {
+    name: "Magic Charm of Might",
+    icon: "🧿",
+    damageBonus: 8,
+    description: "Adds +8 attack damage to all weapons",
+};
+
+// Green Knight's Domain monster types
+const GREEN_MONSTER_TYPES = {
+    green_guardian: {
+        name: "Green Guardian", icon: "🛡️", hp: 90, damage: 16, speed: 1.1,
+        xp: 45, goldDrop: [25, 50], color: "#1a6a1a", size: 16,
+        zones: ["greenlands"], weaponDrop: null, gemDrop: false
+    },
+    vine_beast: {
+        name: "Vine Beast", icon: "🌿", hp: 65, damage: 14, speed: 1.6,
+        xp: 35, goldDrop: [20, 40], color: "#2a7a2a", size: 14,
+        zones: ["greenlands"], weaponDrop: null, gemDrop: false
+    },
+};

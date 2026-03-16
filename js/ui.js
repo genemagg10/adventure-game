@@ -152,6 +152,26 @@ class UIManager {
         const defText = armor.defense > 0 ? `  |  ${armor.icon} DEF: ${armor.defense}` : "";
         this.weaponDisplay.textContent = `${weapon.icon} ${weapon.name}  |  ${bow.icon} ${bow.name}${defText}`;
 
+        // Quest items
+        const questEl = document.getElementById("quest-items");
+        if (questEl) {
+            questEl.innerHTML = "";
+            if (player.hasMerlinWand) {
+                const icon = document.createElement("span");
+                icon.className = "quest-item-icon";
+                icon.textContent = "🪄";
+                icon.title = "Merlin's Wand - Return to Merlin";
+                questEl.appendChild(icon);
+            }
+            if (player.hasSheath && this.game.ladyQuestState !== "complete") {
+                const icon = document.createElement("span");
+                icon.className = "quest-item-icon";
+                icon.textContent = "🗡\uFE0F";
+                icon.title = "Jewel Sheath - Return to the Lady";
+                questEl.appendChild(icon);
+            }
+        }
+
         // Element slots
         for (const [key, slot] of Object.entries(this.elemSlots)) {
             slot.classList.remove("unlocked", "active");
@@ -292,6 +312,95 @@ class UIManager {
 
             this.shopItems.appendChild(el);
         }
+
+        // Sell section - show player's sellable items
+        const sellableWeapons = player.weapons.filter(w => WEAPONS[w].price > 0 && w !== player.currentWeapon);
+        const sellableBows = player.bows.filter(b => BOWS[b].price > 0 && b !== player.currentBow);
+        const sellableArmor = player.armors.filter(a => ARMOR[a].price > 0 && a !== player.currentArmor);
+
+        if (sellableWeapons.length > 0 || sellableBows.length > 0 || sellableArmor.length > 0) {
+            const sellSection = document.createElement("div");
+            sellSection.className = "shop-sell-section";
+            sellSection.innerHTML = "<h3>Sell Your Items</h3>";
+
+            for (const wid of sellableWeapons) {
+                const w = WEAPONS[wid];
+                const sellPrice = Math.floor(w.price * 0.5);
+                const el = document.createElement("div");
+                el.className = "shop-item sell-item";
+                el.innerHTML = `
+                    <span class="shop-item-icon">${w.icon}</span>
+                    <span class="shop-item-name">${w.name}</span>
+                    <span class="shop-item-desc">${w.description}</span>
+                    <span class="shop-item-price">Sell: ${sellPrice} gold</span>
+                `;
+                el.addEventListener("click", () => {
+                    this.sellItem(wid, "weapon", sellPrice, player, shop);
+                });
+                sellSection.appendChild(el);
+            }
+
+            for (const bid of sellableBows) {
+                const b = BOWS[bid];
+                const sellPrice = Math.floor(b.price * 0.5);
+                const el = document.createElement("div");
+                el.className = "shop-item sell-item";
+                el.innerHTML = `
+                    <span class="shop-item-icon">${b.icon}</span>
+                    <span class="shop-item-name">${b.name}</span>
+                    <span class="shop-item-desc">${b.description}</span>
+                    <span class="shop-item-price">Sell: ${sellPrice} gold</span>
+                `;
+                el.addEventListener("click", () => {
+                    this.sellItem(bid, "bow", sellPrice, player, shop);
+                });
+                sellSection.appendChild(el);
+            }
+
+            for (const aid of sellableArmor) {
+                const a = ARMOR[aid];
+                const sellPrice = Math.floor(a.price * 0.5);
+                const el = document.createElement("div");
+                el.className = "shop-item sell-item";
+                el.innerHTML = `
+                    <span class="shop-item-icon">${a.icon}</span>
+                    <span class="shop-item-name">${a.name}</span>
+                    <span class="shop-item-desc">${a.description}</span>
+                    <span class="shop-item-price">Sell: ${sellPrice} gold</span>
+                `;
+                el.addEventListener("click", () => {
+                    this.sellItem(aid, "armor", sellPrice, player, shop);
+                });
+                sellSection.appendChild(el);
+            }
+
+            this.shopItems.appendChild(sellSection);
+        }
+    }
+
+    sellItem(itemId, itemType, sellPrice, player, shop) {
+        player.gold += sellPrice;
+        if (this.game.sound) this.game.sound.goldCollect();
+
+        if (itemType === "weapon") {
+            player.weapons = player.weapons.filter(w => w !== itemId);
+            delete player.enchantments[itemId];
+            this.showNotification(`Sold ${WEAPONS[itemId].name} for ${sellPrice} gold`);
+        } else if (itemType === "bow") {
+            player.bows = player.bows.filter(b => b !== itemId);
+            delete player.enchantments[itemId];
+            this.showNotification(`Sold ${BOWS[itemId].name} for ${sellPrice} gold`);
+        } else if (itemType === "armor") {
+            player.armors = player.armors.filter(a => a !== itemId);
+            if (player.armorEnchantedId === itemId) {
+                player.armorEnchantment = null;
+                player.armorEnchantedId = null;
+            }
+            this.showNotification(`Sold ${ARMOR[itemId].name} for ${sellPrice} gold`);
+        }
+
+        // Refresh shop
+        this.openShop(shop, player);
     }
 
     buyItem(itemId, isWeapon, isBow, isArmor, isPotion, player, shop) {
@@ -358,15 +467,32 @@ class UIManager {
         this.invBows.innerHTML = "<h3 style='color:#cc8844;width:100%;text-align:center;margin-bottom:8px;'>Bows (Arrows: " + player.arrows + ")</h3>";
         this.invGems.innerHTML = "<h3 style='color:#4488ff;width:100%;text-align:center;margin-bottom:8px;'>Blue Gems: " + player.blueGems + " / 5</h3>";
 
+        // Show quest items
+        if (player.hasMerlinWand) {
+            const wandEl = document.createElement("div");
+            wandEl.className = "inv-item";
+            wandEl.style.borderColor = "#aa66ff";
+            wandEl.style.boxShadow = "0 0 8px rgba(160, 100, 255, 0.3)";
+            wandEl.innerHTML = `
+                <span class="inv-item-icon">🪄</span>
+                <span class="inv-item-name">Merlin's Wand</span>
+                <span class="inv-item-name" style="color:#aa66ff;font-size:10px;">Quest: Return to Merlin</span>
+            `;
+            this.invWeapons.appendChild(wandEl);
+        }
+
         // Show sheath if acquired
         if (player.hasSheath) {
             const sheathEl = document.createElement("div");
             sheathEl.className = "inv-item equipped";
             sheathEl.style.borderColor = "#ffd700";
+            const sheathStatus = this.game.ladyQuestState === "complete"
+                ? `+${SHEATH_DAMAGE_BONUS} DMG (all weapons)`
+                : "Quest: Return to the Lady of the Lake";
             sheathEl.innerHTML = `
                 <span class="inv-item-icon">🗡️</span>
                 <span class="inv-item-name">Jewel Sheath</span>
-                <span class="inv-item-name" style="color:#ffd700;font-size:10px;">+${SHEATH_DAMAGE_BONUS} DMG (all weapons)</span>
+                <span class="inv-item-name" style="color:#ffd700;font-size:10px;">${sheathStatus}</span>
             `;
             this.invWeapons.appendChild(sheathEl);
         }

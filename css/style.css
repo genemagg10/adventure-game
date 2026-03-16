@@ -197,6 +197,54 @@ body {
     font-size: 18px;
 }
 
+#quest-items {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.quest-item-icon {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #ffd700;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 14px;
+    color: #ffd700;
+    animation: quest-pulse 2s infinite;
+}
+
+@keyframes quest-pulse {
+    0%, 100% { border-color: #ffd700; }
+    50% { border-color: #ffaa00; box-shadow: 0 0 6px rgba(255, 215, 0, 0.4); }
+}
+
+.shop-sell-section {
+    border-top: 1px solid #555;
+    margin-top: 10px;
+    padding-top: 8px;
+}
+
+.shop-sell-section h3 {
+    color: #ff9944;
+    text-align: center;
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+
+.shop-item.sell-item {
+    cursor: pointer;
+}
+
+.shop-item.sell-item:hover {
+    border-color: #ff9944;
+}
+
+.shop-item.sell-item .shop-item-price {
+    color: #ffcc44;
+}
+
 #hud-bottom {
     position: absolute;
     bottom: 0;

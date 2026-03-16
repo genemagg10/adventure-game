@@ -139,6 +139,18 @@ class UIManager {
         // Gems
         this.gemCount.textContent = player.blueGems;
 
+        // Green gems (show after Black Knight defeated)
+        const greenGemEl = document.getElementById("green-gem-counter");
+        if (greenGemEl) {
+            if (this.game.greenlandsUnlocked) {
+                greenGemEl.classList.remove("hidden");
+                const count = (player.greenGemAttack ? 1 : 0) + (player.greenGemDefense ? 1 : 0);
+                document.getElementById("green-gem-count").textContent = count;
+            } else {
+                greenGemEl.classList.add("hidden");
+            }
+        }
+
         // Gold
         this.goldCount.textContent = player.gold;
 

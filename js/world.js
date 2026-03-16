@@ -60,10 +60,16 @@ class World {
         this.coins = [];
         this.placeCoins(rng);
 
-        // Green Knight's Domain (initially blocked)
+        // Green Knight's Domain (initially blocked, but castle marker always known)
         this.greenCastleBuilt = false;
         this.greenGems = [];
-        this.greenKnightCastle = null;
+        // Pre-calculate green castle position so it shows on maps from the start
+        const gateX = GREEN_CASTLE_POS.x + Math.floor(12 / 2);
+        this.greenKnightCastle = {
+            x: gateX * TILE_SIZE + TILE_SIZE / 2,
+            y: (GREEN_CASTLE_POS.y + 12 + 2) * TILE_SIZE + TILE_SIZE / 2,
+        };
+        this.greenBossSpawnPoint = tileToWorld(gateX, GREEN_CASTLE_POS.y + 12 + 2);
 
         // Add decorations
         this.generateDecorations(rng);
@@ -567,12 +573,15 @@ class World {
             this.renderGreenGem(ctx, gsx, gsy, time, gem);
         }
 
-        // Render Green Knight Castle
+        // Render Green Knight Castle sign (castle itself is tile-based like Ing Castle)
         if (this.greenKnightCastle && this.greenCastleBuilt) {
             const gcx = this.greenKnightCastle.x - camera.x;
             const gcy = this.greenKnightCastle.y - camera.y;
             if (gcx > -100 && gcx < CANVAS_W + 100 && gcy > -100 && gcy < CANVAS_H + 100) {
-                this.renderGreenCastle(ctx, gcx, gcy - 80, time);
+                ctx.fillStyle = "#44ff44";
+                ctx.font = "9px monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("Green Knight's Castle", gcx, gcy - 100);
             }
         }
 
@@ -1129,14 +1138,6 @@ class World {
         ctx.closePath();
         ctx.fill();
 
-        // Label
-        ctx.globalAlpha = 0.7;
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "#88ff88";
-        ctx.font = "8px monospace";
-        ctx.textAlign = "center";
-        ctx.fillText(gem.type === "attack" ? "ATK" : "DEF", sx, sy + 18);
-
         ctx.restore();
     }
 
@@ -1247,8 +1248,8 @@ class World {
             ctx.fillRect(this.merlinHut.x * scale - 2, this.merlinHut.y * scale - 2, 4, 4);
         }
 
-        // Draw Green Knight Castle
-        if (this.greenKnightCastle && this.greenCastleBuilt) {
+        // Draw Green Knight Castle (always visible on minimap)
+        if (this.greenKnightCastle) {
             ctx.fillStyle = "#44ff44";
             ctx.fillRect(this.greenKnightCastle.x * scale - 3, this.greenKnightCastle.y * scale - 3, 6, 6);
         }
@@ -1367,8 +1368,8 @@ class World {
             ctx.fillText("Merlin's Hut", hx, hy - 7);
         }
 
-        // Green Knight Castle marker
-        if (this.greenKnightCastle && this.greenCastleBuilt) {
+        // Green Knight Castle marker (always visible on world map)
+        if (this.greenKnightCastle) {
             const gx = this.greenKnightCastle.x * scale + offsetX;
             const gy = this.greenKnightCastle.y * scale + offsetY;
             ctx.fillStyle = "#44ff44";

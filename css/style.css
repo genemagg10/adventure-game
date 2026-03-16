@@ -186,7 +186,7 @@ body {
     text-shadow: 1px 1px 2px #000;
 }
 
-#gem-counter, #gold-counter, #arrow-counter {
+#gem-counter, #gold-counter, #arrow-counter, #green-gem-counter {
     color: #fff;
     font-size: 16px;
     font-weight: bold;
@@ -1152,7 +1152,7 @@ body {
         font-size: 9px;
     }
 
-    #gem-counter, #gold-counter, #arrow-counter {
+    #gem-counter, #gold-counter, #arrow-counter, #green-gem-counter {
         font-size: 12px;
     }
 

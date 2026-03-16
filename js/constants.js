@@ -345,6 +345,15 @@ const MAGIC_CHARM = {
     description: "Adds +8 attack damage to all weapons",
 };
 
+// World Coins - randomly scattered collectible gold coins
+const COIN_CONFIG = {
+    count: 60,           // Total coins scattered across the world
+    value: [3, 8],       // Random gold value range per coin
+    collectRange: 24,    // Auto-collect proximity in pixels
+    respawnTime: 60000,  // Respawn timer in ms (60 seconds)
+    zones: ["meadow", "forest", "village", "desert", "swamp", "mountains", "ruins", "darklands"],
+};
+
 // Green Knight's Domain monster types
 const GREEN_MONSTER_TYPES = {
     green_guardian: {

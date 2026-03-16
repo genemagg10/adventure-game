@@ -56,6 +56,10 @@ class World {
         this.placeMerlin();
         this.placeMerlinHut();
 
+        // World coins
+        this.coins = [];
+        this.placeCoins(rng);
+
         // Green Knight's Domain (initially blocked)
         this.greenCastleBuilt = false;
         this.greenGems = [];
@@ -251,6 +255,32 @@ class World {
                         pulsePhase: Math.random() * Math.PI * 2,
                     });
                     break;
+                }
+            }
+        }
+    }
+
+    placeCoins(rng) {
+        this.coins = [];
+        const zones = COIN_CONFIG.zones;
+        const coinsPerZone = Math.ceil(COIN_CONFIG.count / zones.length);
+
+        for (const zoneName of zones) {
+            const zone = ZONES[zoneName];
+            let placed = 0;
+            for (let attempt = 0; attempt < coinsPerZone * 10 && placed < coinsPerZone; attempt++) {
+                const tx = zone.x + Math.floor(rng() * (zone.w - 4)) + 2;
+                const ty = zone.y + Math.floor(rng() * (zone.h - 4)) + 2;
+                if (!this.isSolid(tx, ty)) {
+                    const value = COIN_CONFIG.value[0] + Math.floor(rng() * (COIN_CONFIG.value[1] - COIN_CONFIG.value[0] + 1));
+                    this.coins.push({
+                        x: tx * TILE_SIZE + TILE_SIZE / 2,
+                        y: ty * TILE_SIZE + TILE_SIZE / 2,
+                        value: value,
+                        collected: false,
+                        respawnTimer: 0,
+                    });
+                    placed++;
                 }
             }
         }
@@ -508,6 +538,15 @@ class World {
             const sy = gem.y - camera.y;
             if (sx < -20 || sx > CANVAS_W + 20 || sy < -20 || sy > CANVAS_H + 20) continue;
             this.renderGem(ctx, sx, sy, time, gem);
+        }
+
+        // Render coins
+        for (const coin of this.coins) {
+            if (coin.collected) continue;
+            const cx = coin.x - camera.x;
+            const cy = coin.y - camera.y;
+            if (cx < -16 || cx > CANVAS_W + 16 || cy < -16 || cy > CANVAS_H + 16) continue;
+            this.renderCoin(ctx, cx, cy, time);
         }
 
         // Render Lady of the Lake (visible until Excalibur is given)
@@ -770,6 +809,31 @@ class World {
         ctx.lineTo(sx, sy + 5);
         ctx.lineTo(sx - 3, sy);
         ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    renderCoin(ctx, sx, sy, time) {
+        const bob = Math.sin(time * 0.005 + sx * 0.1) * 2;
+        const shine = Math.sin(time * 0.004 + sy * 0.1) * 0.2 + 0.8;
+        const cy = sy + bob;
+
+        ctx.save();
+        // Glow
+        ctx.shadowColor = "#ffd700";
+        ctx.shadowBlur = 6;
+
+        // Coin circle
+        ctx.fillStyle = `rgba(255, 215, 0, ${shine})`;
+        ctx.beginPath();
+        ctx.arc(sx, cy, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner circle
+        ctx.fillStyle = `rgba(255, 240, 100, ${shine * 0.7})`;
+        ctx.beginPath();
+        ctx.arc(sx, cy, 3, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();

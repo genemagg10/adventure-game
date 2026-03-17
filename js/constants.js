@@ -384,7 +384,6 @@ const CAVE_H = 150;
 
 // Cave entrance locations on main map (tile coordinates, in each corner zone)
 const CAVE_ENTRANCES = [
-    { id: 0, x: 15,  y: 10,  label: "NW Cave", caveX: 10,        caveY: 10 },          // Green Meadow (NW)
     { id: 1, x: 150, y: 10,  label: "NE Cave", caveX: CAVE_W-11, caveY: 10 },          // Scorched Wastes (NE)
     { id: 2, x: 10,  y: 120, label: "SW Cave", caveX: 10,        caveY: CAVE_H-11 },   // Ancient Ruins (SW)
     { id: 3, x: 160, y: 140, label: "SE Cave", caveX: CAVE_W-11, caveY: CAVE_H-11 },   // The Darklands (SE)

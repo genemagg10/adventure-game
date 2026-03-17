@@ -465,26 +465,35 @@ class World {
 
     placeCaveEntrances() {
         for (const entrance of CAVE_ENTRANCES) {
-            // Clear a 3x3 area and place cave entrance tiles
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
+            // Clear a larger 5x5 area around entrance
+            for (let dy = -3; dy <= 3; dy++) {
+                for (let dx = -3; dx <= 3; dx++) {
                     const tx = entrance.x + dx;
                     const ty = entrance.y + dy;
                     if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
-                        this.tiles[ty][tx] = TILE.CAVE_ENTRANCE;
+                        if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
+                            // Inner 3x3: cave entrance tiles
+                            this.tiles[ty][tx] = TILE.CAVE_ENTRANCE;
+                        } else if (Math.abs(dx) <= 2 && Math.abs(dy) <= 2) {
+                            // Ring: stone floor
+                            this.tiles[ty][tx] = TILE.STONE;
+                        } else {
+                            // Outer: clear any trees/obstacles to path
+                            if (SOLID_TILES.has(this.tiles[ty][tx])) {
+                                this.tiles[ty][tx] = TILE.PATH;
+                            }
+                        }
                     }
                 }
             }
-            // Surround with stone
-            for (let dy = -2; dy <= 2; dy++) {
-                for (let dx = -2; dx <= 2; dx++) {
+            // Build a short path leading south from entrance for visibility
+            for (let py = 1; py <= 5; py++) {
+                for (let dx = -1; dx <= 1; dx++) {
                     const tx = entrance.x + dx;
-                    const ty = entrance.y + dy;
+                    const ty = entrance.y + 3 + py;
                     if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
-                        if (Math.abs(dx) === 2 || Math.abs(dy) === 2) {
-                            if (this.tiles[ty][tx] !== TILE.CAVE_ENTRANCE) {
-                                this.tiles[ty][tx] = TILE.STONE;
-                            }
+                        if (this.tiles[ty][tx] !== TILE.CAVE_ENTRANCE) {
+                            this.tiles[ty][tx] = TILE.PATH;
                         }
                     }
                 }
@@ -736,17 +745,13 @@ class World {
             }
 
             case TILE.CAVE_ENTRANCE: {
-                // Dark cave opening
+                // Dark cave floor
                 ctx.fillStyle = "#1a1a1a";
-                ctx.fillRect(sx + 2, sy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-                // Stone arch at top
-                ctx.fillStyle = "#5a5a5a";
-                ctx.beginPath();
-                ctx.arc(sx + TILE_SIZE / 2, sy + 6, 12, Math.PI, Math.PI * 2);
-                ctx.fill();
-                // Darkness gradient
-                ctx.fillStyle = "#0a0a0a";
-                ctx.fillRect(sx + 4, sy + 8, TILE_SIZE - 8, TILE_SIZE - 8);
+                ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+                // Purple-tinted border glow
+                ctx.strokeStyle = `rgba(120, 80, 180, ${0.4 + Math.sin(time * 0.003 + tx) * 0.2})`;
+                ctx.lineWidth = 1;
+                ctx.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
                 break;
             }
 
@@ -1278,38 +1283,68 @@ class World {
     renderCaveEntrance(ctx, sx, sy, time, label) {
         ctx.save();
 
-        // Dark cave opening background
-        const glow = Math.sin(time * 0.003) * 0.15 + 0.35;
-        ctx.fillStyle = `rgba(80, 60, 100, ${glow})`;
+        // Pulsing purple glow aura
+        const glowPulse = Math.sin(time * 0.003) * 0.15 + 0.4;
+        const glowRadius = 36 + Math.sin(time * 0.002) * 4;
+        const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowRadius);
+        gradient.addColorStop(0, `rgba(120, 80, 180, ${glowPulse})`);
+        gradient.addColorStop(0.6, `rgba(80, 50, 140, ${glowPulse * 0.5})`);
+        gradient.addColorStop(1, "rgba(80, 50, 140, 0)");
+        ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(sx, sy, 24, 0, Math.PI * 2);
+        ctx.arc(sx, sy, glowRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Stone arch
-        ctx.fillStyle = "#6a6a7a";
+        // Stone arch frame
+        ctx.fillStyle = "#7a7a8a";
         ctx.beginPath();
-        ctx.arc(sx, sy - 8, 20, Math.PI, Math.PI * 2);
+        ctx.arc(sx, sy - 6, 24, Math.PI, Math.PI * 2);
         ctx.fill();
         // Pillars
-        ctx.fillStyle = "#5a5a6a";
-        ctx.fillRect(sx - 20, sy - 8, 6, 24);
-        ctx.fillRect(sx + 14, sy - 8, 6, 24);
+        ctx.fillStyle = "#6a6a7a";
+        ctx.fillRect(sx - 24, sy - 6, 7, 28);
+        ctx.fillRect(sx + 17, sy - 6, 7, 28);
+        // Pillar caps
+        ctx.fillStyle = "#8a8a9a";
+        ctx.fillRect(sx - 26, sy - 8, 11, 4);
+        ctx.fillRect(sx + 15, sy - 8, 11, 4);
 
-        // Dark opening
-        ctx.fillStyle = "#0a0a0a";
+        // Dark cave opening
+        ctx.fillStyle = "#050505";
         ctx.beginPath();
-        ctx.ellipse(sx, sy + 2, 13, 16, 0, 0, Math.PI * 2);
+        ctx.ellipse(sx, sy + 4, 16, 20, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Label
-        ctx.fillStyle = `rgba(180, 160, 220, ${0.6 + Math.sin(time * 0.004) * 0.2})`;
-        ctx.font = "9px monospace";
+        // Inner depth effect
+        ctx.fillStyle = "#0a0a15";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 2, 12, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Mysterious particles floating out
+        for (let i = 0; i < 3; i++) {
+            const px = sx + Math.sin(time * 0.003 + i * 2.1) * 10;
+            const py = sy - 8 + Math.cos(time * 0.002 + i * 1.7) * 12 - i * 6;
+            const pAlpha = Math.sin(time * 0.004 + i) * 0.3 + 0.3;
+            ctx.fillStyle = `rgba(160, 120, 255, ${pAlpha})`;
+            ctx.beginPath();
+            ctx.arc(px, py, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Label with shadow for visibility
+        ctx.shadowColor = "#000";
+        ctx.shadowBlur = 4;
+        ctx.fillStyle = `rgba(220, 200, 255, ${0.8 + Math.sin(time * 0.004) * 0.2})`;
+        ctx.font = "bold 10px monospace";
         ctx.textAlign = "center";
-        ctx.fillText(label, sx, sy - 30);
+        ctx.fillText(label, sx, sy - 34);
+        ctx.shadowBlur = 0;
 
         // Interaction hint
-        ctx.fillStyle = `rgba(180, 160, 220, ${0.4 + Math.sin(time * 0.004) * 0.2})`;
-        ctx.fillText("[E] Enter", sx, sy + 26);
+        ctx.fillStyle = `rgba(200, 180, 255, ${0.5 + Math.sin(time * 0.004) * 0.2})`;
+        ctx.font = "9px monospace";
+        ctx.fillText("[E] Enter", sx, sy + 30);
 
         ctx.restore();
     }

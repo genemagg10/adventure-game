@@ -78,6 +78,7 @@ class Player {
         this.greenGemDefense = false;
         this.hasMagicCharm = false;
         this.hasDarkCrest = false;
+        this.hasGauntlet = false; // Cave boss drop: +4 damage all weapons
 
         // Stats
         this.monstersKilled = 0;
@@ -90,6 +91,7 @@ class Player {
         if (this.enchantments[this.currentWeapon]) dmg += ENCHANT_DAMAGE_BONUS;
         if (this.greenGemAttack) dmg += GREEN_GEM_ATTACK.bonus;
         if (this.hasMagicCharm) dmg += MAGIC_CHARM.damageBonus;
+        if (this.hasGauntlet) dmg += CAVE_GAUNTLET.damageBonus;
         if (dmg !== weapon.damage) return { ...weapon, damage: dmg };
         return weapon;
     }
@@ -117,6 +119,7 @@ class Player {
         if (this.enchantments[this.currentBow]) dmg += ENCHANT_DAMAGE_BONUS;
         if (this.greenGemAttack) dmg += GREEN_GEM_ATTACK.bonus;
         if (this.hasMagicCharm) dmg += MAGIC_CHARM.damageBonus;
+        if (this.hasGauntlet) dmg += CAVE_GAUNTLET.damageBonus;
         if (dmg !== bow.damage) return { ...bow, damage: dmg };
         return bow;
     }
@@ -254,9 +257,11 @@ class Player {
             this.y = newY;
         }
 
-        // Clamp to world bounds
-        this.x = clamp(this.x, this.size, WORLD_W * TILE_SIZE - this.size);
-        this.y = clamp(this.y, this.size, WORLD_H * TILE_SIZE - this.size);
+        // Clamp to world bounds (works for both surface and cave)
+        const worldWidth = world.tiles[0] ? world.tiles[0].length : WORLD_W;
+        const worldHeight = world.tiles.length || WORLD_H;
+        this.x = clamp(this.x, this.size, worldWidth * TILE_SIZE - this.size);
+        this.y = clamp(this.y, this.size, worldHeight * TILE_SIZE - this.size);
 
         // Mana regeneration
         this.mana = Math.min(this.maxMana, this.mana + PLAYER_DEFAULTS.manaRegen * dt);
@@ -777,11 +782,13 @@ class Monster {
             gem: false,
         };
 
-        if (this.weaponDrop && Math.random() < 0.3) {
+        const weaponChance = this.weaponDropChance || 0.3;
+        if (this.weaponDrop && Math.random() < weaponChance) {
             drops.weapon = this.weaponDrop;
         }
 
-        if (this.armorDrop && Math.random() < 0.3) {
+        const armorChance = this.armorDropChance || 0.3;
+        if (this.armorDrop && Math.random() < armorChance) {
             drops.armor = this.armorDrop;
         }
 
@@ -953,7 +960,10 @@ class Boss {
         this.maxHp = BOSS.hp;
         this.damage = BOSS.damage;
         this.size = BOSS.size;
+        this.baseSpeed = BOSS.speed;
         this.speed = BOSS.speed;
+        this.color = BOSS.color;
+        this.phases = BOSS.phases;
         this.alive = true;
         this.spawned = false;
 
@@ -990,12 +1000,12 @@ class Boss {
 
     getCurrentPhase() {
         const hpPercent = this.hp / this.maxHp;
-        for (let i = BOSS.phases.length - 1; i >= 0; i--) {
-            if (hpPercent <= BOSS.phases[i].hpThreshold) {
-                return BOSS.phases[i];
+        for (let i = this.phases.length - 1; i >= 0; i--) {
+            if (hpPercent <= this.phases[i].hpThreshold) {
+                return this.phases[i];
             }
         }
-        return BOSS.phases[0];
+        return this.phases[0];
     }
 
     spawn() {
@@ -1287,7 +1297,7 @@ class Boss {
         ctx.fillRect(sx + 2 + legSpread, sy + 6, 6, 16);
 
         // Body - black armor
-        ctx.fillStyle = BOSS.color;
+        ctx.fillStyle = this.color;
         ctx.fillRect(sx - 14, sy - 10 + bob, 28, 22);
 
         // Armor plates

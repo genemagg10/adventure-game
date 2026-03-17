@@ -513,6 +513,17 @@ class Game {
         // Spawn monsters
         this.spawnMonsters(dt);
 
+        // Respawn coins
+        for (const coin of this.world.coins) {
+            if (coin.collected && coin.respawnTimer > 0) {
+                coin.respawnTimer -= dt;
+                if (coin.respawnTimer <= 0) {
+                    coin.collected = false;
+                    coin.respawnTimer = 0;
+                }
+            }
+        }
+
         // Update combat effects
         this.combat.update(dt);
 
@@ -715,6 +726,18 @@ class Game {
                 if (dist(this.player.x, this.player.y, gem.x, gem.y) < 30) {
                     this.collectGreenGem(gem);
                 }
+            }
+        }
+
+        // Check coins (auto-collect on proximity)
+        for (const coin of this.world.coins) {
+            if (coin.collected) continue;
+            if (dist(this.player.x, this.player.y, coin.x, coin.y) < COIN_CONFIG.collectRange) {
+                coin.collected = true;
+                coin.respawnTimer = COIN_CONFIG.respawnTime;
+                this.player.gold += coin.value;
+                this.sound.goldCollect();
+                this.ui.showNotification(`+${coin.value} gold`);
             }
         }
 

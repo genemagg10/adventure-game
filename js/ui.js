@@ -537,6 +537,7 @@ class UIManager {
             if (enchant) dmg += ENCHANT_DAMAGE_BONUS;
             if (player.greenGemAttack) dmg += GREEN_GEM_ATTACK.bonus;
             if (player.hasMagicCharm) dmg += MAGIC_CHARM.damageBonus;
+            if (player.hasGauntlet) dmg += CAVE_GAUNTLET.damageBonus;
             const isEquipped = player.currentWeapon === wid;
             const el = document.createElement("div");
             el.className = "inv-item" + (isEquipped ? " equipped" : "");
@@ -585,6 +586,7 @@ class UIManager {
             if (enchant) dmgBow += ENCHANT_DAMAGE_BONUS;
             if (player.greenGemAttack) dmgBow += GREEN_GEM_ATTACK.bonus;
             if (player.hasMagicCharm) dmgBow += MAGIC_CHARM.damageBonus;
+            if (player.hasGauntlet) dmgBow += CAVE_GAUNTLET.damageBonus;
             const isEquipped = player.currentBow === bid;
             const el = document.createElement("div");
             el.className = "inv-item" + (isEquipped ? " equipped" : "");
@@ -603,7 +605,7 @@ class UIManager {
         }
 
         // Show green gems and magic charm
-        if (player.hasDarkCrest || player.greenGemAttack || player.greenGemDefense || player.hasMagicCharm) {
+        if (player.hasDarkCrest || player.greenGemAttack || player.greenGemDefense || player.hasMagicCharm || player.hasGauntlet) {
             const specialHeader = document.createElement("h3");
             specialHeader.style.cssText = "color:#44ff44;width:100%;text-align:center;margin-bottom:8px;margin-top:12px;";
             specialHeader.textContent = "Special Items";
@@ -651,6 +653,18 @@ class UIManager {
                     <span class="inv-item-icon">${MAGIC_CHARM.icon}</span>
                     <span class="inv-item-name">${MAGIC_CHARM.name}</span>
                     <span class="inv-item-name" style="color:#aa66ff;font-size:10px;">+${MAGIC_CHARM.damageBonus} DMG (all weapons)</span>
+                `;
+                this.invGems.appendChild(el);
+            }
+            if (player.hasGauntlet) {
+                const el = document.createElement("div");
+                el.className = "inv-item equipped";
+                el.style.borderColor = "#8866aa";
+                el.style.boxShadow = "0 0 8px rgba(136, 102, 170, 0.4)";
+                el.innerHTML = `
+                    <span class="inv-item-icon">${CAVE_GAUNTLET.icon}</span>
+                    <span class="inv-item-name">${CAVE_GAUNTLET.name}</span>
+                    <span class="inv-item-name" style="color:#8866aa;font-size:10px;">+${CAVE_GAUNTLET.damageBonus} DMG (all weapons)</span>
                 `;
                 this.invGems.appendChild(el);
             }

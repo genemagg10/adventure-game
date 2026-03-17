@@ -45,6 +45,9 @@ const TILE = {
     SHOP_FLOOR: 13,
     LAVA: 14,
     BURNING_TREE: 15,
+    CAVE_FLOOR: 16,
+    CAVE_WALL: 17,
+    CAVE_ENTRANCE: 18,
 };
 
 // Tile colors
@@ -65,10 +68,13 @@ const TILE_COLORS = {
     [TILE.SHOP_FLOOR]: "#6a5a3a",
     [TILE.LAVA]: "#cc3300",
     [TILE.BURNING_TREE]: "#1a5a12",
+    [TILE.CAVE_FLOOR]: "#3a3a3a",
+    [TILE.CAVE_WALL]: "#1a1a1a",
+    [TILE.CAVE_ENTRANCE]: "#2a2a2a",
 };
 
 // Solid tiles (can't walk through)
-const SOLID_TILES = new Set([TILE.TREE, TILE.WATER, TILE.WALL, TILE.MOUNTAIN, TILE.CASTLE_WALL, TILE.LAVA, TILE.BURNING_TREE]);
+const SOLID_TILES = new Set([TILE.TREE, TILE.WATER, TILE.WALL, TILE.MOUNTAIN, TILE.CASTLE_WALL, TILE.LAVA, TILE.BURNING_TREE, TILE.CAVE_WALL]);
 
 // Weapons
 const WEAPONS = {
@@ -367,3 +373,81 @@ const GREEN_MONSTER_TYPES = {
         zones: ["greenlands"], weaponDrop: null, gemDrop: false
     },
 };
+
+// ============================================
+// Cave System Constants
+// ============================================
+
+// Cave world dimensions (same as main world)
+const CAVE_W = 200;
+const CAVE_H = 150;
+
+// Cave entrance locations on main map (tile coordinates, near each corner)
+const CAVE_ENTRANCES = [
+    { id: 0, x: 5,   y: 5,   label: "NW Cave", caveX: 5,         caveY: 5 },          // NW corner
+    { id: 1, x: 194, y: 5,   label: "NE Cave", caveX: CAVE_W-6,  caveY: 5 },          // NE corner
+    { id: 2, x: 5,   y: 144, label: "SW Cave", caveX: 5,         caveY: CAVE_H-6 },   // SW corner
+    { id: 3, x: 194, y: 144, label: "SE Cave", caveX: CAVE_W-6,  caveY: CAVE_H-6 },   // SE corner
+];
+
+// Cave monster types (harder than surface monsters, better loot)
+const CAVE_MONSTER_TYPES = {
+    cave_spider: {
+        name: "Giant Cave Spider", icon: "🕷️", hp: 90, damage: 16, speed: 1.8,
+        xp: 50, goldDrop: [30, 60], color: "#4a2a4a", size: 15,
+        weaponDrop: "knights_blade", weaponDropChance: 0.2, gemDrop: false,
+        armorDrop: "iron_plate", armorDropChance: 0.15
+    },
+    cave_bat: {
+        name: "Shadow Bat", icon: "🦇", hp: 55, damage: 12, speed: 2.2,
+        xp: 35, goldDrop: [20, 45], color: "#3a2a3a", size: 12,
+        weaponDrop: null, gemDrop: false,
+        armorDrop: "shadow_cloak", armorDropChance: 0.1
+    },
+    deep_troll: {
+        name: "Deep Troll", icon: "👹", hp: 140, damage: 22, speed: 0.8,
+        xp: 65, goldDrop: [40, 80], color: "#4a5a3a", size: 20,
+        weaponDrop: "battle_axe", weaponDropChance: 0.25, gemDrop: false,
+        armorDrop: "knights_armor", armorDropChance: 0.15
+    },
+    crystal_golem: {
+        name: "Crystal Golem", icon: "💎", hp: 120, damage: 20, speed: 0.6,
+        xp: 55, goldDrop: [35, 70], color: "#6a6aaa", size: 18,
+        weaponDrop: "dark_blade", weaponDropChance: 0.15, gemDrop: false,
+        armorDrop: "knights_armor", armorDropChance: 0.1
+    },
+    shadow_serpent: {
+        name: "Shadow Serpent", icon: "🐍", hp: 75, damage: 18, speed: 1.6,
+        xp: 45, goldDrop: [25, 55], color: "#2a2a5a", size: 14,
+        weaponDrop: "dark_blade", weaponDropChance: 0.1, gemDrop: false,
+        armorDrop: "shadow_cloak", armorDropChance: 0.12
+    },
+};
+
+// Cave Boss
+const CAVE_BOSS = {
+    name: "The Stone Warden",
+    hp: 600,
+    damage: 28,
+    speed: 0.9,
+    size: 28,
+    color: "#3a3a5a",
+    phases: [
+        { hpThreshold: 1.0, speed: 1.0, attackRate: 1400, pattern: "chase" },
+        { hpThreshold: 0.7, speed: 1.2, attackRate: 1100, pattern: "charge" },
+        { hpThreshold: 0.4, speed: 1.4, attackRate: 800, pattern: "spin" },
+        { hpThreshold: 0.15, speed: 1.7, attackRate: 600, pattern: "frenzy" },
+    ],
+    spawnTile: { x: 100, y: 75 }, // center of cave world
+};
+
+// Gauntlet of Might - dropped by the Cave Boss
+const CAVE_GAUNTLET = {
+    name: "Gauntlet of Might",
+    icon: "🧤",
+    damageBonus: 4,
+    description: "Adds +4 damage to any weapon. Forged by the Stone Warden.",
+};
+
+// Cave entrance interaction range
+const CAVE_ENTRANCE_RANGE = 40;

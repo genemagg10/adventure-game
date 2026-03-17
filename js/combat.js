@@ -433,7 +433,9 @@ class CombatSystem {
             // Fire arrow hitting a tree - set it on fire
             if (a.isFireArrow && world) {
                 const tile = worldToTile(a.x, a.y);
-                if (tile.x >= 0 && tile.x < WORLD_W && tile.y >= 0 && tile.y < WORLD_H) {
+                const wTilesW = world.tiles[0] ? world.tiles[0].length : WORLD_W;
+                const wTilesH = world.tiles.length || WORLD_H;
+                if (tile.x >= 0 && tile.x < wTilesW && tile.y >= 0 && tile.y < wTilesH) {
                     if (world.tiles[tile.y][tile.x] === TILE.TREE) {
                         // Check if the tree is adjacent to water
                         let touchingWater = false;
@@ -442,7 +444,7 @@ class CombatSystem {
                                 if (dx === 0 && dy === 0) continue;
                                 const nx = tile.x + dx;
                                 const ny = tile.y + dy;
-                                if (nx >= 0 && nx < WORLD_W && ny >= 0 && ny < WORLD_H) {
+                                if (nx >= 0 && nx < wTilesW && ny >= 0 && ny < wTilesH) {
                                     if (world.tiles[ny][nx] === TILE.WATER) {
                                         touchingWater = true;
                                         break;

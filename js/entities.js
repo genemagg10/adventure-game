@@ -956,6 +956,9 @@ class Boss {
     constructor(x, y) {
         this.x = x;
         this.y = y;
+        this.spawnX = x;
+        this.spawnY = y;
+        this.leashRadius = 400;
         this.hp = BOSS.hp;
         this.maxHp = BOSS.hp;
         this.damage = BOSS.damage;
@@ -1013,6 +1016,15 @@ class Boss {
         this.spawnAnimation = 2000;
     }
 
+    tryMove(dx, dy, world) {
+        const newX = this.x + dx;
+        const newY = this.y + dy;
+        const tileX = worldToTile(newX, this.y);
+        const tileY = worldToTile(this.x, newY);
+        if (!world.isSolid(tileX.x, tileX.y)) this.x = newX;
+        if (!world.isSolid(tileY.x, tileY.y)) this.y = newY;
+    }
+
     update(dt, player, world) {
         if (!this.alive) {
             if (this.deathTimer > 0) this.deathTimer -= dt;
@@ -1028,6 +1040,7 @@ class Boss {
 
         const phase = this.getCurrentPhase();
         const distToPlayer = dist(this.x, this.y, player.x, player.y);
+        const distToSpawn = dist(this.x, this.y, this.spawnX, this.spawnY);
         const now = Date.now();
         const spd = this.speed * phase.speed;
 
@@ -1052,8 +1065,7 @@ class Boss {
         // Charge attack
         if (this.charging) {
             this.chargeTimer -= dt;
-            this.x += this.chargeDir.x * spd * 4;
-            this.y += this.chargeDir.y * spd * 4;
+            this.tryMove(this.chargeDir.x * spd * 4, this.chargeDir.y * spd * 4, world);
 
             if (distToPlayer < this.size + player.size) {
                 player.takeDamage(this.damage * 1.5, this.x, this.y);
@@ -1090,10 +1102,15 @@ class Boss {
             return null;
         }
 
-        // Chase player
-        const norm = normalize(player.x - this.x, player.y - this.y);
-        this.x += norm.x * spd;
-        this.y += norm.y * spd;
+        // Leash: if too far from spawn, walk back instead of chasing
+        let chaseTarget = player;
+        if (distToSpawn > this.leashRadius) {
+            chaseTarget = { x: this.spawnX, y: this.spawnY };
+        }
+
+        // Chase player (or return to spawn)
+        const norm = normalize(chaseTarget.x - this.x, chaseTarget.y - this.y);
+        this.tryMove(norm.x * spd, norm.y * spd, world);
         this.facing = norm;
 
         // Walk animation
@@ -1103,13 +1120,14 @@ class Boss {
             this.walkTimer = 0;
         }
 
-        // Knockback
-        this.x += this.knockbackVx;
-        this.y += this.knockbackVy;
-        this.knockbackVx *= 0.9;
-        this.knockbackVy *= 0.9;
-        if (Math.abs(this.knockbackVx) < 0.1) this.knockbackVx = 0;
-        if (Math.abs(this.knockbackVy) < 0.1) this.knockbackVy = 0;
+        // Knockback with wall collision
+        if (this.knockbackVx !== 0 || this.knockbackVy !== 0) {
+            this.tryMove(this.knockbackVx, this.knockbackVy, world);
+            this.knockbackVx *= 0.9;
+            this.knockbackVy *= 0.9;
+            if (Math.abs(this.knockbackVx) < 0.1) this.knockbackVx = 0;
+            if (Math.abs(this.knockbackVy) < 0.1) this.knockbackVy = 0;
+        }
 
         // Attack patterns based on phase
         if (now - this.lastAttackTime > phase.attackRate) {
@@ -1419,6 +1437,9 @@ class GreenKnight {
     constructor(x, y) {
         this.x = x;
         this.y = y;
+        this.spawnX = x;
+        this.spawnY = y;
+        this.leashRadius = 500;
         this.hp = GREEN_KNIGHT.hp;
         this.maxHp = GREEN_KNIGHT.hp;
         this.damage = GREEN_KNIGHT.damage;
@@ -1473,6 +1494,15 @@ class GreenKnight {
         this.spawnAnimation = 2000;
     }
 
+    tryMove(dx, dy, world) {
+        const newX = this.x + dx;
+        const newY = this.y + dy;
+        const tileX = worldToTile(newX, this.y);
+        const tileY = worldToTile(this.x, newY);
+        if (!world.isSolid(tileX.x, tileX.y)) this.x = newX;
+        if (!world.isSolid(tileY.x, tileY.y)) this.y = newY;
+    }
+
     update(dt, player, world) {
         if (!this.alive) {
             if (this.deathTimer > 0) this.deathTimer -= dt;
@@ -1487,6 +1517,7 @@ class GreenKnight {
 
         const phase = this.getCurrentPhase();
         const distToPlayer = dist(this.x, this.y, player.x, player.y);
+        const distToSpawn = dist(this.x, this.y, this.spawnX, this.spawnY);
         const now = Date.now();
         const spd = this.speed * phase.speed;
 
@@ -1510,8 +1541,7 @@ class GreenKnight {
         // Charge attack
         if (this.charging) {
             this.chargeTimer -= dt;
-            this.x += this.chargeDir.x * spd * 4;
-            this.y += this.chargeDir.y * spd * 4;
+            this.tryMove(this.chargeDir.x * spd * 4, this.chargeDir.y * spd * 4, world);
             if (distToPlayer < this.size + player.size) {
                 player.takeDamage(this.damage * 1.5, this.x, this.y);
             }
@@ -1540,10 +1570,15 @@ class GreenKnight {
             return null;
         }
 
-        // Chase player
-        const norm = normalize(player.x - this.x, player.y - this.y);
-        this.x += norm.x * spd;
-        this.y += norm.y * spd;
+        // Leash: if too far from spawn, walk back instead of chasing
+        let chaseTarget = player;
+        if (distToSpawn > this.leashRadius) {
+            chaseTarget = { x: this.spawnX, y: this.spawnY };
+        }
+
+        // Chase player (or return to spawn)
+        const norm = normalize(chaseTarget.x - this.x, chaseTarget.y - this.y);
+        this.tryMove(norm.x * spd, norm.y * spd, world);
         this.facing = norm;
 
         this.walkTimer += dt;
@@ -1552,13 +1587,14 @@ class GreenKnight {
             this.walkTimer = 0;
         }
 
-        // Knockback
-        this.x += this.knockbackVx;
-        this.y += this.knockbackVy;
-        this.knockbackVx *= 0.9;
-        this.knockbackVy *= 0.9;
-        if (Math.abs(this.knockbackVx) < 0.1) this.knockbackVx = 0;
-        if (Math.abs(this.knockbackVy) < 0.1) this.knockbackVy = 0;
+        // Knockback with wall collision
+        if (this.knockbackVx !== 0 || this.knockbackVy !== 0) {
+            this.tryMove(this.knockbackVx, this.knockbackVy, world);
+            this.knockbackVx *= 0.9;
+            this.knockbackVy *= 0.9;
+            if (Math.abs(this.knockbackVx) < 0.1) this.knockbackVx = 0;
+            if (Math.abs(this.knockbackVy) < 0.1) this.knockbackVy = 0;
+        }
 
         // Attack patterns
         if (now - this.lastAttackTime > phase.attackRate) {

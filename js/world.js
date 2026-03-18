@@ -1701,11 +1701,10 @@ class CaveWorld {
             });
         }
 
-        // Carve tunnels connecting the four exits to ensure connectivity
-        this.carveCaveTunnel(this.exits[0].x, this.exits[0].y, this.exits[1].x, this.exits[1].y, rng); // NW -> NE
-        this.carveCaveTunnel(this.exits[2].x, this.exits[2].y, this.exits[3].x, this.exits[3].y, rng); // SW -> SE
-        this.carveCaveTunnel(this.exits[0].x, this.exits[0].y, this.exits[2].x, this.exits[2].y, rng); // NW -> SW
-        this.carveCaveTunnel(this.exits[1].x, this.exits[1].y, this.exits[3].x, this.exits[3].y, rng); // NE -> SE
+        // Carve tunnels connecting the three exits to ensure connectivity
+        this.carveCaveTunnel(this.exits[0].x, this.exits[0].y, this.exits[1].x, this.exits[1].y, rng); // NE -> SW
+        this.carveCaveTunnel(this.exits[1].x, this.exits[1].y, this.exits[2].x, this.exits[2].y, rng); // SW -> SE
+        this.carveCaveTunnel(this.exits[0].x, this.exits[0].y, this.exits[2].x, this.exits[2].y, rng); // NE -> SE
 
         // Carve boss room in center
         const bossX = CAVE_BOSS.spawnTile.x;
@@ -1724,7 +1723,7 @@ class CaveWorld {
         }
         // Connect boss room to tunnels
         this.carveCaveTunnel(this.exits[0].x, this.exits[0].y, bossX, bossY, rng);
-        this.carveCaveTunnel(this.exits[3].x, this.exits[3].y, bossX, bossY, rng);
+        this.carveCaveTunnel(this.exits[2].x, this.exits[2].y, bossX, bossY, rng);
 
         // Generate stalactite and stalagmite decorations
         this.generateCaveDecorations(rng);

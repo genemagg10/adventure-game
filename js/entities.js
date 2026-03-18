@@ -1014,7 +1014,11 @@ class Boss {
     }
 
     update(dt, player, world) {
-        if (!this.alive || !this.spawned) return null;
+        if (!this.alive) {
+            if (this.deathTimer > 0) this.deathTimer -= dt;
+            return null;
+        }
+        if (!this.spawned) return null;
 
         // Spawn animation
         if (this.spawnAnimation > 0) {
@@ -1470,7 +1474,11 @@ class GreenKnight {
     }
 
     update(dt, player, world) {
-        if (!this.alive || !this.spawned) return null;
+        if (!this.alive) {
+            if (this.deathTimer > 0) this.deathTimer -= dt;
+            return null;
+        }
+        if (!this.spawned) return null;
 
         if (this.spawnAnimation > 0) {
             this.spawnAnimation -= dt;

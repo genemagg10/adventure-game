@@ -1023,10 +1023,17 @@ body {
     transition: transform 0.05s;
 }
 
-#touch-buttons-right {
+#touch-buttons-right-wrapper {
     position: absolute;
     bottom: 16px;
     right: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+#touch-buttons-right {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 14px;
@@ -1511,9 +1518,13 @@ body {
         height: 65%;
     }
 
-    #touch-buttons-right {
+    #touch-buttons-right-wrapper {
         bottom: 8px;
         right: 8px;
+        gap: 6px;
+    }
+
+    #touch-buttons-right {
         gap: 8px;
     }
 

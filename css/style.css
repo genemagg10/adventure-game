@@ -191,7 +191,7 @@ body {
     text-shadow: 1px 1px 2px #000;
 }
 
-#gem-counter, #gold-counter, #arrow-counter, #green-gem-counter {
+#gem-counter, #gold-counter, #arrow-counter, #green-gem-counter, #potion-counter {
     color: #fff;
     font-size: 16px;
     font-weight: bold;
@@ -1071,6 +1071,11 @@ body {
     border-color: rgba(80, 220, 80, 0.7);
 }
 
+.touch-btn-potion {
+    background: radial-gradient(circle, rgba(180, 50, 180, 0.75) 0%, rgba(120, 30, 120, 0.55) 100%);
+    border-color: rgba(220, 80, 220, 0.7);
+}
+
 #touch-buttons-top {
     position: absolute;
     top: 42px;
@@ -1140,7 +1145,7 @@ body {
         font-size: 9px;
     }
 
-    #gem-counter, #gold-counter, #arrow-counter, #green-gem-counter {
+    #gem-counter, #gold-counter, #arrow-counter, #green-gem-counter, #potion-counter {
         font-size: 12px;
     }
 

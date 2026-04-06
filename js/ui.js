@@ -157,6 +157,12 @@ class UIManager {
         // Arrows
         this.arrowCount.textContent = player.arrows;
 
+        // Health potions
+        const potionEl = document.getElementById("potion-count");
+        if (potionEl) {
+            potionEl.textContent = player.healthPotions + player.greaterHealthPotions;
+        }
+
         // Weapon & Armor
         const weapon = player.getWeapon();
         const bow = player.getBow();
@@ -438,15 +444,22 @@ class UIManager {
             player.equipArmor(itemId);
             this.showNotification(`Purchased ${item.name}! (DEF +${isArmor.defense})`);
         } else if (isPotion) {
-            // Use potion immediately
             switch (isPotion.effect) {
-                case "heal":
-                    player.heal(isPotion.value);
-                    this.showNotification(`Used ${item.name}! +${isPotion.value} HP`);
+                case "health_potion":
+                    if (player.addHealthPotion("regular")) {
+                        this.showNotification(`${item.name} added to inventory!`);
+                    } else {
+                        this.showNotification("Potion inventory full!");
+                        player.gold += item.price; // refund
+                    }
                     break;
-                case "mana":
-                    player.mana = Math.min(player.maxMana, player.mana + isPotion.value);
-                    this.showNotification(`Used ${item.name}! +${isPotion.value} Mana`);
+                case "greater_health_potion":
+                    if (player.addHealthPotion("greater")) {
+                        this.showNotification(`${item.name} added to inventory!`);
+                    } else {
+                        this.showNotification("Potion inventory full!");
+                        player.gold += item.price;
+                    }
                     break;
                 case "shield":
                     player.shieldActive = true;
@@ -478,6 +491,48 @@ class UIManager {
         this.invWeapons.innerHTML = "<h3 style='color:#ffd700;width:100%;text-align:center;margin-bottom:8px;'>Weapons</h3>";
         this.invBows.innerHTML = "<h3 style='color:#cc8844;width:100%;text-align:center;margin-bottom:8px;'>Bows (Arrows: " + player.arrows + ")</h3>";
         this.invGems.innerHTML = "<h3 style='color:#4488ff;width:100%;text-align:center;margin-bottom:8px;'>Blue Gems: " + player.blueGems + " / 5</h3>";
+
+        // Health potions in inventory
+        if (player.healthPotions > 0 || player.greaterHealthPotions > 0) {
+            const potionSection = document.createElement("div");
+            potionSection.style.cssText = "width:100%;text-align:center;margin-bottom:8px;";
+            potionSection.innerHTML = "<h3 style='color:#44cc44;margin-bottom:4px;'>Potions</h3>";
+            if (player.healthPotions > 0) {
+                const btn = document.createElement("div");
+                btn.className = "inv-item";
+                btn.style.cursor = "pointer";
+                btn.style.borderColor = "#44cc44";
+                btn.innerHTML = `<span class="inv-item-icon">🧪</span><span class="inv-item-name">Health Potion x${player.healthPotions}</span>`;
+                btn.onclick = () => {
+                    const r = player.useHealthPotion();
+                    if (r) { this.showNotification(`Used Health Potion! +${r.healed} HP`); this.openInventory(player); }
+                };
+                potionSection.appendChild(btn);
+            }
+            if (player.greaterHealthPotions > 0) {
+                const btn = document.createElement("div");
+                btn.className = "inv-item";
+                btn.style.cursor = "pointer";
+                btn.style.borderColor = "#44cc44";
+                btn.innerHTML = `<span class="inv-item-icon">🧪</span><span class="inv-item-name">Greater Potion x${player.greaterHealthPotions}</span>`;
+                btn.onclick = () => {
+                    const old = player.greaterHealthPotions;
+                    const r = player.useHealthPotion();
+                    if (r) { this.showNotification(`Used Greater Potion! +${r.healed} HP`); this.openInventory(player); }
+                };
+                potionSection.appendChild(btn);
+            }
+            this.invGems.prepend(potionSection);
+        }
+
+        // Purple gems
+        const purpleCount = (player.purpleGemHealth ? 1 : 0) + (player.purpleGemAttack ? 1 : 0) + (player.purpleGemArmor ? 1 : 0);
+        if (purpleCount > 0) {
+            const purpleEl = document.createElement("div");
+            purpleEl.style.cssText = "color:#cc88ff;font-size:13px;text-align:center;margin-bottom:4px;";
+            purpleEl.textContent = `💜 Purple Gems: ${purpleCount} / 3`;
+            this.invGems.appendChild(purpleEl);
+        }
 
         // Show quest items
         if (player.hasMerlinWand) {
@@ -813,26 +868,7 @@ class UIManager {
         if (container) container.remove();
     }
 
-    // Mana bar rendering on canvas
-    renderManaBar(ctx, player) {
-        const barW = 120;
-        const barH = 8;
-        const barX = 12;
-        const barY = 34;
-
-        ctx.fillStyle = "#222";
-        ctx.fillRect(barX, barY, barW, barH);
-        ctx.fillStyle = "#4466cc";
-        ctx.fillRect(barX, barY, barW * (player.mana / player.maxMana), barH);
-        ctx.strokeStyle = "#666";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(barX, barY, barW, barH);
-
-        ctx.fillStyle = "#aaccff";
-        ctx.font = "8px monospace";
-        ctx.textAlign = "left";
-        ctx.fillText(`MP ${Math.ceil(player.mana)}/${player.maxMana}`, barX + 2, barY + 7);
-    }
+    // Removed mana bar - mana system no longer exists
 
     // Enchantment system
     openEnchant(player) {

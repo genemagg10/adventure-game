@@ -11,8 +11,6 @@ class Player {
         this.size = PLAYER_DEFAULTS.size;
         this.hp = PLAYER_DEFAULTS.maxHp;
         this.maxHp = PLAYER_DEFAULTS.maxHp;
-        this.mana = PLAYER_DEFAULTS.maxMana;
-        this.maxMana = PLAYER_DEFAULTS.maxMana;
         this.speed = PLAYER_DEFAULTS.speed;
         this.gold = 50;
         this.blueGems = 0;
@@ -80,6 +78,15 @@ class Player {
         this.hasDarkCrest = false;
         this.hasGauntlet = false; // Cave boss drop: +4 damage all weapons
 
+        // Purple gems from caves
+        this.purpleGemHealth = false;  // +30 max HP
+        this.purpleGemAttack = false;  // +6 damage
+        this.purpleGemArmor = false;   // +5 defense
+
+        // Health potion inventory
+        this.healthPotions = 0;        // regular potions (heal 40)
+        this.greaterHealthPotions = 0; // greater potions (heal 80)
+
         // Stats
         this.monstersKilled = 0;
     }
@@ -91,7 +98,8 @@ class Player {
         if (this.enchantments[this.currentWeapon]) dmg += ENCHANT_DAMAGE_BONUS;
         if (this.greenGemAttack) dmg += GREEN_GEM_ATTACK.bonus;
         if (this.hasMagicCharm) dmg += MAGIC_CHARM.damageBonus;
-        if (this.hasGauntlet) dmg += CAVE_GAUNTLET.damageBonus;
+        if (this.hasGauntlet) dmg += 4;
+        if (this.purpleGemAttack) dmg += PURPLE_GEMS.attack.bonus;
         if (dmg !== weapon.damage) return { ...weapon, damage: dmg };
         return weapon;
     }
@@ -144,6 +152,7 @@ class Player {
         const armor = ARMOR[this.currentArmor];
         let def = armor.defense;
         if (this.greenGemDefense) def += GREEN_GEM_DEFENSE.bonus;
+        if (this.purpleGemArmor) def += PURPLE_GEMS.armor.bonus;
         const hasEnchant = this.armorEnchantedId === this.currentArmor && this.armorEnchantment;
         if (def !== armor.defense || hasEnchant) {
             return { ...armor, defense: def, enchantment: hasEnchant ? this.armorEnchantment : undefined };
@@ -263,9 +272,6 @@ class Player {
         this.x = clamp(this.x, this.size, worldWidth * TILE_SIZE - this.size);
         this.y = clamp(this.y, this.size, worldHeight * TILE_SIZE - this.size);
 
-        // Mana regeneration
-        this.mana = Math.min(this.maxMana, this.mana + PLAYER_DEFAULTS.manaRegen * dt);
-
         // Invincibility timer
         if (this.invincible) {
             this.invincibleTimer -= dt;
@@ -332,12 +338,40 @@ class Player {
     useElement() {
         if (!this.activeElement) return null;
         const elem = ELEMENTS[this.activeElement];
-        if (this.mana < elem.manaCost) return null;
         if (this.elementCooldown > 0) return null;
 
-        this.mana -= elem.manaCost;
-        this.elementCooldown = 800;
+        this.elementCooldown = elem.cooldown || 1500;
         return this.activeElement;
+    }
+
+    useHealthPotion() {
+        // Use greater potions first if available
+        if (this.greaterHealthPotions > 0) {
+            if (this.hp >= this.maxHp) return null;
+            this.greaterHealthPotions--;
+            const healed = Math.min(80, this.maxHp - this.hp);
+            this.hp = Math.min(this.maxHp, this.hp + 80);
+            return { type: "greater", healed };
+        }
+        if (this.healthPotions > 0) {
+            if (this.hp >= this.maxHp) return null;
+            this.healthPotions--;
+            const healed = Math.min(40, this.maxHp - this.hp);
+            this.hp = Math.min(this.maxHp, this.hp + 40);
+            return { type: "regular", healed };
+        }
+        return null;
+    }
+
+    addHealthPotion(type) {
+        const total = this.healthPotions + this.greaterHealthPotions;
+        if (total >= HEALTH_POTION.maxStack) return false;
+        if (type === "greater") {
+            this.greaterHealthPotions++;
+        } else {
+            this.healthPotions++;
+        }
+        return true;
     }
 
     takeDamage(amount, fromX, fromY) {

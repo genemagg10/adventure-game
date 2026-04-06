@@ -39,17 +39,24 @@ class Game {
         this.greenKnightDefeated = false;
         this.greenlandsUnlocked = false;
 
-        // Cave system
+        // Cave system - 4 separate caves
         this.inCave = false;
-        this.caveWorld = null;
+        this.activeCaveId = null;
+        this.caveWorlds = {};       // id -> CaveWorld
         this.caveMonsters = [];
         this.caveBoss = null;
-        this.caveBossSpawned = false;
-        this.caveBossDefeated = false;
+        this.caveBossSpawned = {};  // id -> bool
+        this.caveBossDefeated = {}; // id -> bool
+        this.caveTreasureCollected = {}; // id -> bool
         this.caveMonsterSpawnTimer = 0;
         this.nearCaveEntrance = null;
         this.nearCaveExit = null;
         this.savedSurfacePos = null;
+
+        // Fountain of Youth
+        this.nearFountain = false;
+        this.fountainCooldownUntil = 0;
+        this.fountainRiddleState = null; // { riddles, currentIndex, onComplete }
 
         // Camera
         this.camera = { x: 0, y: 0 };
@@ -105,6 +112,7 @@ class Game {
             "KeyQ": "element",
             "KeyR": "shoot",
             "KeyI": "inventory",
+            "KeyT": "potion",
             "Digit1": "elem1",
             "Digit2": "elem2",
             "Digit3": "elem3",
@@ -166,18 +174,27 @@ class Game {
         this.greenKnightDefeated = false;
         this.greenlandsUnlocked = false;
 
-        // Cave system
+        // Cave system - 4 separate caves
         this.inCave = false;
-        this.caveWorld = new CaveWorld();
+        this.activeCaveId = null;
+        this.caveWorlds = {};
+        for (const entrance of CAVE_ENTRANCES) {
+            this.caveWorlds[entrance.id] = new CaveWorld(entrance.id);
+        }
         this.caveMonsters = [];
         this.caveBoss = null;
-        this.caveBossSpawned = false;
-        this.caveBossDefeated = false;
+        this.caveBossSpawned = {};
+        this.caveBossDefeated = {};
+        this.caveTreasureCollected = {};
         this.caveMonsterSpawnTimer = 0;
         this.nearCaveEntrance = null;
         this.nearCaveExit = null;
         this.savedSurfacePos = null;
-        this.spawnInitialCaveMonsters();
+
+        // Fountain of Youth
+        this.nearFountain = false;
+        this.fountainCooldownUntil = 0;
+        this.fountainRiddleState = null;
 
         this.ui.showHud();
         this.running = true;
@@ -383,7 +400,8 @@ class Game {
         }
 
         // Active world/monsters/boss references based on cave state
-        const activeWorld = this.inCave ? this.caveWorld : this.world;
+        const activeCave = this.inCave ? this.caveWorlds[this.activeCaveId] : null;
+        const activeWorld = activeCave || this.world;
         const activeMonsters = this.inCave ? this.caveMonsters : this.monsters;
         const activeBoss = this.inCave ? this.caveBoss : this.boss;
         const activeGreenKnight = this.inCave ? null : this.greenKnight;
@@ -429,6 +447,31 @@ class Game {
                         this.onEntityKilled(r.target, r.isBoss);
                     }
                 }
+                // Check if element clears a cave obstacle
+                if (!this.inCave) {
+                    for (const entrance of this.world.caveEntrances) {
+                        if (entrance.cleared) continue;
+                        if (dist(this.player.x, this.player.y, entrance.worldX, entrance.worldY) < 100) {
+                            const ce = CAVE_ENTRANCES.find(e => e.id === entrance.id);
+                            if (ce && ce.element === elemUsed) {
+                                this.clearCaveObstacle(entrance.id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Use health potion (T key or touch button)
+        if (this.keyJustPressed.potion) {
+            const result = this.player.useHealthPotion();
+            if (result) {
+                this.sound.goldCollect();
+                this.ui.showNotification(`Used ${result.type === "greater" ? "Greater " : ""}Health Potion! +${result.healed} HP`);
+            } else if (this.player.healthPotions + this.player.greaterHealthPotions === 0) {
+                this.ui.showNotification("No health potions!");
+            } else {
+                this.ui.showNotification("Health is full!");
             }
         }
 
@@ -461,9 +504,9 @@ class Game {
             const prevSpinning = this.caveBoss.spinning;
             const prevProjCount = this.caveBoss.projectiles.length;
             const prevPlayerHp = this.player.hp;
-            this.caveBoss.update(dt, this.player, this.caveWorld);
+            this.caveBoss.update(dt, this.player, activeCave);
             if (this.caveBoss.alive) {
-                this.ui.showBossHealth(this.caveBoss, CAVE_BOSS.name);
+                this.ui.showBossHealth(this.caveBoss, this.caveBoss.name || "Cave Boss");
                 if (!prevCharging && this.caveBoss.charging) this.sound.bossCharge();
                 if (!prevSpinning && this.caveBoss.spinning) this.sound.bossSpin();
                 if (this.caveBoss.projectiles.length > prevProjCount) this.sound.bossProjectile();
@@ -560,6 +603,25 @@ class Game {
         // Update burning trees (damage nearby monsters/boss) - surface only
         if (!this.inCave) this.updateBurningTrees(dt);
 
+        // Eternal flame damage (SE cave entrance obstacle)
+        if (!this.inCave) {
+            const seCave = this.world.caveEntrances.find(e => e.id === 1);
+            if (seCave && !seCave.cleared) {
+                const playerTile = worldToTile(this.player.x, this.player.y);
+                if (playerTile.x >= seCave.x - 3 && playerTile.x <= seCave.x + 3 &&
+                    playerTile.y >= seCave.y - 3 && playerTile.y <= seCave.y + 3 &&
+                    this.world.tiles[playerTile.y] && this.world.tiles[playerTile.y][playerTile.x] === TILE.LAVA) {
+                    if (this.player.takeDamage(ETERNAL_FLAME_DAMAGE, this.player.x, this.player.y)) {
+                        // Knockback away from entrance
+                        const norm = normalize(this.player.x - seCave.worldX, this.player.y - seCave.worldY);
+                        this.player.knockbackVx = norm.x * ETERNAL_FLAME_KNOCKBACK;
+                        this.player.knockbackVy = norm.y * ETERNAL_FLAME_KNOCKBACK;
+                        this.ui.showNotification("The eternal flame burns you!");
+                    }
+                }
+            }
+        }
+
         // Check proximity for interactions
         this.checkCaveProximity();
         if (!this.inCave) {
@@ -613,9 +675,13 @@ class Game {
         }
 
         // Check cave boss trigger
-        if (this.inCave && !this.caveBossSpawned && !this.caveBossDefeated) {
+        if (this.inCave) {
             this.checkCaveBossTrigger();
+            this.checkCaveTreasure();
         }
+
+        // Check fountain proximity
+        this.checkFountainProximity();
 
         // Update HUD
         this.ui.updateHud(this.player);
@@ -623,18 +689,29 @@ class Game {
 
     onEntityKilled(entity, isBoss) {
         // Cave Boss killed
-        if (isBoss && entity === this.caveBoss) {
-            this.caveBossDefeated = true;
+        if (isBoss && entity === this.caveBoss && this.inCave) {
+            const caveId = this.activeCaveId;
+            this.caveBossDefeated[caveId] = true;
             this.ui.hideBossHealth();
             this.sound.bossDefeat();
-            // Drop Gauntlet of Might
-            this.player.hasGauntlet = true;
+            const caveWorld = this.caveWorlds[caveId];
             setTimeout(() => {
                 this.sound.victoryFanfare();
-                this.ui.showNotification(`${CAVE_GAUNTLET.icon} ${CAVE_GAUNTLET.name} obtained! (+${CAVE_GAUNTLET.damageBonus} DMG all weapons)`);
-                this.ui.showDialog(`The Stone Warden crumbles and drops a powerful gauntlet!`, () => {
-                    this.ui.showDialog(`The ${CAVE_GAUNTLET.name} empowers all your weapons with +${CAVE_GAUNTLET.damageBonus} attack damage!`);
-                });
+                if (caveWorld.difficulty === 3) {
+                    // NW cave boss drops purple gem of attack
+                    this.player.purpleGemAttack = true;
+                    this.ui.showNotification(`${PURPLE_GEMS.attack.icon} ${PURPLE_GEMS.attack.name} obtained! (+${PURPLE_GEMS.attack.bonus} DMG)`);
+                    this.ui.showDialog(`The boss crumbles and drops the ${PURPLE_GEMS.attack.name}!`, () => {
+                        this.ui.showDialog(`All your weapons deal +${PURPLE_GEMS.attack.bonus} additional damage!`);
+                    });
+                } else if (caveWorld.difficulty === 4) {
+                    // NE cave boss drops purple gem of armor
+                    this.player.purpleGemArmor = true;
+                    this.ui.showNotification(`${PURPLE_GEMS.armor.icon} ${PURPLE_GEMS.armor.name} obtained! (+${PURPLE_GEMS.armor.bonus} DEF)`);
+                    this.ui.showDialog(`The boss crumbles and drops the ${PURPLE_GEMS.armor.name}!`, () => {
+                        this.ui.showDialog(`All your armor gains +${PURPLE_GEMS.armor.bonus} additional defense!`);
+                    });
+                }
             }, 2000);
             return;
         }
@@ -859,6 +936,12 @@ class Game {
 
         // Don't allow surface interactions while in cave
         if (this.inCave) return;
+
+        // Fountain of Youth interaction
+        if (this.nearFountain) {
+            this.startFountainRiddles();
+            return;
+        }
 
         // Shop interaction
         if (this.nearShop) {
@@ -1137,46 +1220,28 @@ class Game {
     // Cave System Methods
     // ============================================
 
-    spawnInitialCaveMonsters() {
+    spawnCaveMonstersForCave(caveWorld) {
         this.caveMonsters = [];
         for (const [type, def] of Object.entries(CAVE_MONSTER_TYPES)) {
-            const count = randInt(4, 8);
+            const count = randInt(3, 6);
             for (let i = 0; i < count; i++) {
                 let attempts = 0;
                 while (attempts < 30) {
                     const tx = randInt(5, CAVE_W - 6);
                     const ty = randInt(5, CAVE_H - 6);
-                    if (!this.caveWorld.isSolid(tx, ty)) {
-                        // Don't spawn on exit tiles
-                        let onExit = false;
-                        for (const exit of this.caveWorld.exits) {
-                            if (Math.abs(tx - exit.x) <= 3 && Math.abs(ty - exit.y) <= 3) {
-                                onExit = true;
-                                break;
-                            }
-                        }
-                        if (!onExit) {
-                            const pos = tileToWorld(tx, ty);
-                            const m = new Monster("goblin", pos.x, pos.y);
-                            m.type = type;
-                            m.name = def.name;
-                            m.hp = def.hp;
-                            m.maxHp = def.hp;
-                            m.damage = def.damage;
-                            m.speed = def.speed;
-                            m.xp = def.xp;
-                            m.goldDrop = def.goldDrop;
-                            m.color = def.color;
-                            m.size = def.size;
-                            m.weaponDrop = def.weaponDrop;
-                            m.weaponDropChance = def.weaponDropChance || 0;
-                            m.gemDrop = def.gemDrop;
-                            m.armorDrop = def.armorDrop;
-                            m.armorDropChance = def.armorDropChance || 0;
-                            m.isCaveMonster = true;
-                            this.caveMonsters.push(m);
-                            break;
-                        }
+                    if (!caveWorld.isSolid(tx, ty)) {
+                        const exit = caveWorld.exit;
+                        if (exit && Math.abs(tx - exit.x) <= 3 && Math.abs(ty - exit.y) <= 3) { attempts++; continue; }
+                        const pos = tileToWorld(tx, ty);
+                        const m = new Monster("goblin", pos.x, pos.y);
+                        m.type = type; m.name = def.name; m.hp = def.hp; m.maxHp = def.hp;
+                        m.damage = def.damage; m.speed = def.speed; m.xp = def.xp;
+                        m.goldDrop = def.goldDrop; m.color = def.color; m.size = def.size;
+                        m.weaponDrop = def.weaponDrop; m.weaponDropChance = def.weaponDropChance || 0;
+                        m.gemDrop = def.gemDrop; m.armorDrop = def.armorDrop;
+                        m.armorDropChance = def.armorDropChance || 0; m.isCaveMonster = true;
+                        this.caveMonsters.push(m);
+                        break;
                     }
                     attempts++;
                 }
@@ -1185,77 +1250,86 @@ class Game {
     }
 
     spawnCaveMonsters(dt) {
+        if (!this.inCave) return;
         this.caveMonsterSpawnTimer += dt;
         if (this.caveMonsterSpawnTimer < MONSTER_SPAWN_INTERVAL) return;
         this.caveMonsterSpawnTimer = 0;
 
         const aliveCount = this.caveMonsters.filter(m => m.alive).length;
-        if (aliveCount >= 30) return; // max cave monsters
+        if (aliveCount >= 20) return;
+
+        const caveWorld = this.caveWorlds[this.activeCaveId];
+        if (!caveWorld) return;
 
         const types = Object.keys(CAVE_MONSTER_TYPES);
         const type = choose(types);
         const def = CAVE_MONSTER_TYPES[type];
-
-        if (Math.random() > MONSTER_SPAWN_RATE * 2) return; // slightly higher spawn rate
+        if (Math.random() > MONSTER_SPAWN_RATE * 2) return;
 
         let attempts = 0;
         while (attempts < 15) {
             const tx = randInt(5, CAVE_W - 6);
             const ty = randInt(5, CAVE_H - 6);
-            if (!this.caveWorld.isSolid(tx, ty)) {
+            if (!caveWorld.isSolid(tx, ty)) {
                 const pos = tileToWorld(tx, ty);
-                if (dist(pos.x, pos.y, this.player.x, this.player.y) > 300) {
+                if (dist(pos.x, pos.y, this.player.x, this.player.y) > 200) {
                     const m = new Monster("goblin", pos.x, pos.y);
-                    m.type = type;
-                    m.name = def.name;
-                    m.hp = def.hp;
-                    m.maxHp = def.hp;
-                    m.damage = def.damage;
-                    m.speed = def.speed;
-                    m.xp = def.xp;
-                    m.goldDrop = def.goldDrop;
-                    m.color = def.color;
-                    m.size = def.size;
-                    m.weaponDrop = def.weaponDrop;
-                    m.weaponDropChance = def.weaponDropChance || 0;
-                    m.gemDrop = def.gemDrop;
-                    m.armorDrop = def.armorDrop;
-                    m.armorDropChance = def.armorDropChance || 0;
-                    m.isCaveMonster = true;
+                    m.type = type; m.name = def.name; m.hp = def.hp; m.maxHp = def.hp;
+                    m.damage = def.damage; m.speed = def.speed; m.xp = def.xp;
+                    m.goldDrop = def.goldDrop; m.color = def.color; m.size = def.size;
+                    m.weaponDrop = def.weaponDrop; m.weaponDropChance = def.weaponDropChance || 0;
+                    m.gemDrop = def.gemDrop; m.armorDrop = def.armorDrop;
+                    m.armorDropChance = def.armorDropChance || 0; m.isCaveMonster = true;
                     this.caveMonsters.push(m);
                     break;
                 }
             }
             attempts++;
         }
-
-        // Cleanup dead cave monsters
         this.caveMonsters = this.caveMonsters.filter(m => m.alive || m.deathTimer > 0);
     }
 
     enterCave(entrance) {
-        this.inCave = true;
-        this.savedSurfacePos = { x: this.player.x, y: this.player.y };
-
-        // Find the corresponding cave exit
-        const caveExit = this.caveWorld.exits.find(e => e.id === entrance.id);
-        if (caveExit) {
-            this.player.x = caveExit.worldX;
-            this.player.y = caveExit.worldY + TILE_SIZE;
+        // Check if obstacle is cleared
+        const mainEntrance = this.world.caveEntrances.find(e => e.id === entrance.id);
+        if (mainEntrance && !mainEntrance.cleared) {
+            const ce = CAVE_ENTRANCES.find(e => e.id === entrance.id);
+            this.ui.showNotification(`This entrance is blocked by ${ce.obstacle}! Use ${ELEMENTS[ce.element].name} to clear it.`);
+            return;
         }
 
+        this.inCave = true;
+        this.activeCaveId = entrance.id;
+        this.savedSurfacePos = { x: this.player.x, y: this.player.y };
+
+        const caveWorld = this.caveWorlds[entrance.id];
+        if (caveWorld.exit) {
+            this.player.x = caveWorld.exit.worldX;
+            this.player.y = caveWorld.exit.worldY - TILE_SIZE;
+        }
+
+        // Spawn monsters for this cave
+        this.spawnCaveMonstersForCave(caveWorld);
+        this.caveBoss = null;
+
+        const ce = CAVE_ENTRANCES.find(e => e.id === entrance.id);
         this.currentZone = "cave";
         this.zoneDisplayTimer = 3000;
         this.sound.menuSelect();
-        this.ui.showNotification("Entered the caves...");
-        this.ui.showDialog("You descend into the dark caves beneath the land. The air is cold and damp. Dangerous creatures lurk in the shadows...");
+        this.ui.showNotification(`Entered ${ce.label}...`);
+        if (ce.difficulty <= 2) {
+            this.ui.showDialog("You descend into a dark maze. Find the treasure at the center!");
+        } else {
+            this.ui.showDialog("You descend into a dark cave. A powerful creature guards something precious within...");
+        }
     }
 
-    exitCave(exit) {
+    exitCave(exitData) {
         this.inCave = false;
+        this.activeCaveId = null;
+        this.caveBoss = null;
 
-        // Find corresponding main map entrance
-        const mainEntrance = this.world.caveEntrances.find(e => e.id === exit.id);
+        const mainEntrance = this.world.caveEntrances.find(e => e.id === exitData.id);
         if (mainEntrance) {
             this.player.x = mainEntrance.worldX;
             this.player.y = mainEntrance.worldY + TILE_SIZE;
@@ -1267,16 +1341,18 @@ class Game {
 
     checkCaveProximity() {
         if (this.inCave) {
-            // Check proximity to cave exits
             this.nearCaveExit = null;
-            for (const exit of this.caveWorld.exits) {
-                if (dist(this.player.x, this.player.y, exit.worldX, exit.worldY) < CAVE_ENTRANCE_RANGE) {
-                    this.nearCaveExit = exit;
-                    break;
-                }
+            const caveWorld = this.caveWorlds[this.activeCaveId];
+            if (!caveWorld) return;
+            // Check main exit
+            if (caveWorld.exit && dist(this.player.x, this.player.y, caveWorld.exit.worldX, caveWorld.exit.worldY) < CAVE_ENTRANCE_RANGE) {
+                this.nearCaveExit = caveWorld.exit;
+            }
+            // Check center exit (maze caves)
+            if (!this.nearCaveExit && caveWorld.centerExit && dist(this.player.x, this.player.y, caveWorld.centerExit.worldX, caveWorld.centerExit.worldY) < CAVE_ENTRANCE_RANGE) {
+                this.nearCaveExit = caveWorld.centerExit;
             }
         } else {
-            // Check proximity to cave entrances on surface
             this.nearCaveEntrance = null;
             for (const entrance of this.world.caveEntrances) {
                 if (dist(this.player.x, this.player.y, entrance.worldX, entrance.worldY) < CAVE_ENTRANCE_RANGE) {
@@ -1288,25 +1364,122 @@ class Game {
     }
 
     checkCaveBossTrigger() {
-        if (this.caveBossDefeated || this.caveBossSpawned) return;
-        const bossPos = tileToWorld(CAVE_BOSS.spawnTile.x, CAVE_BOSS.spawnTile.y);
+        if (!this.inCave) return;
+        const caveId = this.activeCaveId;
+        const caveWorld = this.caveWorlds[caveId];
+        if (!caveWorld || !caveWorld.bossSpawnTile) return;
+        if (this.caveBossDefeated[caveId] || this.caveBossSpawned[caveId]) return;
+
+        const bossPos = tileToWorld(caveWorld.bossSpawnTile.x, caveWorld.bossSpawnTile.y);
         if (dist(this.player.x, this.player.y, bossPos.x, bossPos.y) < 200) {
-            this.caveBossSpawned = true;
+            const bossConfig = caveWorld.difficulty === 4 ? CAVE_BOSS_4 : CAVE_BOSS_3;
+            this.caveBossSpawned[caveId] = true;
             this.caveBoss = new Boss(bossPos.x, bossPos.y);
-            // Override with cave boss stats
-            this.caveBoss.name = CAVE_BOSS.name;
-            this.caveBoss.maxHp = CAVE_BOSS.hp;
-            this.caveBoss.hp = CAVE_BOSS.hp;
-            this.caveBoss.damage = CAVE_BOSS.damage;
-            this.caveBoss.baseSpeed = CAVE_BOSS.speed;
-            this.caveBoss.size = CAVE_BOSS.size;
-            this.caveBoss.color = CAVE_BOSS.color;
-            this.caveBoss.phases = CAVE_BOSS.phases;
+            this.caveBoss.name = bossConfig.name;
+            this.caveBoss.maxHp = bossConfig.hp;
+            this.caveBoss.hp = bossConfig.hp;
+            this.caveBoss.damage = bossConfig.damage;
+            this.caveBoss.baseSpeed = bossConfig.speed;
+            this.caveBoss.speed = bossConfig.speed;
+            this.caveBoss.size = bossConfig.size;
+            this.caveBoss.color = bossConfig.color;
+            this.caveBoss.phases = bossConfig.phases;
             this.caveBoss.spawn();
             this.sound.bossRoar();
-            this.ui.showDialog("The ground shakes as a massive stone figure rises from the cave floor...");
-            this.ui.showDialog("\"I am The Stone Warden! None shall plunder my domain!\"");
+            this.ui.showDialog(`The ground shakes as ${bossConfig.name} rises from the cave floor...`);
+            this.ui.showDialog(`"None shall plunder my domain!"`);
         }
+    }
+
+    checkCaveTreasure() {
+        if (!this.inCave) return;
+        const caveId = this.activeCaveId;
+        const caveWorld = this.caveWorlds[caveId];
+        if (!caveWorld || !caveWorld.treasurePos) return;
+        if (this.caveTreasureCollected[caveId]) return;
+
+        if (dist(this.player.x, this.player.y, caveWorld.treasurePos.x, caveWorld.treasurePos.y) < 40) {
+            this.caveTreasureCollected[caveId] = true;
+            this.sound.gemCollect();
+            const ce = CAVE_ENTRANCES.find(e => e.id === caveId);
+            if (ce.difficulty === 1) {
+                // SW cave: coins + health potion
+                const coins = randInt(50, 100);
+                this.player.gold += coins;
+                this.player.addHealthPotion("regular");
+                this.player.addHealthPotion("regular");
+                this.ui.showNotification(`Found ${coins} gold and 2 Health Potions!`);
+                this.ui.showDialog("You found a treasure chest in the center of the maze!");
+            } else if (ce.difficulty === 2) {
+                // SE cave: purple gem (health) + health potion
+                this.player.purpleGemHealth = true;
+                this.player.maxHp += PURPLE_GEMS.health.bonus;
+                this.player.hp = Math.min(this.player.hp + PURPLE_GEMS.health.bonus, this.player.maxHp);
+                this.player.addHealthPotion("regular");
+                this.ui.showNotification(`${PURPLE_GEMS.health.icon} ${PURPLE_GEMS.health.name} found! +${PURPLE_GEMS.health.bonus} Max HP`);
+                this.ui.showDialog(`The ${PURPLE_GEMS.health.name} pulses with healing energy! Your maximum health has increased!`);
+            }
+        }
+    }
+
+    clearCaveObstacle(entranceId) {
+        this.world.clearCaveObstacle(entranceId);
+        const ce = CAVE_ENTRANCES.find(e => e.id === entranceId);
+        this.sound.gemCollect();
+        this.ui.showNotification(`${ce.label} entrance cleared!`);
+    }
+
+    checkFountainProximity() {
+        if (this.inCave || !this.world.fountainOfYouth) return;
+        const f = this.world.fountainOfYouth;
+        this.nearFountain = dist(this.player.x, this.player.y, f.x, f.y) < 50;
+    }
+
+    startFountainRiddles() {
+        const now = Date.now();
+        if (this.fountainCooldownUntil > now) {
+            const remaining = Math.ceil((this.fountainCooldownUntil - now) / 1000);
+            this.ui.showNotification(`The fountain is silent. Try again in ${remaining}s.`);
+            return;
+        }
+
+        // Pick 3 random riddles
+        const shuffled = [...FOUNTAIN_RIDDLES].sort(() => Math.random() - 0.5);
+        const riddles = shuffled.slice(0, FOUNTAIN_OF_YOUTH.riddleCount);
+
+        this.fountainRiddleState = { riddles, currentIndex: 0, correct: 0 };
+        this.askNextFountainRiddle();
+    }
+
+    askNextFountainRiddle() {
+        const state = this.fountainRiddleState;
+        if (!state) return;
+
+        if (state.currentIndex >= state.riddles.length) {
+            // All riddles answered correctly!
+            this.fountainRiddleState = null;
+            this.player.hp = this.player.maxHp;
+            for (let i = 0; i < FOUNTAIN_OF_YOUTH.potionsGiven; i++) {
+                this.player.addHealthPotion("regular");
+            }
+            this.sound.excaliburReveal();
+            this.ui.showNotification(`Health restored! +${FOUNTAIN_OF_YOUTH.potionsGiven} Health Potions!`);
+            this.ui.showDialog("The Fountain of Youth glows with radiant light! You feel completely rejuvenated!");
+            return;
+        }
+
+        const riddle = state.riddles[state.currentIndex];
+        this.ui.openRiddle(riddle, () => {
+            // Correct
+            state.currentIndex++;
+            state.correct++;
+            setTimeout(() => this.askNextFountainRiddle(), 500);
+        }, () => {
+            // Wrong
+            this.fountainRiddleState = null;
+            this.fountainCooldownUntil = Date.now() + FOUNTAIN_OF_YOUTH.wrongAnswerCooldown;
+            this.ui.showNotification("The fountain goes quiet. Return in 3 minutes.");
+        });
     }
 
     checkBossTrigger() {
@@ -1380,8 +1553,8 @@ class Game {
         if (this.state !== "playing" && this.state !== "gameover") return;
 
         // Render world (cave or surface)
-        if (this.inCave) {
-            this.caveWorld.render(ctx, this.camera, this.time);
+        if (this.inCave && this.caveWorlds[this.activeCaveId]) {
+            this.caveWorlds[this.activeCaveId].render(ctx, this.camera, this.time);
         } else {
             this.world.render(ctx, this.camera, this.time);
         }
@@ -1434,8 +1607,25 @@ class Game {
             }
         }
 
-        // Mana bar
-        this.ui.renderManaBar(ctx, this.player);
+        // Render fountain of youth marker when nearby
+        if (!this.inCave && this.world.fountainOfYouth) {
+            const f = this.world.fountainOfYouth;
+            const fx = f.x - this.camera.x;
+            const fy = f.y - this.camera.y;
+            if (fx > -30 && fx < CANVAS_W + 30 && fy > -30 && fy < CANVAS_H + 30) {
+                const glow = Math.sin(this.time * 0.003) * 0.2 + 0.5;
+                ctx.save();
+                ctx.fillStyle = `rgba(100, 200, 255, ${glow})`;
+                ctx.beginPath();
+                ctx.arc(fx, fy, 18, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#fff";
+                ctx.font = "16px monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("⛲", fx, fy + 5);
+                ctx.restore();
+            }
+        }
 
         // Interaction prompts
         const isMobile = this.touchControls.active;
@@ -1451,23 +1641,29 @@ class Game {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to speak with Merlin" : "Press E to speak with Merlin");
         } else if (this.nearMerlinHut) {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to enter hut" : "Press E to read ancient lore");
+        } else if (this.nearFountain) {
+            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT for Fountain" : "Press E for Fountain of Youth");
+        }
+
+        // Render cave exit labels
+        if (this.inCave && this.caveWorlds[this.activeCaveId]) {
+            this.caveWorlds[this.activeCaveId].renderExitLabels(ctx, this.camera, this.time);
         }
 
         // Render minimap
-        if (this.inCave) {
-            this.caveWorld.renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss);
+        if (this.inCave && this.caveWorlds[this.activeCaveId]) {
+            this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss);
         } else {
             this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss, this.greenKnight);
         }
 
         // Render world map if open
         if (this.ui.isMapOpen()) {
-            if (this.inCave) {
-                this.caveWorld.renderWorldMap(this.worldmapCtx, this.player);
+            if (this.inCave && this.caveWorlds[this.activeCaveId]) {
+                this.caveWorlds[this.activeCaveId].renderWorldMap(this.worldmapCtx, this.player);
             } else {
                 this.world.renderWorldMap(this.worldmapCtx, this.player);
             }
-            // Update hint for touch mode
             const mapHint = document.querySelector(".map-hint");
             if (mapHint) {
                 mapHint.textContent = isMobile ? "Tap MAP to close" : "Press M to close";
@@ -1475,16 +1671,19 @@ class Game {
         }
 
         // Cave boss approaching warning
-        if (this.inCave && !this.caveBossSpawned && !this.caveBossDefeated) {
-            const bossPos = tileToWorld(CAVE_BOSS.spawnTile.x, CAVE_BOSS.spawnTile.y);
-            const d = dist(this.player.x, this.player.y, bossPos.x, bossPos.y);
-            if (d < 400 && d > 200) {
-                ctx.save();
-                ctx.fillStyle = `rgba(150, 100, 200, ${0.3 + Math.sin(this.time * 0.005) * 0.15})`;
-                ctx.font = "bold 18px monospace";
-                ctx.textAlign = "center";
-                ctx.fillText("The ground trembles with ancient power...", CANVAS_W / 2, 80);
-                ctx.restore();
+        if (this.inCave && this.caveWorlds[this.activeCaveId]) {
+            const caveWorld = this.caveWorlds[this.activeCaveId];
+            if (caveWorld.bossSpawnTile && !this.caveBossSpawned[this.activeCaveId] && !this.caveBossDefeated[this.activeCaveId]) {
+                const bossPos = tileToWorld(caveWorld.bossSpawnTile.x, caveWorld.bossSpawnTile.y);
+                const d = dist(this.player.x, this.player.y, bossPos.x, bossPos.y);
+                if (d < 400 && d > 200) {
+                    ctx.save();
+                    ctx.fillStyle = `rgba(150, 100, 200, ${0.3 + Math.sin(this.time * 0.005) * 0.15})`;
+                    ctx.font = "bold 18px monospace";
+                    ctx.textAlign = "center";
+                    ctx.fillText("The ground trembles with ancient power...", CANVAS_W / 2, 80);
+                    ctx.restore();
+                }
             }
         }
 

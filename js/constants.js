@@ -107,11 +107,11 @@ const ARMOR = {
 
 // Elements / Gem powers
 const ELEMENTS = {
-    fire: { name: "Fire", icon: "🔥", color: "#ff4400", gemColor: "#ff6644", damage: 25, manaCost: 20 },
-    water: { name: "Water", icon: "💧", color: "#2288ff", gemColor: "#44aaff", damage: 15, manaCost: 15, heal: 20 },
-    ice: { name: "Ice", icon: "❄️", color: "#88ddff", gemColor: "#aaeeff", damage: 20, manaCost: 18, slowDuration: 3000 },
-    lightning: { name: "Lightning", icon: "⚡", color: "#ffee00", gemColor: "#ffff44", damage: 35, manaCost: 30 },
-    earth: { name: "Earth", icon: "🪨", color: "#8b6914", gemColor: "#aa8833", damage: 22, manaCost: 22, stunDuration: 2000 },
+    fire: { name: "Fire", icon: "🔥", color: "#ff4400", gemColor: "#ff6644", damage: 25, cooldown: 2000 },
+    water: { name: "Water", icon: "💧", color: "#2288ff", gemColor: "#44aaff", damage: 15, cooldown: 1500, heal: 20 },
+    ice: { name: "Ice", icon: "❄️", color: "#88ddff", gemColor: "#aaeeff", damage: 20, cooldown: 1800, slowDuration: 3000 },
+    lightning: { name: "Lightning", icon: "⚡", color: "#ffee00", gemColor: "#ffff44", damage: 35, cooldown: 3000 },
+    earth: { name: "Earth", icon: "🪨", color: "#8b6914", gemColor: "#aa8833", damage: 22, cooldown: 2200, stunDuration: 2000 },
 };
 
 // Monster types
@@ -176,9 +176,8 @@ const BOSS = {
 
 // Shop items (includes weapons + potions)
 const SHOP_POTIONS = {
-    health_potion: { name: "Health Potion", icon: "🧪", price: 25, description: "Restores 40 HP", effect: "heal", value: 40 },
-    greater_health: { name: "Greater Potion", icon: "🧪", price: 60, description: "Restores 80 HP", effect: "heal", value: 80 },
-    mana_potion: { name: "Mana Crystal", icon: "🔮", price: 30, description: "Restores 30 mana", effect: "mana", value: 30 },
+    health_potion: { name: "Health Potion", icon: "🧪", price: 25, description: "Adds to inventory (heals 40 HP)", effect: "health_potion", value: 40 },
+    greater_health: { name: "Greater Potion", icon: "🧪", price: 60, description: "Adds to inventory (heals 80 HP)", effect: "greater_health_potion", value: 80 },
     shield_potion: { name: "Shield Rune", icon: "🛡️", price: 50, description: "Block next hit", effect: "shield", value: 1 },
     arrows_bundle: { name: "Arrow Bundle", icon: "🏹", price: 15, description: "10 arrows", effect: "arrows", value: 10 },
 };
@@ -187,9 +186,6 @@ const SHOP_POTIONS = {
 const PLAYER_DEFAULTS = {
     maxHp: 100,
     speed: 2.5,
-    mana: 100,
-    maxMana: 100,
-    manaRegen: 0.05,
     size: 14,
     iframes: 500,       // invincibility after being hit (ms)
     attackCooldown: 400, // base attack cooldown (ms)
@@ -202,9 +198,9 @@ const MONSTER_SPAWN_INTERVAL = 5000; // ms
 
 // Shop locations (tile coordinates)
 const SHOP_LOCATIONS = [
-    { x: 15, y: 60, name: "Camelot Armory", inventory: ["iron_sword", "mace", "spear", "hunters_bow", "leather_armor", "chain_mail", "health_potion", "mana_potion", "arrows_bundle"] },
+    { x: 15, y: 60, name: "Camelot Armory", inventory: ["iron_sword", "mace", "spear", "hunters_bow", "leather_armor", "chain_mail", "health_potion", "arrows_bundle"] },
     { x: 130, y: 20, name: "Desert Trader", inventory: ["battle_axe", "knights_blade", "longbow", "iron_plate", "knights_armor", "greater_health", "shield_potion", "arrows_bundle"] },
-    { x: 75, y: 70, name: "Swamp Witch", inventory: ["health_potion", "greater_health", "mana_potion", "shield_potion", "arrows_bundle"] },
+    { x: 75, y: 70, name: "Swamp Witch", inventory: ["health_potion", "greater_health", "shield_potion", "arrows_bundle"] },
 ];
 
 // Lady of the Lake (Excalibur encounter)
@@ -378,16 +374,31 @@ const GREEN_MONSTER_TYPES = {
 // Cave System Constants
 // ============================================
 
-// Cave world dimensions (same as main world)
-const CAVE_W = 200;
-const CAVE_H = 150;
+// Cave world dimensions for individual caves (smaller than main world)
+const CAVE_W = 80;
+const CAVE_H = 60;
 
-// Cave entrance locations on main map (tile coordinates, in each corner zone)
+// Cave entrances: each leads to its own separate cave
+// obstacle: what blocks the entrance, element: what clears it
+// difficulty: 1=easiest(maze+coins), 2=maze+gem, 3=boss+gem, 4=hardest boss+gem
 const CAVE_ENTRANCES = [
-    { id: 1, x: 150, y: 10,  label: "NE Cave", caveX: CAVE_W-11, caveY: 10 },          // Scorched Wastes (NE)
-    { id: 2, x: 10,  y: 120, label: "SW Cave", caveX: 10,        caveY: CAVE_H-11 },   // Ancient Ruins (SW)
-    { id: 3, x: 160, y: 140, label: "SE Cave", caveX: CAVE_W-11, caveY: CAVE_H-11 },   // The Darklands (SE)
+    { id: 0, x: 10,  y: 120, label: "SW Cave",  obstacle: "trees",        element: "fire",  difficulty: 1 },
+    { id: 1, x: 160, y: 140, label: "SE Cave",  obstacle: "eternal_flame", element: "water", difficulty: 2 },
+    { id: 2, x: 15,  y: 10,  label: "NW Cave",  obstacle: "water",        element: "ice",   difficulty: 3 },
+    { id: 3, x: 150, y: 10,  label: "NE Cave",  obstacle: "rocks",        element: "earth", difficulty: 4 },
 ];
+
+// Obstacle tile types used around cave entrances
+const CAVE_OBSTACLE_TILES = {
+    trees: TILE.TREE,
+    eternal_flame: TILE.LAVA,
+    water: TILE.WATER,
+    rocks: TILE.MOUNTAIN,
+};
+
+// Eternal flame damage when touched
+const ETERNAL_FLAME_DAMAGE = 20;
+const ETERNAL_FLAME_KNOCKBACK = 8;
 
 // Cave monster types (harder than surface monsters, better loot)
 const CAVE_MONSTER_TYPES = {
@@ -423,8 +434,8 @@ const CAVE_MONSTER_TYPES = {
     },
 };
 
-// Cave Boss
-const CAVE_BOSS = {
+// Cave 3 Boss (NW Cave - difficulty 3)
+const CAVE_BOSS_3 = {
     name: "The Stone Warden",
     hp: 600,
     damage: 28,
@@ -437,16 +448,74 @@ const CAVE_BOSS = {
         { hpThreshold: 0.4, speed: 1.4, attackRate: 800, pattern: "spin" },
         { hpThreshold: 0.15, speed: 1.7, attackRate: 600, pattern: "frenzy" },
     ],
-    spawnTile: { x: 100, y: 75 }, // center of cave world
 };
 
-// Gauntlet of Might - dropped by the Cave Boss
-const CAVE_GAUNTLET = {
-    name: "Gauntlet of Might",
-    icon: "🧤",
-    damageBonus: 4,
-    description: "Adds +4 damage to any weapon. Forged by the Stone Warden.",
+// Cave 4 Boss (NE Cave - difficulty 4, hardest)
+const CAVE_BOSS_4 = {
+    name: "The Crystal Titan",
+    hp: 800,
+    damage: 35,
+    speed: 1.0,
+    size: 30,
+    color: "#5a3a6a",
+    phases: [
+        { hpThreshold: 1.0, speed: 1.0, attackRate: 1300, pattern: "chase" },
+        { hpThreshold: 0.75, speed: 1.3, attackRate: 1000, pattern: "charge" },
+        { hpThreshold: 0.5, speed: 1.5, attackRate: 750, pattern: "spin" },
+        { hpThreshold: 0.25, speed: 1.8, attackRate: 550, pattern: "frenzy" },
+    ],
+};
+
+// Purple Gems - one in each of the 3 hardest caves
+const PURPLE_GEMS = {
+    health: { name: "Purple Gem of Vitality", icon: "💜", bonus: 30, description: "Permanently increases max HP by 30" },
+    attack: { name: "Purple Gem of Fury", icon: "💜", bonus: 6, description: "Adds +6 attack damage to all weapons" },
+    armor:  { name: "Purple Gem of Fortification", icon: "💜", bonus: 5, description: "Adds +5 defense to all armor" },
 };
 
 // Cave entrance interaction range
 const CAVE_ENTRANCE_RANGE = 40;
+
+// Cave obstacle clearing radius (tiles around entrance to clear)
+const CAVE_OBSTACLE_RADIUS = 3;
+
+// Health Potion inventory system
+const HEALTH_POTION = {
+    name: "Health Potion",
+    icon: "🧪",
+    healAmount: 40,
+    maxStack: 99,
+    shopPrice: 25,
+    greaterHealAmount: 80,
+    greaterShopPrice: 60,
+};
+
+// Fountain of Youth
+const FOUNTAIN_OF_YOUTH = {
+    healFull: true,
+    potionsGiven: 3,
+    riddleCount: 3,           // riddles to answer per visit
+    wrongAnswerCooldown: 180000, // 3 minutes in ms
+};
+
+// Fountain riddle pool (many riddles, 3 chosen randomly each visit)
+const FOUNTAIN_RIDDLES = [
+    { question: "I have cities, but no houses live there. I have mountains, but no trees grow there. I have water, but no fish swim there. What am I?", choices: ["A map", "A painting", "A dream", "A desert"], answer: 0 },
+    { question: "The more you take, the more you leave behind. What am I?", choices: ["Memories", "Footsteps", "Breath", "Time"], answer: 1 },
+    { question: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?", choices: ["A ghost", "An echo", "A shadow", "A whisper"], answer: 1 },
+    { question: "What has keys but no locks, space but no room, and you can enter but can't go inside?", choices: ["A riddle", "A keyboard", "A map", "A book"], answer: 1 },
+    { question: "I can be cracked, made, told, and played. What am I?", choices: ["A joke", "A code", "A song", "An egg"], answer: 0 },
+    { question: "What comes once in a minute, twice in a moment, but never in a thousand years?", choices: ["A heartbeat", "The letter M", "A blink", "A thought"], answer: 1 },
+    { question: "What has a head and a tail but no body?", choices: ["A snake", "A coin", "A needle", "A drum"], answer: 1 },
+    { question: "I am not alive, but I grow; I don't have lungs, but I need air; I don't have a mouth, but water kills me. What am I?", choices: ["A candle", "Fire", "A plant", "Rust"], answer: 1 },
+    { question: "What can travel around the world while staying in a corner?", choices: ["A spider", "A stamp", "The wind", "A shadow"], answer: 1 },
+    { question: "The person who makes it, sells it. The person who buys it never uses it. The person who uses it never knows they're using it. What is it?", choices: ["A coffin", "Medicine", "A gift", "A trap"], answer: 0 },
+    { question: "What disappears as soon as you say its name?", choices: ["A secret", "Silence", "A shadow", "Darkness"], answer: 1 },
+    { question: "I have branches, but no fruit, trunk, or leaves. What am I?", choices: ["A river", "A bank", "Lightning", "A family tree"], answer: 1 },
+    { question: "What can you hold in your left hand but not in your right?", choices: ["Your heart", "A secret", "Your right elbow", "Nothing"], answer: 2 },
+    { question: "What gets wetter the more it dries?", choices: ["A sponge", "A towel", "The sun", "A river"], answer: 1 },
+    { question: "What has many teeth but cannot bite?", choices: ["A comb", "A saw", "A zipper", "A gear"], answer: 0 },
+    { question: "What building has the most stories?", choices: ["A castle", "A library", "A skyscraper", "A museum"], answer: 1 },
+    { question: "What runs all around a yard without moving?", choices: ["A path", "A fence", "A shadow", "Wind"], answer: 1 },
+    { question: "I am tall when I am young, and short when I am old. What am I?", choices: ["A tree", "A candle", "A person", "A mountain"], answer: 1 },
+];

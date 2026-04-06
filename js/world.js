@@ -71,9 +71,13 @@ class World {
         };
         this.greenBossSpawnPoint = tileToWorld(gateX, GREEN_CASTLE_POS.y + 12 + 2);
 
-        // Place cave entrances at map corners
+        // Place cave entrances at map corners with obstacle rings
         this.caveEntrances = [];
         this.placeCaveEntrances();
+
+        // Fountain of Youth
+        this.fountainOfYouth = null;
+        this.placeFountainOfYouth(rng);
 
         // Add decorations
         this.generateDecorations(rng);
@@ -465,20 +469,28 @@ class World {
 
     placeCaveEntrances() {
         for (const entrance of CAVE_ENTRANCES) {
-            // Clear a larger 5x5 area around entrance
-            for (let dy = -3; dy <= 3; dy++) {
-                for (let dx = -3; dx <= 3; dx++) {
+            const obstacleTile = CAVE_OBSTACLE_TILES[entrance.obstacle];
+            // Place inner cave entrance tile
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
                     const tx = entrance.x + dx;
                     const ty = entrance.y + dy;
                     if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
-                        if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
-                            // Inner 3x3: cave entrance tiles
-                            this.tiles[ty][tx] = TILE.CAVE_ENTRANCE;
-                        } else if (Math.abs(dx) <= 2 && Math.abs(dy) <= 2) {
-                            // Ring: stone floor
-                            this.tiles[ty][tx] = TILE.STONE;
+                        this.tiles[ty][tx] = TILE.CAVE_ENTRANCE;
+                    }
+                }
+            }
+            // Place obstacle ring around entrance (radius 2-4)
+            for (let dy = -4; dy <= 4; dy++) {
+                for (let dx = -4; dx <= 4; dx++) {
+                    if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) continue; // skip inner
+                    const tx = entrance.x + dx;
+                    const ty = entrance.y + dy;
+                    if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
+                        if (Math.abs(dx) <= 3 && Math.abs(dy) <= 3) {
+                            this.tiles[ty][tx] = obstacleTile;
                         } else {
-                            // Outer: clear any trees/obstacles to path
+                            // Outer ring: path for approach
                             if (SOLID_TILES.has(this.tiles[ty][tx])) {
                                 this.tiles[ty][tx] = TILE.PATH;
                             }
@@ -486,24 +498,70 @@ class World {
                     }
                 }
             }
-            // Build a short path leading south from entrance for visibility
-            for (let py = 1; py <= 5; py++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    const tx = entrance.x + dx;
-                    const ty = entrance.y + 3 + py;
-                    if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
-                        if (this.tiles[ty][tx] !== TILE.CAVE_ENTRANCE) {
-                            this.tiles[ty][tx] = TILE.PATH;
-                        }
-                    }
-                }
-            }
             this.caveEntrances.push({
                 ...entrance,
+                cleared: false,
                 worldX: entrance.x * TILE_SIZE + TILE_SIZE / 2,
                 worldY: entrance.y * TILE_SIZE + TILE_SIZE / 2,
             });
         }
+    }
+
+    clearCaveObstacle(entranceId) {
+        const entrance = this.caveEntrances.find(e => e.id === entranceId);
+        if (!entrance || entrance.cleared) return;
+        entrance.cleared = true;
+        const ce = CAVE_ENTRANCES.find(e => e.id === entranceId);
+        // Remove obstacle tiles around entrance
+        for (let dy = -3; dy <= 3; dy++) {
+            for (let dx = -3; dx <= 3; dx++) {
+                if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) continue;
+                const tx = ce.x + dx;
+                const ty = ce.y + dy;
+                if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
+                    this.tiles[ty][tx] = TILE.STONE;
+                }
+            }
+        }
+    }
+
+    placeFountainOfYouth(rng) {
+        // Place fountain in a random non-solid location in the meadow/village area
+        let fx, fy;
+        let attempts = 0;
+        while (attempts < 100) {
+            fx = 5 + Math.floor(rng() * 30);
+            fy = 25 + Math.floor(rng() * 20);
+            if (!SOLID_TILES.has(this.tiles[fy][fx]) && this.tiles[fy][fx] !== TILE.CAVE_ENTRANCE) {
+                break;
+            }
+            attempts++;
+        }
+        // Place water tiles for the fountain (3x3)
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const tx = fx + dx;
+                const ty = fy + dy;
+                if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
+                    if (dx === 0 && dy === 0) {
+                        this.tiles[ty][tx] = TILE.BRIDGE; // walkable center
+                    } else {
+                        this.tiles[ty][tx] = TILE.WATER;
+                    }
+                }
+            }
+        }
+        // Path to approach
+        for (let py = 2; py <= 4; py++) {
+            const ty = fy + py;
+            if (ty < WORLD_H) this.tiles[ty][fx] = TILE.PATH;
+        }
+        this.fountainOfYouth = {
+            tileX: fx,
+            tileY: fy,
+            x: fx * TILE_SIZE + TILE_SIZE / 2,
+            y: fy * TILE_SIZE + TILE_SIZE / 2,
+        };
     }
 
     generateDecorations(rng) {
@@ -1600,19 +1658,25 @@ class World {
 }
 
 // ============================================
-// Cave World - Underground map system
+// Cave World - Individual cave instances
 // ============================================
 
 class CaveWorld {
-    constructor() {
+    constructor(entranceId) {
+        this.entranceId = entranceId;
+        const entrance = CAVE_ENTRANCES.find(e => e.id === entranceId);
+        this.difficulty = entrance ? entrance.difficulty : 1;
         this.tiles = [];
         this.decorations = [];
-        this.exits = []; // ladder positions corresponding to cave entrances
+        this.exit = null; // single exit back to surface
+        this.centerExit = null; // maze caves have an exit in the middle
+        this.bossSpawnTile = null;
+        this.treasurePos = null; // location of treasure/gem in center
         this.generate();
     }
 
     generate() {
-        const rng = seededRandom(77);
+        const rng = seededRandom(77 + this.entranceId * 31);
         this.tiles = new Array(CAVE_H);
 
         // Fill with cave walls
@@ -1623,27 +1687,131 @@ class CaveWorld {
             }
         }
 
-        // Carve out cave rooms and tunnels using cellular automata
-        const open = new Array(CAVE_H);
-        for (let y = 0; y < CAVE_H; y++) {
-            open[y] = new Array(CAVE_W).fill(false);
+        if (this.difficulty <= 2) {
+            this.generateMaze(rng);
+        } else {
+            this.generateBossCave(rng);
         }
 
-        // Seed random open cells (45% fill)
-        for (let y = 2; y < CAVE_H - 2; y++) {
-            for (let x = 2; x < CAVE_W - 2; x++) {
-                if (rng() < 0.45) {
-                    open[y][x] = true;
+        this.generateCaveDecorations(rng);
+    }
+
+    generateMaze(rng) {
+        // Maze: entrance at bottom, treasure/exit at center
+        const mazeW = Math.floor((CAVE_W - 4) / 2);
+        const mazeH = Math.floor((CAVE_H - 4) / 2);
+
+        // Initialize maze grid (true = wall)
+        const maze = new Array(mazeH * 2 + 1);
+        for (let y = 0; y < mazeH * 2 + 1; y++) {
+            maze[y] = new Array(mazeW * 2 + 1).fill(true);
+        }
+
+        // Recursive backtracker maze generation
+        const visited = new Array(mazeH);
+        for (let y = 0; y < mazeH; y++) visited[y] = new Array(mazeW).fill(false);
+
+        const stack = [];
+        const startCellX = 0, startCellY = mazeH - 1;
+        visited[startCellY][startCellX] = true;
+        maze[startCellY * 2 + 1][startCellX * 2 + 1] = false;
+        stack.push([startCellX, startCellY]);
+
+        while (stack.length > 0) {
+            const [cx, cy] = stack[stack.length - 1];
+            const neighbors = [];
+            if (cx > 0 && !visited[cy][cx - 1]) neighbors.push([-1, 0]);
+            if (cx < mazeW - 1 && !visited[cy][cx + 1]) neighbors.push([1, 0]);
+            if (cy > 0 && !visited[cy - 1][cx]) neighbors.push([0, -1]);
+            if (cy < mazeH - 1 && !visited[cy + 1][cx]) neighbors.push([0, 1]);
+
+            if (neighbors.length > 0) {
+                const [dx, dy] = neighbors[Math.floor(rng() * neighbors.length)];
+                const nx = cx + dx, ny = cy + dy;
+                visited[ny][nx] = true;
+                maze[cy * 2 + 1 + dy][cx * 2 + 1 + dx] = false; // remove wall between
+                maze[ny * 2 + 1][nx * 2 + 1] = false; // mark cell open
+                stack.push([nx, ny]);
+            } else {
+                stack.pop();
+            }
+        }
+
+        // Apply maze to cave tiles (offset by 2 to leave border)
+        for (let y = 0; y < mazeH * 2 + 1 && y + 2 < CAVE_H; y++) {
+            for (let x = 0; x < mazeW * 2 + 1 && x + 2 < CAVE_W; x++) {
+                if (!maze[y][x]) {
+                    this.tiles[y + 2][x + 2] = TILE.CAVE_FLOOR;
                 }
             }
         }
 
-        // Run cellular automata passes to create organic cave shapes
+        // Widen all corridors to 2-wide for playability
+        const tempTiles = new Array(CAVE_H);
+        for (let y = 0; y < CAVE_H; y++) {
+            tempTiles[y] = [...this.tiles[y]];
+        }
+        for (let y = 2; y < CAVE_H - 2; y++) {
+            for (let x = 2; x < CAVE_W - 2; x++) {
+                if (tempTiles[y][x] === TILE.CAVE_FLOOR) {
+                    if (this.tiles[y][x + 1] === TILE.CAVE_WALL && x + 1 < CAVE_W - 1) this.tiles[y][x + 1] = TILE.CAVE_FLOOR;
+                    if (this.tiles[y + 1] && this.tiles[y + 1][x] === TILE.CAVE_WALL && y + 1 < CAVE_H - 1) this.tiles[y + 1][x] = TILE.CAVE_FLOOR;
+                }
+            }
+        }
+
+        // Entrance at bottom-center
+        const exitX = Math.floor(CAVE_W / 2);
+        const exitY = CAVE_H - 4;
+        this.carveRoom(exitX, exitY, 3);
+        this.tiles[exitY][exitX] = TILE.CAVE_ENTRANCE;
+        this.exit = {
+            id: this.entranceId,
+            x: exitX, y: exitY,
+            worldX: exitX * TILE_SIZE + TILE_SIZE / 2,
+            worldY: exitY * TILE_SIZE + TILE_SIZE / 2,
+        };
+
+        // Connect entrance to maze
+        this.carveTunnel(exitX, exitY, exitX, exitY - 10, rng);
+
+        // Center treasure room
+        const centerX = Math.floor(CAVE_W / 2);
+        const centerY = Math.floor(CAVE_H / 2);
+        this.carveRoom(centerX, centerY, 4);
+        this.treasurePos = {
+            x: centerX * TILE_SIZE + TILE_SIZE / 2,
+            y: centerY * TILE_SIZE + TILE_SIZE / 2,
+            tileX: centerX, tileY: centerY,
+        };
+
+        // Center exit
+        this.tiles[centerY][centerX] = TILE.CAVE_ENTRANCE;
+        this.centerExit = {
+            id: this.entranceId,
+            x: centerX, y: centerY,
+            worldX: centerX * TILE_SIZE + TILE_SIZE / 2,
+            worldY: centerY * TILE_SIZE + TILE_SIZE / 2,
+        };
+
+        // Ensure path from entrance to center
+        this.carveTunnel(exitX, exitY - 10, centerX, centerY, rng);
+    }
+
+    generateBossCave(rng) {
+        // Open cave with organic layout + boss room at center
+        const open = new Array(CAVE_H);
+        for (let y = 0; y < CAVE_H; y++) open[y] = new Array(CAVE_W).fill(false);
+
+        for (let y = 2; y < CAVE_H - 2; y++) {
+            for (let x = 2; x < CAVE_W - 2; x++) {
+                if (rng() < 0.45) open[y][x] = true;
+            }
+        }
+
         for (let pass = 0; pass < 5; pass++) {
             const next = new Array(CAVE_H);
-            for (let y = 0; y < CAVE_H; y++) {
-                next[y] = new Array(CAVE_W).fill(false);
-            }
+            for (let y = 0; y < CAVE_H; y++) next[y] = new Array(CAVE_W).fill(false);
             for (let y = 2; y < CAVE_H - 2; y++) {
                 for (let x = 2; x < CAVE_W - 2; x++) {
                     let walls = 0;
@@ -1652,7 +1820,6 @@ class CaveWorld {
                             if (!open[y + dy][x + dx]) walls++;
                         }
                     }
-                    // Standard cave generation rule
                     next[y][x] = walls < 5;
                 }
             }
@@ -1663,80 +1830,53 @@ class CaveWorld {
             }
         }
 
-        // Apply to tiles
         for (let y = 0; y < CAVE_H; y++) {
             for (let x = 0; x < CAVE_W; x++) {
-                if (open[y][x]) {
-                    this.tiles[y][x] = TILE.CAVE_FLOOR;
-                }
+                if (open[y][x]) this.tiles[y][x] = TILE.CAVE_FLOOR;
             }
         }
 
-        // Ensure cave exits are accessible - carve areas around each entrance/exit
-        this.exits = [];
-        for (const entrance of CAVE_ENTRANCES) {
-            const cx = entrance.caveX;
-            const cy = entrance.caveY;
-            // Carve a room around the exit
-            for (let dy = -3; dy <= 3; dy++) {
-                for (let dx = -3; dx <= 3; dx++) {
-                    const tx = cx + dx;
-                    const ty = cy + dy;
-                    if (tx >= 1 && tx < CAVE_W - 1 && ty >= 1 && ty < CAVE_H - 1) {
-                        this.tiles[ty][tx] = TILE.CAVE_FLOOR;
-                    }
-                }
-            }
-            // Place ladder tile at exact position
-            this.tiles[cy][cx] = TILE.CAVE_ENTRANCE;
-            this.exits.push({
-                id: entrance.id,
-                x: cx,
-                y: cy,
-                worldX: cx * TILE_SIZE + TILE_SIZE / 2,
-                worldY: cy * TILE_SIZE + TILE_SIZE / 2,
-                label: entrance.label,
-                mainMapX: entrance.x,
-                mainMapY: entrance.y,
-            });
-        }
+        // Entrance at bottom
+        const exitX = Math.floor(CAVE_W / 2);
+        const exitY = CAVE_H - 5;
+        this.carveRoom(exitX, exitY, 3);
+        this.tiles[exitY][exitX] = TILE.CAVE_ENTRANCE;
+        this.exit = {
+            id: this.entranceId,
+            x: exitX, y: exitY,
+            worldX: exitX * TILE_SIZE + TILE_SIZE / 2,
+            worldY: exitY * TILE_SIZE + TILE_SIZE / 2,
+        };
 
-        // Carve tunnels connecting the three exits to ensure connectivity
-        this.carveCaveTunnel(this.exits[0].x, this.exits[0].y, this.exits[1].x, this.exits[1].y, rng); // NE -> SW
-        this.carveCaveTunnel(this.exits[1].x, this.exits[1].y, this.exits[2].x, this.exits[2].y, rng); // SW -> SE
-        this.carveCaveTunnel(this.exits[0].x, this.exits[0].y, this.exits[2].x, this.exits[2].y, rng); // NE -> SE
+        // Boss room at center
+        const bossX = Math.floor(CAVE_W / 2);
+        const bossY = Math.floor(CAVE_H / 2);
+        this.carveRoom(bossX, bossY, 6);
+        this.bossSpawnTile = { x: bossX, y: bossY };
 
-        // Carve boss room in center
-        const bossX = CAVE_BOSS.spawnTile.x;
-        const bossY = CAVE_BOSS.spawnTile.y;
-        for (let dy = -5; dy <= 5; dy++) {
-            for (let dx = -5; dx <= 5; dx++) {
-                const d = Math.sqrt(dx * dx + dy * dy);
-                if (d <= 5) {
-                    const tx = bossX + dx;
-                    const ty = bossY + dy;
-                    if (tx >= 1 && tx < CAVE_W - 1 && ty >= 1 && ty < CAVE_H - 1) {
-                        this.tiles[ty][tx] = TILE.CAVE_FLOOR;
-                    }
-                }
-            }
-        }
-        // Connect boss room to tunnels
-        this.carveCaveTunnel(this.exits[0].x, this.exits[0].y, bossX, bossY, rng);
-        this.carveCaveTunnel(this.exits[2].x, this.exits[2].y, bossX, bossY, rng);
-
-        // Generate stalactite and stalagmite decorations
-        this.generateCaveDecorations(rng);
+        // Connect entrance to boss room
+        this.carveTunnel(exitX, exitY, bossX, bossY, rng);
     }
 
-    carveCaveTunnel(x1, y1, x2, y2, rng) {
+    carveRoom(cx, cy, radius) {
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                if (Math.sqrt(dx * dx + dy * dy) <= radius) {
+                    const tx = cx + dx, ty = cy + dy;
+                    if (tx >= 1 && tx < CAVE_W - 1 && ty >= 1 && ty < CAVE_H - 1) {
+                        this.tiles[ty][tx] = TILE.CAVE_FLOOR;
+                    }
+                }
+            }
+        }
+    }
+
+    carveTunnel(x1, y1, x2, y2, rng) {
         let x = x1, y = y1;
         while (x !== x2 || y !== y2) {
-            // Carve a wider tunnel (width 3)
             for (let dy = -1; dy <= 1; dy++) {
                 for (let dx = -1; dx <= 1; dx++) {
-                    const tx = x + dx;
-                    const ty = y + dy;
+                    const tx = x + dx, ty = y + dy;
                     if (tx >= 1 && tx < CAVE_W - 1 && ty >= 1 && ty < CAVE_H - 1) {
                         if (this.tiles[ty][tx] === TILE.CAVE_WALL) {
                             this.tiles[ty][tx] = TILE.CAVE_FLOOR;
@@ -1744,49 +1884,33 @@ class CaveWorld {
                     }
                 }
             }
-            // Move towards target with slight wobble
             if (rng() < 0.6) {
-                if (x < x2) x++;
-                else if (x > x2) x--;
+                if (x < x2) x++; else if (x > x2) x--;
             } else {
-                if (y < y2) y++;
-                else if (y > y2) y--;
+                if (y < y2) y++; else if (y > y2) y--;
             }
         }
     }
 
     generateCaveDecorations(rng) {
         this.decorations = [];
-        for (let i = 0; i < 800; i++) {
+        for (let i = 0; i < 300; i++) {
             const tx = Math.floor(rng() * CAVE_W);
             const ty = Math.floor(rng() * CAVE_H);
-            if (ty >= 0 && ty < CAVE_H && tx >= 0 && tx < CAVE_W) {
-                const tile = this.tiles[ty][tx];
-                if (tile === TILE.CAVE_FLOOR) {
-                    // Check if adjacent to a wall for stalactites/stalagmites
-                    const hasWallAbove = ty > 0 && this.tiles[ty - 1][tx] === TILE.CAVE_WALL;
-                    const hasWallBelow = ty < CAVE_H - 1 && this.tiles[ty + 1][tx] === TILE.CAVE_WALL;
+            if (ty >= 0 && ty < CAVE_H && tx >= 0 && tx < CAVE_W && this.tiles[ty][tx] === TILE.CAVE_FLOOR) {
+                const hasWallAbove = ty > 0 && this.tiles[ty - 1][tx] === TILE.CAVE_WALL;
+                const hasWallBelow = ty < CAVE_H - 1 && this.tiles[ty + 1][tx] === TILE.CAVE_WALL;
+                let type;
+                if (hasWallAbove && rng() < 0.4) type = "stalactite";
+                else if (hasWallBelow && rng() < 0.4) type = "stalagmite";
+                else if (rng() < 0.3) type = "crystal";
+                else type = rng() < 0.5 ? "stalactite" : "stalagmite";
 
-                    let type;
-                    if (hasWallAbove && rng() < 0.4) {
-                        type = "stalactite";
-                    } else if (hasWallBelow && rng() < 0.4) {
-                        type = "stalagmite";
-                    } else if (rng() < 0.3) {
-                        type = "crystal";
-                    } else if (rng() < 0.2) {
-                        type = "cave_rock";
-                    } else {
-                        type = rng() < 0.5 ? "stalactite" : "stalagmite";
-                    }
-
-                    this.decorations.push({
-                        x: tx * TILE_SIZE + rng() * TILE_SIZE,
-                        y: ty * TILE_SIZE + rng() * TILE_SIZE,
-                        type: type,
-                        size: 3 + rng() * 6,
-                    });
-                }
+                this.decorations.push({
+                    x: tx * TILE_SIZE + rng() * TILE_SIZE,
+                    y: ty * TILE_SIZE + rng() * TILE_SIZE,
+                    type, size: 3 + rng() * 6,
+                });
             }
         }
     }
@@ -1880,22 +2004,7 @@ class CaveWorld {
             this.renderCaveDecoration(ctx, dec, sx, sy, time);
         }
 
-        // Render exit labels
-        for (const exit of this.exits) {
-            const ex = exit.worldX - camera.x;
-            const ey = exit.worldY - camera.y;
-            if (ex < -60 || ex > CANVAS_W + 60 || ey < -60 || ey > CANVAS_H + 60) continue;
-
-            ctx.save();
-            // Ladder label
-            ctx.fillStyle = `rgba(200, 180, 100, ${0.6 + Math.sin(time * 0.004) * 0.2})`;
-            ctx.font = "9px monospace";
-            ctx.textAlign = "center";
-            ctx.fillText(exit.label + " Exit", ex, ey - 20);
-            ctx.fillStyle = `rgba(200, 180, 100, ${0.4 + Math.sin(time * 0.004) * 0.2})`;
-            ctx.fillText("[E] Climb", ex, ey + 26);
-            ctx.restore();
-        }
+        // Exit labels rendered via renderExitLabels
     }
 
     renderCaveDecoration(ctx, dec, sx, sy, time) {
@@ -1977,45 +2086,44 @@ class CaveWorld {
 
         const scale = mmW / (CAVE_W * TILE_SIZE);
 
-        // Draw cave floors
-        // Sample tiles for minimap (every 4th tile)
-        for (let ty = 0; ty < CAVE_H; ty += 4) {
-            for (let tx = 0; tx < CAVE_W; tx += 4) {
+        for (let ty = 0; ty < CAVE_H; ty += 2) {
+            for (let tx = 0; tx < CAVE_W; tx += 2) {
                 if (this.tiles[ty][tx] === TILE.CAVE_FLOOR || this.tiles[ty][tx] === TILE.CAVE_ENTRANCE) {
                     ctx.fillStyle = this.tiles[ty][tx] === TILE.CAVE_ENTRANCE ? "#8a6a3a" : "#3a3a3a";
-                    ctx.fillRect(tx * TILE_SIZE * scale, ty * TILE_SIZE * scale, 4, 4);
+                    ctx.fillRect(tx * TILE_SIZE * scale, ty * TILE_SIZE * scale, 3, 3);
                 }
             }
         }
 
-        // Draw exits
-        for (const exit of this.exits) {
+        // Draw exit
+        if (this.exit) {
             ctx.fillStyle = "#8a6a3a";
-            ctx.fillRect(exit.worldX * scale - 2, exit.worldY * scale - 2, 5, 5);
+            ctx.fillRect(this.exit.worldX * scale - 2, this.exit.worldY * scale - 2, 5, 5);
+        }
+        if (this.centerExit) {
+            ctx.fillStyle = "#ffd700";
+            ctx.fillRect(this.centerExit.worldX * scale - 2, this.centerExit.worldY * scale - 2, 5, 5);
         }
 
-        // Draw monsters
         for (const m of monsters) {
             if (!m.alive) continue;
             ctx.fillStyle = "#ff4444";
             ctx.fillRect(m.x * scale - 1, m.y * scale - 1, 2, 2);
         }
 
-        // Draw cave boss
         if (caveBoss && caveBoss.alive) {
             ctx.fillStyle = "#ff0000";
             ctx.fillRect(caveBoss.x * scale - 3, caveBoss.y * scale - 3, 6, 6);
         }
 
-        // Draw player
         ctx.fillStyle = "#00ff00";
         ctx.fillRect(player.x * scale - 2, player.y * scale - 2, 5, 5);
 
-        // Cave label
+        const entrance = CAVE_ENTRANCES.find(e => e.id === this.entranceId);
         ctx.fillStyle = "#8866aa";
         ctx.font = "9px monospace";
         ctx.textAlign = "center";
-        ctx.fillText("CAVE WORLD", mmW / 2, mmH - 4);
+        ctx.fillText(entrance ? entrance.label : "CAVE", mmW / 2, mmH - 4);
     }
 
     renderWorldMap(ctx, player) {
@@ -2029,7 +2137,6 @@ class CaveWorld {
         const offsetX = (mapW - CAVE_W * TILE_SIZE * scale) / 2;
         const offsetY = (mapH - CAVE_H * TILE_SIZE * scale) / 2;
 
-        // Draw cave areas (sample every 4th tile)
         for (let ty = 0; ty < CAVE_H; ty += 2) {
             for (let tx = 0; tx < CAVE_W; tx += 2) {
                 if (this.tiles[ty][tx] === TILE.CAVE_FLOOR || this.tiles[ty][tx] === TILE.CAVE_ENTRANCE) {
@@ -2043,58 +2150,66 @@ class CaveWorld {
         }
         ctx.globalAlpha = 1;
 
-        // Exit markers
-        for (const exit of this.exits) {
-            const ex = exit.worldX * scale + offsetX;
-            const ey = exit.worldY * scale + offsetY;
+        // Exit
+        if (this.exit) {
+            const ex = this.exit.worldX * scale + offsetX;
+            const ey = this.exit.worldY * scale + offsetY;
             ctx.fillStyle = "#8a6a3a";
-            ctx.beginPath();
-            ctx.arc(ex, ey, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#fff";
-            ctx.font = "9px monospace";
-            ctx.textAlign = "center";
-            ctx.fillText(exit.label + " Exit", ex, ey - 8);
+            ctx.beginPath(); ctx.arc(ex, ey, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#fff"; ctx.font = "9px monospace"; ctx.textAlign = "center";
+            ctx.fillText("Exit", ex, ey - 8);
         }
 
         // Boss room marker
-        const bx = CAVE_BOSS.spawnTile.x * TILE_SIZE * scale + offsetX;
-        const by = CAVE_BOSS.spawnTile.y * TILE_SIZE * scale + offsetY;
-        ctx.strokeStyle = "#ff4444";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(bx, by, 8, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = "#ff4444";
-        ctx.font = "9px monospace";
-        ctx.fillText("Boss Lair", bx, by - 12);
+        if (this.bossSpawnTile) {
+            const bx = this.bossSpawnTile.x * TILE_SIZE * scale + offsetX;
+            const by = this.bossSpawnTile.y * TILE_SIZE * scale + offsetY;
+            ctx.strokeStyle = "#ff4444"; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = "#ff4444"; ctx.font = "9px monospace";
+            ctx.fillText("Boss Lair", bx, by - 12);
+        }
 
-        // Player position
+        // Treasure marker
+        if (this.treasurePos) {
+            const tx = this.treasurePos.x * scale + offsetX;
+            const ty = this.treasurePos.y * scale + offsetY;
+            ctx.fillStyle = "#ffd700";
+            ctx.beginPath(); ctx.arc(tx, ty, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#ffd700"; ctx.font = "9px monospace"; ctx.textAlign = "center";
+            ctx.fillText("Treasure", tx, ty - 8);
+        }
+
+        // Player
         const px = player.x * scale + offsetX;
         const py = player.y * scale + offsetY;
         ctx.fillStyle = "#00ff00";
-        ctx.beginPath();
-        ctx.arc(px, py, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#fff";
-        ctx.font = "9px monospace";
+        ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#fff"; ctx.font = "9px monospace";
         ctx.fillText("Ingoizer", px, py - 10);
 
-        // Title
+        const entrance = CAVE_ENTRANCES.find(e => e.id === this.entranceId);
         ctx.fillStyle = "#8866aa";
         ctx.font = "bold 14px monospace";
         ctx.textAlign = "center";
-        ctx.fillText("CAVE WORLD", mapW / 2, 18);
+        ctx.fillText(entrance ? entrance.label.toUpperCase() : "CAVE", mapW / 2, 18);
+    }
 
-        // Legend
-        ctx.textAlign = "left";
-        ctx.font = "10px monospace";
-        const ly = mapH - 50;
-        ctx.fillStyle = "#00ff00"; ctx.fillRect(10, ly, 8, 8);
-        ctx.fillStyle = "#aaa"; ctx.fillText("You", 22, ly + 8);
-        ctx.fillStyle = "#8a6a3a"; ctx.fillRect(60, ly, 8, 8);
-        ctx.fillStyle = "#aaa"; ctx.fillText("Exit", 72, ly + 8);
-        ctx.fillStyle = "#ff4444"; ctx.fillRect(120, ly, 8, 8);
-        ctx.fillStyle = "#aaa"; ctx.fillText("Boss", 132, ly + 8);
+    // Render exit labels (used by game render loop)
+    renderExitLabels(ctx, camera, time) {
+        const exits = [this.exit, this.centerExit].filter(Boolean);
+        for (const exit of exits) {
+            const ex = exit.worldX - camera.x;
+            const ey = exit.worldY - camera.y;
+            if (ex < -60 || ex > CANVAS_W + 60 || ey < -60 || ey > CANVAS_H + 60) continue;
+            ctx.save();
+            ctx.fillStyle = `rgba(200, 180, 100, ${0.6 + Math.sin(time * 0.004) * 0.2})`;
+            ctx.font = "9px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("Exit", ex, ey - 20);
+            ctx.fillStyle = `rgba(200, 180, 100, ${0.4 + Math.sin(time * 0.004) * 0.2})`;
+            ctx.fillText("[E] Climb", ex, ey + 26);
+            ctx.restore();
+        }
     }
 }

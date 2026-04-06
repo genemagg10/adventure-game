@@ -107,6 +107,7 @@ class TouchControls {
                 <button class="touch-btn touch-btn-shoot" data-action="shoot">BOW</button>
                 <button class="touch-btn touch-btn-element" data-action="element">PWR</button>
                 <button class="touch-btn touch-btn-interact" data-action="interact">ACT</button>
+                <button class="touch-btn touch-btn-potion" data-action="potion">POT</button>
             </div>
             <div id="touch-buttons-top">
                 <button class="touch-btn-small" data-action="map">MAP</button>

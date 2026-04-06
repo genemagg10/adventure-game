@@ -447,11 +447,10 @@ class Game {
                         this.onEntityKilled(r.target, r.isBoss);
                     }
                 }
-                // Check if element clears a cave obstacle
+                // Check if element clears cave obstacle tiles near player
                 if (!this.inCave) {
                     for (const entrance of this.world.caveEntrances) {
-                        if (entrance.cleared) continue;
-                        if (dist(this.player.x, this.player.y, entrance.worldX, entrance.worldY) < 100) {
+                        if (dist(this.player.x, this.player.y, entrance.worldX, entrance.worldY) < 150) {
                             const ce = CAVE_ENTRANCES.find(e => e.id === entrance.id);
                             if (ce && ce.element === elemUsed) {
                                 this.clearCaveObstacle(entrance.id);
@@ -1290,14 +1289,6 @@ class Game {
     }
 
     enterCave(entrance) {
-        // Check if obstacle is cleared
-        const mainEntrance = this.world.caveEntrances.find(e => e.id === entrance.id);
-        if (mainEntrance && !mainEntrance.cleared) {
-            const ce = CAVE_ENTRANCES.find(e => e.id === entrance.id);
-            this.ui.showNotification(`This entrance is blocked by ${ce.obstacle}! Use ${ELEMENTS[ce.element].name} to clear it.`);
-            return;
-        }
-
         this.inCave = true;
         this.activeCaveId = entrance.id;
         this.savedSurfacePos = { x: this.player.x, y: this.player.y };
@@ -1423,10 +1414,12 @@ class Game {
     }
 
     clearCaveObstacle(entranceId) {
-        this.world.clearCaveObstacle(entranceId);
-        const ce = CAVE_ENTRANCES.find(e => e.id === entranceId);
-        this.sound.gemCollect();
-        this.ui.showNotification(`${ce.label} entrance cleared!`);
+        const cleared = this.world.clearCaveObstacle(entranceId, this.player.x, this.player.y);
+        if (cleared > 0) {
+            const ce = CAVE_ENTRANCES.find(e => e.id === entranceId);
+            this.sound.gemCollect();
+            this.ui.showNotification(`Cleared ${ce.obstacle} near ${ce.label}!`);
+        }
     }
 
     checkFountainProximity() {

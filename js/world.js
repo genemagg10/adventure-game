@@ -507,22 +507,27 @@ class World {
         }
     }
 
-    clearCaveObstacle(entranceId) {
-        const entrance = this.caveEntrances.find(e => e.id === entranceId);
-        if (!entrance || entrance.cleared) return;
-        entrance.cleared = true;
+    clearCaveObstacle(entranceId, playerX, playerY) {
         const ce = CAVE_ENTRANCES.find(e => e.id === entranceId);
-        // Remove obstacle tiles around entrance
+        if (!ce) return;
+        const obstacleTile = CAVE_OBSTACLE_TILES[ce.obstacle];
+        // Only clear obstacle tiles near the player (within 3 tile radius)
+        const ptx = Math.floor(playerX / TILE_SIZE);
+        const pty = Math.floor(playerY / TILE_SIZE);
+        let cleared = 0;
         for (let dy = -3; dy <= 3; dy++) {
             for (let dx = -3; dx <= 3; dx++) {
-                if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) continue;
-                const tx = ce.x + dx;
-                const ty = ce.y + dy;
+                const tx = ptx + dx;
+                const ty = pty + dy;
                 if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
-                    this.tiles[ty][tx] = TILE.STONE;
+                    if (this.tiles[ty][tx] === obstacleTile) {
+                        this.tiles[ty][tx] = TILE.STONE;
+                        cleared++;
+                    }
                 }
             }
         }
+        return cleared;
     }
 
     placeFountainOfYouth(rng) {

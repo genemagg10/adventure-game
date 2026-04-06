@@ -102,12 +102,14 @@ class TouchControls {
                     <div id="touch-joystick-knob"></div>
                 </div>
             </div>
-            <div id="touch-buttons-right">
-                <button class="touch-btn touch-btn-attack" data-action="attack">ATK</button>
-                <button class="touch-btn touch-btn-shoot" data-action="shoot">BOW</button>
-                <button class="touch-btn touch-btn-element" data-action="element">PWR</button>
-                <button class="touch-btn touch-btn-interact" data-action="interact">ACT</button>
+            <div id="touch-buttons-right-wrapper">
                 <button class="touch-btn touch-btn-potion" data-action="potion">POT</button>
+                <div id="touch-buttons-right">
+                    <button class="touch-btn touch-btn-attack" data-action="attack">ATK</button>
+                    <button class="touch-btn touch-btn-shoot" data-action="shoot">BOW</button>
+                    <button class="touch-btn touch-btn-element" data-action="element">PWR</button>
+                    <button class="touch-btn touch-btn-interact" data-action="interact">ACT</button>
+                </div>
             </div>
             <div id="touch-buttons-top">
                 <button class="touch-btn-small" data-action="map">MAP</button>

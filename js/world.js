@@ -556,8 +556,8 @@ class World {
                 }
             }
         }
-        // Path to approach
-        for (let py = 2; py <= 4; py++) {
+        // Path to approach (start at py=1 to clear the south water tile adjacent to fountain)
+        for (let py = 1; py <= 4; py++) {
             const ty = fy + py;
             if (ty < WORLD_H) this.tiles[ty][fx] = TILE.PATH;
         }

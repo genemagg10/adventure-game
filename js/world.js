@@ -1751,24 +1751,12 @@ class CaveWorld {
             }
         }
 
-        // Widen all corridors to 2-wide for playability
-        const tempTiles = new Array(CAVE_H);
-        for (let y = 0; y < CAVE_H; y++) {
-            tempTiles[y] = [...this.tiles[y]];
-        }
-        for (let y = 2; y < CAVE_H - 2; y++) {
-            for (let x = 2; x < CAVE_W - 2; x++) {
-                if (tempTiles[y][x] === TILE.CAVE_FLOOR) {
-                    if (this.tiles[y][x + 1] === TILE.CAVE_WALL && x + 1 < CAVE_W - 1) this.tiles[y][x + 1] = TILE.CAVE_FLOOR;
-                    if (this.tiles[y + 1] && this.tiles[y + 1][x] === TILE.CAVE_WALL && y + 1 < CAVE_H - 1) this.tiles[y + 1][x] = TILE.CAVE_FLOOR;
-                }
-            }
-        }
-
         // Entrance at bottom-center
+        // carveRoom radius 2 naturally overlaps with maze cell positions at the four
+        // diagonal neighbours, so no extra tunnel is needed to connect to the maze.
         const exitX = Math.floor(CAVE_W / 2);
         const exitY = CAVE_H - 4;
-        this.carveRoom(exitX, exitY, 3);
+        this.carveRoom(exitX, exitY, 2);
         this.tiles[exitY][exitX] = TILE.CAVE_ENTRANCE;
         this.exit = {
             id: this.entranceId,
@@ -1777,13 +1765,11 @@ class CaveWorld {
             worldY: exitY * TILE_SIZE + TILE_SIZE / 2,
         };
 
-        // Connect entrance to maze
-        this.carveTunnel(exitX, exitY, exitX, exitY - 10, rng);
-
-        // Center treasure room
+        // Center treasure room - same radius-2 trick guarantees maze connectivity.
+        // No tunnel is carved to the center; the player must search through the maze.
         const centerX = Math.floor(CAVE_W / 2);
         const centerY = Math.floor(CAVE_H / 2);
-        this.carveRoom(centerX, centerY, 4);
+        this.carveRoom(centerX, centerY, 2);
         this.treasurePos = {
             x: centerX * TILE_SIZE + TILE_SIZE / 2,
             y: centerY * TILE_SIZE + TILE_SIZE / 2,
@@ -1798,9 +1784,6 @@ class CaveWorld {
             worldX: centerX * TILE_SIZE + TILE_SIZE / 2,
             worldY: centerY * TILE_SIZE + TILE_SIZE / 2,
         };
-
-        // Ensure path from entrance to center
-        this.carveTunnel(exitX, exitY - 10, centerX, centerY, rng);
     }
 
     generateBossCave(rng) {

@@ -214,6 +214,7 @@ class Game {
     }
 
     restart() {
+        this.running = false;
         this.ui.hideBossHealth();
         this.ui.hideHud();
         this.ladyQuestState = "none";

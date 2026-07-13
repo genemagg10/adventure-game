@@ -705,11 +705,15 @@ class Game {
                         this.ui.showDialog(`All your weapons deal +${PURPLE_GEMS.attack.bonus} additional damage!`);
                     });
                 } else if (caveWorld.difficulty === 4) {
-                    // NE cave boss drops purple gem of armor
+                    // NE cave boss drops purple gem of armor + Titan's Gauntlet
                     this.player.purpleGemArmor = true;
+                    this.player.hasGauntlet = true;
                     this.ui.showNotification(`${PURPLE_GEMS.armor.icon} ${PURPLE_GEMS.armor.name} obtained! (+${PURPLE_GEMS.armor.bonus} DEF)`);
                     this.ui.showDialog(`The boss crumbles and drops the ${PURPLE_GEMS.armor.name}!`, () => {
-                        this.ui.showDialog(`All your armor gains +${PURPLE_GEMS.armor.bonus} additional defense!`);
+                        this.ui.showDialog(`All your armor gains +${PURPLE_GEMS.armor.bonus} additional defense!`, () => {
+                            this.ui.showNotification(`${CAVE_GAUNTLET.icon} ${CAVE_GAUNTLET.name} obtained! (+${CAVE_GAUNTLET.damageBonus} DMG)`);
+                            this.ui.showDialog(`Among the shards you find the ${CAVE_GAUNTLET.name}! All your weapons deal +${CAVE_GAUNTLET.damageBonus} additional damage.`);
+                        });
                     });
                 }
             }, 2000);

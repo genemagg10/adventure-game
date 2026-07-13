@@ -610,8 +610,8 @@ class UIManager {
             this.invWeapons.appendChild(el);
         }
 
-        // Show armor
-        const totalDef = player.getArmor().defense + (player.greenGemDefense ? GREEN_GEM_DEFENSE.bonus : 0);
+        // Show armor (getArmor() already includes gem bonuses)
+        const totalDef = player.getArmor().defense;
         this.invArmor.innerHTML = "<h3 style='color:#88aacc;width:100%;text-align:center;margin-bottom:8px;'>Armor (DEF: " + totalDef + ")</h3>";
         for (const aid of player.armors) {
             const a = ARMOR[aid];
@@ -726,7 +726,7 @@ class UIManager {
         }
 
         // Show element gems
-        const elemNames = ["fire", "water", "ice", "lightning"];
+        const elemNames = ["fire", "water", "ice", "lightning", "earth"];
         for (const en of elemNames) {
             const elem = ELEMENTS[en];
             const unlocked = player.elements[en];

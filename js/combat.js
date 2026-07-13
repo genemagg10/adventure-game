@@ -176,11 +176,13 @@ class CombatSystem {
                     }
                 }
                 if (boss && boss.alive && dist(player.x, player.y, boss.x, boss.y) < 80) {
-                    boss.takeDamage(elem.damage, player.x, player.y);
+                    const killed = boss.takeDamage(elem.damage, player.x, player.y);
+                    results.push({ target: boss, damage: elem.damage, killed, isBoss: true });
                     this.addDamageNumber(boss.x, boss.y, elem.damage, false);
                 }
                 if (greenKnight && greenKnight.alive && dist(player.x, player.y, greenKnight.x, greenKnight.y) < 80) {
-                    greenKnight.takeDamage(elem.damage, player.x, player.y);
+                    const killed = greenKnight.takeDamage(elem.damage, player.x, player.y);
+                    results.push({ target: greenKnight, damage: elem.damage, killed, isBoss: true });
                     this.addDamageNumber(greenKnight.x, greenKnight.y, elem.damage, false);
                 }
                 break;
@@ -200,11 +202,13 @@ class CombatSystem {
                     }
                 }
                 if (boss && boss.alive && dist(player.x, player.y, boss.x, boss.y) < 120) {
-                    boss.takeDamage(elem.damage, player.x, player.y);
+                    const killed = boss.takeDamage(elem.damage, player.x, player.y);
+                    results.push({ target: boss, damage: elem.damage, killed, isBoss: true });
                     this.addDamageNumber(boss.x, boss.y, elem.damage, false);
                 }
                 if (greenKnight && greenKnight.alive && dist(player.x, player.y, greenKnight.x, greenKnight.y) < 120) {
-                    greenKnight.takeDamage(elem.damage, player.x, player.y);
+                    const killed = greenKnight.takeDamage(elem.damage, player.x, player.y);
+                    results.push({ target: greenKnight, damage: elem.damage, killed, isBoss: true });
                     this.addDamageNumber(greenKnight.x, greenKnight.y, elem.damage, false);
                 }
                 break;

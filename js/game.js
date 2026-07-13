@@ -655,12 +655,9 @@ class Game {
         // Check zone change
         this.checkZone();
 
-        // Check player death
+        // Check player death - respawn with a gold penalty
         if (this.player.hp <= 0) {
-            this.state = "gameover";
-            this.sound.playerDeath();
-            this.ui.showGameOver(false, "Ingoizer has fallen in battle... The realm is lost.");
-            this.ui.hideBossHealth();
+            this.respawnPlayer();
         }
 
         // Check if boss trigger (all 5 gems) - surface only
@@ -685,6 +682,61 @@ class Game {
 
         // Update HUD
         this.ui.updateHud(this.player);
+    }
+
+    respawnPlayer() {
+        this.sound.playerDeath();
+
+        // Gold penalty: lose 100, or everything if under 100
+        const goldLost = Math.min(100, this.player.gold);
+        this.player.gold -= goldLost;
+
+        // If the player died in a cave, return them to the surface
+        this.inCave = false;
+        this.activeCaveId = null;
+        this.caveBoss = null;
+
+        // Reset any undefeated boss encounter so it can be triggered again
+        if (this.bossSpawned && !this.bossDefeated) {
+            this.bossSpawned = false;
+            this.boss = new Boss(this.world.bossSpawnPoint.x, this.world.bossSpawnPoint.y);
+        }
+        if (this.greenKnightSpawned && !this.greenKnightDefeated) {
+            this.greenKnightSpawned = false;
+            this.greenKnight = null;
+        }
+        for (const id of Object.keys(this.caveBossSpawned)) {
+            if (this.caveBossSpawned[id] && !this.caveBossDefeated[id]) {
+                this.caveBossSpawned[id] = false;
+            }
+        }
+        this.ui.hideBossHealth();
+
+        // Respawn at the game's starting position with full health
+        const startPos = tileToWorld(10, 15);
+        this.player.x = startPos.x;
+        this.player.y = startPos.y;
+        this.player.hp = this.player.maxHp;
+        this.player.knockbackVx = 0;
+        this.player.knockbackVy = 0;
+
+        // Brief grace period so nearby monsters can't chain-kill on respawn
+        this.player.invincible = true;
+        this.player.invincibleTimer = 2000;
+
+        // Snap the camera to the respawn point instead of panning across the map
+        this.camera.x = clamp(this.player.x - CANVAS_W / 2, 0, WORLD_W * TILE_SIZE - CANVAS_W);
+        this.camera.y = clamp(this.player.y - CANVAS_H / 2, 0, WORLD_H * TILE_SIZE - CANVAS_H);
+        this.currentZone = "meadow";
+        this.zoneDisplayTimer = 3000;
+
+        if (goldLost > 0) {
+            this.ui.showNotification(`You fell in battle! -${goldLost} gold`);
+            this.ui.showDialog(`Ingoizer has fallen... You awaken back in the Green Meadow, ${goldLost} gold lighter.`);
+        } else {
+            this.ui.showNotification("You fell in battle!");
+            this.ui.showDialog("Ingoizer has fallen... You awaken back in the Green Meadow.");
+        }
     }
 
     onEntityKilled(entity, isBoss) {
@@ -1718,5 +1770,5 @@ class Game {
 
 // Initialize game when page loads
 window.addEventListener("load", () => {
-    const game = new Game();
+    window.game = new Game();
 });

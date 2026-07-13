@@ -466,6 +466,14 @@ const CAVE_BOSS_4 = {
     ],
 };
 
+// Titan's Gauntlet - dropped by the Crystal Titan (NE cave boss)
+const CAVE_GAUNTLET = {
+    name: "Titan's Gauntlet",
+    icon: "🧤",
+    damageBonus: 4,
+    description: "Adds +4 attack damage to all weapons and bows",
+};
+
 // Purple Gems - one in each of the 3 hardest caves
 const PURPLE_GEMS = {
     health: { name: "Purple Gem of Vitality", icon: "💜", bonus: 30, description: "Permanently increases max HP by 30" },

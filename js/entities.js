@@ -98,7 +98,7 @@ class Player {
         if (this.enchantments[this.currentWeapon]) dmg += ENCHANT_DAMAGE_BONUS;
         if (this.greenGemAttack) dmg += GREEN_GEM_ATTACK.bonus;
         if (this.hasMagicCharm) dmg += MAGIC_CHARM.damageBonus;
-        if (this.hasGauntlet) dmg += 4;
+        if (this.hasGauntlet) dmg += CAVE_GAUNTLET.damageBonus;
         if (this.purpleGemAttack) dmg += PURPLE_GEMS.attack.bonus;
         if (dmg !== weapon.damage) return { ...weapon, damage: dmg };
         return weapon;

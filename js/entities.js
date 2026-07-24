@@ -83,6 +83,9 @@ class Player {
         this.purpleGemAttack = false;  // +6 damage
         this.purpleGemArmor = false;   // +5 defense
 
+        // Rainbow gem from the hidden base (+4 to everything)
+        this.hasRainbowGem = false;
+
         // Health potion inventory
         this.healthPotions = 0;        // regular potions (heal 40)
         this.greaterHealthPotions = 0; // greater potions (heal 80)
@@ -100,6 +103,7 @@ class Player {
         if (this.hasMagicCharm) dmg += MAGIC_CHARM.damageBonus;
         if (this.hasGauntlet) dmg += CAVE_GAUNTLET.damageBonus;
         if (this.purpleGemAttack) dmg += PURPLE_GEMS.attack.bonus;
+        if (this.hasRainbowGem) dmg += RAINBOW_GEM.bonus;
         if (dmg !== weapon.damage) return { ...weapon, damage: dmg };
         return weapon;
     }
@@ -128,6 +132,7 @@ class Player {
         if (this.greenGemAttack) dmg += GREEN_GEM_ATTACK.bonus;
         if (this.hasMagicCharm) dmg += MAGIC_CHARM.damageBonus;
         if (this.hasGauntlet) dmg += CAVE_GAUNTLET.damageBonus;
+        if (this.hasRainbowGem) dmg += RAINBOW_GEM.bonus;
         if (dmg !== bow.damage) return { ...bow, damage: dmg };
         return bow;
     }
@@ -153,6 +158,7 @@ class Player {
         let def = armor.defense;
         if (this.greenGemDefense) def += GREEN_GEM_DEFENSE.bonus;
         if (this.purpleGemArmor) def += PURPLE_GEMS.armor.bonus;
+        if (this.hasRainbowGem) def += RAINBOW_GEM.bonus;
         const hasEnchant = this.armorEnchantedId === this.currentArmor && this.armorEnchantment;
         if (def !== armor.defense || hasEnchant) {
             return { ...armor, defense: def, enchantment: hasEnchant ? this.armorEnchantment : undefined };

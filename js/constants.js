@@ -48,6 +48,7 @@ const TILE = {
     CAVE_FLOOR: 16,
     CAVE_WALL: 17,
     CAVE_ENTRANCE: 18,
+    LADDER: 19,
 };
 
 // Tile colors
@@ -71,6 +72,7 @@ const TILE_COLORS = {
     [TILE.CAVE_FLOOR]: "#3a3a3a",
     [TILE.CAVE_WALL]: "#1a1a1a",
     [TILE.CAVE_ENTRANCE]: "#2a2a2a",
+    [TILE.LADDER]: "#3a3a4a",
 };
 
 // Solid tiles (can't walk through)
@@ -93,6 +95,7 @@ const BOWS = {
     rusty_bow: { name: "Rusty Bow", icon: "🏹", damage: 10, speed: 0.8, range: 200, price: 0, description: "A worn but functional bow", projectileSpeed: 5 },
     hunters_bow: { name: "Hunter's Bow", icon: "🏹", damage: 16, speed: 1.0, range: 280, price: 120, description: "A sturdy hunting bow", projectileSpeed: 6 },
     longbow: { name: "Longbow", icon: "🏹", damage: 22, speed: 1.1, range: 350, price: 200, description: "Powerful and precise", projectileSpeed: 7 },
+    arrow_strength_bow: { name: "Bow of Arrow Strength", icon: "🏹", damage: 8, speed: 1.1, range: 320, price: 0, description: "A mighty bow from the hidden base, 8 damage per arrow", projectileSpeed: 7 },
 };
 
 // Armor
@@ -103,6 +106,7 @@ const ARMOR = {
     iron_plate: { name: "Iron Plate", icon: "🛡️", defense: 8, price: 220, description: "Heavy but sturdy" },
     knights_armor: { name: "Knight's Armor", icon: "🏰", defense: 12, price: 350, description: "Armor of the Round Table" },
     shadow_cloak: { name: "Shadow Cloak", icon: "🧥", defense: 10, price: 0, description: "Woven from darkness" },
+    ingozer_armor: { name: "Ingozer's Armour", icon: "🛡️", defense: 7, price: 0, description: "Legendary armour from the hidden base, blocks 7 damage" },
 };
 
 // Elements / Gem powers
@@ -345,6 +349,14 @@ const MAGIC_CHARM = {
     icon: "🧿",
     damageBonus: 8,
     description: "Adds +8 attack damage to all weapons",
+};
+
+// Rainbow Gem - hidden in the secret base in the northwest corner of Ing Castle
+const RAINBOW_GEM = {
+    name: "Rainbow Gem",
+    icon: "🌈",
+    bonus: 4,
+    description: "A shimmering gem of every color. Grants +4 to everything — +4 damage to weapons and bows, +4 defense to armour.",
 };
 
 // World Coins - randomly scattered collectible gold coins

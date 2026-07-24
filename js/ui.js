@@ -593,6 +593,7 @@ class UIManager {
             if (player.greenGemAttack) dmg += GREEN_GEM_ATTACK.bonus;
             if (player.hasMagicCharm) dmg += MAGIC_CHARM.damageBonus;
             if (player.hasGauntlet) dmg += CAVE_GAUNTLET.damageBonus;
+            if (player.hasRainbowGem) dmg += RAINBOW_GEM.bonus;
             const isEquipped = player.currentWeapon === wid;
             const el = document.createElement("div");
             el.className = "inv-item" + (isEquipped ? " equipped" : "");
@@ -642,6 +643,7 @@ class UIManager {
             if (player.greenGemAttack) dmgBow += GREEN_GEM_ATTACK.bonus;
             if (player.hasMagicCharm) dmgBow += MAGIC_CHARM.damageBonus;
             if (player.hasGauntlet) dmgBow += CAVE_GAUNTLET.damageBonus;
+            if (player.hasRainbowGem) dmgBow += RAINBOW_GEM.bonus;
             const isEquipped = player.currentBow === bid;
             const el = document.createElement("div");
             el.className = "inv-item" + (isEquipped ? " equipped" : "");

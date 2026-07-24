@@ -95,7 +95,7 @@ const BOWS = {
     rusty_bow: { name: "Rusty Bow", icon: "🏹", damage: 10, speed: 0.8, range: 200, price: 0, description: "A worn but functional bow", projectileSpeed: 5 },
     hunters_bow: { name: "Hunter's Bow", icon: "🏹", damage: 16, speed: 1.0, range: 280, price: 120, description: "A sturdy hunting bow", projectileSpeed: 6 },
     longbow: { name: "Longbow", icon: "🏹", damage: 22, speed: 1.1, range: 350, price: 200, description: "Powerful and precise", projectileSpeed: 7 },
-    arrow_strength_bow: { name: "Bow of Arrow Strength", icon: "🏹", damage: 8, speed: 1.1, range: 320, price: 0, description: "A mighty bow from the hidden base, 8 damage per arrow", projectileSpeed: 7 },
+    arrow_strength_bow: { name: "Bow of Arrow Strength", icon: "🏹", damage: 32, speed: 1.1, range: 320, price: 0, description: "A mighty bow from the hidden base, 32 damage per arrow", projectileSpeed: 7 },
 };
 
 // Armor
@@ -106,7 +106,7 @@ const ARMOR = {
     iron_plate: { name: "Iron Plate", icon: "🛡️", defense: 8, price: 220, description: "Heavy but sturdy" },
     knights_armor: { name: "Knight's Armor", icon: "🏰", defense: 12, price: 350, description: "Armor of the Round Table" },
     shadow_cloak: { name: "Shadow Cloak", icon: "🧥", defense: 10, price: 0, description: "Woven from darkness" },
-    ingozer_armor: { name: "Ingozer's Armour", icon: "🛡️", defense: 7, price: 0, description: "Legendary armour from the hidden base, blocks 7 damage" },
+    ingozer_armor: { name: "Ingozer's Armour", icon: "🛡️", defense: 17, price: 0, description: "Legendary armour from the hidden base, blocks 17 damage" },
 };
 
 // Elements / Gem powers

@@ -226,6 +226,68 @@ class World {
 
         // Boss spawn point (outside gate)
         this.bossSpawnPoint = tileToWorld(gateX, cy + ch + 3);
+
+        // Hidden ladder in the northwest corner of the castle.
+        // Concealed in the wall until the Ice Gem is used nearby. When revealed,
+        // it opens a shaft up into a secret base holding legendary treasure.
+        const ladderTX = cx + 1;      // just inside the NW corner
+        const ladderTY = cy;          // the north wall tile above the corner floor
+        this.hiddenLadder = {
+            tileX: ladderTX,
+            tileY: ladderTY,
+            worldX: ladderTX * TILE_SIZE + TILE_SIZE / 2,
+            worldY: ladderTY * TILE_SIZE + TILE_SIZE / 2,
+            // Hidden base room sits north of the castle's NW corner.
+            base: { x: cx - 3, y: cy - 8, w: 9, h: 7 },
+            revealed: false,
+            looted: false,
+            treasures: [],
+        };
+        // Center of the hidden base (used for camera/treasure proximity).
+        this.hiddenLadder.baseCenterX = (this.hiddenLadder.base.x + Math.floor(this.hiddenLadder.base.w / 2)) * TILE_SIZE + TILE_SIZE / 2;
+        this.hiddenLadder.baseCenterY = (this.hiddenLadder.base.y + Math.floor(this.hiddenLadder.base.h / 2)) * TILE_SIZE + TILE_SIZE / 2;
+    }
+
+    // Carve open the hidden base and ladder shaft. Called when the Ice Gem is
+    // used near the concealed ladder in the castle's NW corner.
+    revealHiddenLadder() {
+        const hl = this.hiddenLadder;
+        if (!hl || hl.revealed) return false;
+        hl.revealed = true;
+
+        const b = hl.base;
+        // Build the secret base room (walled with a floor interior).
+        for (let y = b.y; y < b.y + b.h; y++) {
+            for (let x = b.x; x < b.x + b.w; x++) {
+                if (x < 0 || x >= WORLD_W || y < 0 || y >= WORLD_H) continue;
+                if (y === b.y || y === b.y + b.h - 1 || x === b.x || x === b.x + b.w - 1) {
+                    this.tiles[y][x] = TILE.CASTLE_WALL;
+                } else {
+                    this.tiles[y][x] = TILE.CASTLE_FLOOR;
+                }
+            }
+        }
+
+        // Carve the ladder shaft connecting the castle interior up into the base.
+        const lx = hl.tileX;
+        for (let ty = b.y + b.h - 1; ty <= hl.tileY; ty++) {
+            if (ty >= 0 && ty < WORLD_H && lx >= 0 && lx < WORLD_W) {
+                this.tiles[ty][lx] = TILE.LADDER;
+            }
+        }
+
+        // Place the three treasures inside the base.
+        const cxTile = b.x + Math.floor(b.w / 2);
+        const rowTile = b.y + Math.floor(b.h / 2);
+        hl.treasures = [
+            { kind: "armor", id: "ingozer_armor", icon: ARMOR.ingozer_armor.icon,
+              x: (cxTile - 2) * TILE_SIZE + TILE_SIZE / 2, y: rowTile * TILE_SIZE + TILE_SIZE / 2 },
+            { kind: "bow", id: "arrow_strength_bow", icon: BOWS.arrow_strength_bow.icon,
+              x: cxTile * TILE_SIZE + TILE_SIZE / 2, y: (rowTile - 1) * TILE_SIZE + TILE_SIZE / 2 },
+            { kind: "gem", id: "rainbow", icon: RAINBOW_GEM.icon,
+              x: (cxTile + 2) * TILE_SIZE + TILE_SIZE / 2, y: rowTile * TILE_SIZE + TILE_SIZE / 2 },
+        ];
+        return true;
     }
 
     placeShops() {
@@ -729,6 +791,56 @@ class World {
                 this.renderMerlin(ctx, mx, my, time);
             }
         }
+
+        // Render the hidden ladder / secret base
+        this.renderHiddenLadder(ctx, camera, time);
+    }
+
+    renderHiddenLadder(ctx, camera, time) {
+        const hl = this.hiddenLadder;
+        if (!hl) return;
+
+        if (!hl.revealed) {
+            // Subtle frosty shimmer hinting at the concealed ladder in the wall.
+            const wx = hl.worldX - camera.x;
+            const wy = hl.worldY - camera.y;
+            if (wx < -40 || wx > CANVAS_W + 40 || wy < -40 || wy > CANVAS_H + 40) return;
+            const glow = 0.25 + Math.sin(time * 0.003) * 0.15;
+            ctx.fillStyle = `rgba(150, 220, 255, ${glow})`;
+            ctx.beginPath();
+            ctx.arc(wx, wy, 6, 0, Math.PI * 2);
+            ctx.fill();
+            return;
+        }
+
+        // Base label
+        const bx = hl.baseCenterX - camera.x;
+        const by = hl.baseCenterY - camera.y;
+        if (bx > -120 && bx < CANVAS_W + 120 && by > -120 && by < CANVAS_H + 120) {
+            ctx.fillStyle = "#aaeeff";
+            ctx.font = "9px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("Hidden Base", bx, (hl.base.y) * TILE_SIZE - camera.y + 22);
+        }
+
+        // Render remaining treasures as floating icons
+        if (hl.looted) return;
+        for (const t of hl.treasures) {
+            const tx = t.x - camera.x;
+            const ty = t.y - camera.y;
+            if (tx < -20 || tx > CANVAS_W + 20 || ty < -20 || ty > CANVAS_H + 20) continue;
+            const bob = Math.sin(time * 0.004 + t.x) * 3;
+            // Glow
+            ctx.fillStyle = "rgba(180, 230, 255, 0.35)";
+            ctx.beginPath();
+            ctx.arc(tx, ty + bob, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.font = "18px serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(t.icon, tx, ty + bob);
+            ctx.textBaseline = "alphabetic";
+        }
     }
 
     renderTileDetail(ctx, tile, sx, sy, tx, ty, time) {
@@ -791,6 +903,22 @@ class World {
                     ctx.fillRect(sx + i, sy, 4, 6);
                 }
                 break;
+
+            case TILE.LADDER: {
+                // Stone shaft backing
+                ctx.fillStyle = "#2a2a3a";
+                ctx.fillRect(sx + 6, sy, TILE_SIZE - 12, TILE_SIZE);
+                // Ladder rails
+                ctx.fillStyle = "#a9773e";
+                ctx.fillRect(sx + 8, sy, 3, TILE_SIZE);
+                ctx.fillRect(sx + TILE_SIZE - 11, sy, 3, TILE_SIZE);
+                // Rungs
+                ctx.fillStyle = "#c9974e";
+                for (let i = 4; i < TILE_SIZE; i += 9) {
+                    ctx.fillRect(sx + 8, sy + i, TILE_SIZE - 16, 3);
+                }
+                break;
+            }
 
             case TILE.SHOP_FLOOR:
                 // Checkerboard pattern

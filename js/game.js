@@ -459,6 +459,11 @@ class Game {
                         }
                     }
                 }
+
+                // Ice Gem reveals the hidden ladder in the castle's NW corner
+                if (!this.inCave && elemUsed === "ice") {
+                    this.tryRevealHiddenLadder();
+                }
             }
         }
 
@@ -679,6 +684,11 @@ class Game {
 
         // Check fountain proximity
         this.checkFountainProximity();
+
+        // Check hidden base treasure (surface only)
+        if (!this.inCave) {
+            this.checkHiddenBaseTreasure();
+        }
 
         // Update HUD
         this.ui.updateHud(this.player);
@@ -1477,6 +1487,45 @@ class Game {
             this.sound.gemCollect();
             this.ui.showNotification(`Cleared ${ce.obstacle} near ${ce.label}!`);
         }
+    }
+
+    tryRevealHiddenLadder() {
+        const hl = this.world.hiddenLadder;
+        if (!hl || hl.revealed) return;
+        if (dist(this.player.x, this.player.y, hl.worldX, hl.worldY) > 130) return;
+        if (this.world.revealHiddenLadder()) {
+            this.sound.iceFreeze();
+            this.sound.gemCollect();
+            this.ui.showNotification("A hidden ladder appears in the frozen wall!");
+            this.ui.showDialog(
+                "You channel the Ice Gem into the northwest wall of the Black Knight's castle. " +
+                "The frozen stone splits apart, revealing a hidden ladder. It rises into a secret base above — climb up to see what treasures lie within!"
+            );
+        }
+    }
+
+    checkHiddenBaseTreasure() {
+        if (this.inCave) return;
+        const hl = this.world.hiddenLadder;
+        if (!hl || !hl.revealed || hl.looted) return;
+        if (dist(this.player.x, this.player.y, hl.baseCenterX, hl.baseCenterY) > 70) return;
+
+        hl.looted = true;
+        this.sound.gemCollect();
+
+        this.player.addArmor("ingozer_armor");
+        this.player.equipArmor("ingozer_armor");
+        this.player.addBow("arrow_strength_bow");
+        this.player.equipBow("arrow_strength_bow");
+        this.player.hasRainbowGem = true;
+
+        this.ui.showNotification("Looted the hidden base: Ingozer's Armour, Bow of Arrow Strength & the Rainbow Gem!");
+        this.ui.showDialog(
+            "You climb into the hidden base and find a legendary cache! You claim " +
+            `${ARMOR.ingozer_armor.name} (blocks 7 damage), the ${BOWS.arrow_strength_bow.name} ` +
+            `(8 damage per arrow), and the ${RAINBOW_GEM.name} — it grants +4 to everything, ` +
+            "boosting all your weapons, bows, and armour!"
+        );
     }
 
     checkFountainProximity() {

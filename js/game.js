@@ -1522,8 +1522,8 @@ class Game {
         this.ui.showNotification("Looted the hidden base: Ingozer's Armour, Bow of Arrow Strength & the Rainbow Gem!");
         this.ui.showDialog(
             "You climb into the hidden base and find a legendary cache! You claim " +
-            `${ARMOR.ingozer_armor.name} (blocks 7 damage), the ${BOWS.arrow_strength_bow.name} ` +
-            `(8 damage per arrow), and the ${RAINBOW_GEM.name} — it grants +4 to everything, ` +
+            `${ARMOR.ingozer_armor.name} (blocks ${ARMOR.ingozer_armor.defense} damage), the ${BOWS.arrow_strength_bow.name} ` +
+            `(${BOWS.arrow_strength_bow.damage} damage per arrow), and the ${RAINBOW_GEM.name} — it grants +4 to everything, ` +
             "boosting all your weapons, bows, and armour!"
         );
     }

@@ -457,13 +457,15 @@ class Game {
     updateAnimals(dt, activeWorld, activeMonsters, activeBoss, activeGreenKnight) {
         const hostiles = this.getHostiles(activeMonsters, activeBoss, activeGreenKnight);
 
-        // Companions fight alongside the player, in caves as well as on the surface
+        // Companions fight alongside the player in every realm - overworld,
+        // caves and the Cloudlands
         for (const companion of this.companions) {
             const hits = companion.update(dt, this.player, activeWorld, hostiles, this.combat);
             for (const hit of hits) {
                 this.sound.monsterHit();
                 if (hit.killed) {
-                    this.onEntityKilled(hit.target, hit.isBoss);
+                    const isBoss = hit.target === activeBoss || hit.target === activeGreenKnight;
+                    this.onEntityKilled(hit.target, isBoss);
                 }
             }
             if (!companion.alive && !companion.deathAnnounced) {
@@ -480,8 +482,8 @@ class Game {
             if (c.alive) c.followIndex = slot++;
         }
 
-        // Wild animals only roam the surface
-        if (this.inCave) return;
+        // Wild animals only roam the overworld - not the caves, not the Cloudlands
+        if (!this.onSurface) return;
         for (const animal of this.wildAnimals) {
             animal.update(dt, this.player, activeWorld, [], this.combat);
         }
@@ -894,7 +896,7 @@ class Game {
         }
 
         // Respawn apples (surface only)
-        if (!this.inCave) for (const apple of this.world.apples) {
+        if (this.onSurface) for (const apple of this.world.apples) {
             if (apple.collected && apple.respawnTimer > 0) {
                 apple.respawnTimer -= dt;
                 if (apple.respawnTimer <= 0) {
@@ -1926,6 +1928,10 @@ class Game {
 
         if (this.skyMonsters.length === 0) this.spawnInitialSkyMonsters();
 
+        // The pack climbs the Worldtree with you
+        this.nearAnimal = null;
+        this.gatherCompanions();
+
         this.currentZone = "sky";
         this.zoneDisplayTimer = 3000;
         this.sound.divineChime();
@@ -1954,6 +1960,7 @@ class Game {
             this.player.y = this.savedSurfacePos.y;
         }
         this.snapCamera();
+        this.gatherCompanions();
 
         // The Olympian never leaves his temple - he waits for the next climb.
         if (this.olympianBoss && !this.olympianDefeated) {
@@ -2313,8 +2320,8 @@ class Game {
         // Player
         renderables.push({ y: this.player.y, render: () => this.player.render(ctx, this.camera, this.time) });
 
-        // Wild animals (surface only) and companions
-        if (!this.inCave) {
+        // Wild animals (overworld only) and companions
+        if (this.onSurface) {
             for (const a of this.wildAnimals) {
                 renderables.push({ y: a.y, render: () => a.render(ctx, this.camera, this.time) });
             }

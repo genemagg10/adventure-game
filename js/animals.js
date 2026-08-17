@@ -170,12 +170,9 @@ class Animal {
                     combat.spawnHitParticles(target.x, target.y, this.accent, 4);
                     combat.addDamageNumber(target.x, target.y, this.damage, false);
                 }
-                hits.push({
-                    target,
-                    damage: this.damage,
-                    killed,
-                    isBoss: target instanceof Boss || target instanceof GreenKnight,
-                });
+                // The caller tags bosses - it knows which entity is which realm's
+                // boss, and there is more than one boss class in the game.
+                hits.push({ target, damage: this.damage, killed });
             }
 
             // Standing toe to toe with a monster hurts.

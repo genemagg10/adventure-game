@@ -565,27 +565,32 @@ class Player {
     }
 
     renderQuiver(ctx, sx, sy, dir) {
-        // Slung across the back: centred when we're looking at his back, and
-        // on whichever side is away from us otherwise.
-        const qx = dir === "up" ? sx + 3
-                 : dir === "right" ? sx - 11
+        // Slung across his back: centred when we're looking at his back, and
+        // on whichever side is turned away from us otherwise.
+        const qx = dir === "up" ? sx - 2
+                 : dir === "right" ? sx - 12
                  : sx + 7;
+        const top = sy - 11;
 
-        ctx.fillStyle = "#654321";
-        ctx.fillRect(qx, sy - 12, 4, 15);
-        ctx.fillStyle = "#4a2f18";
-        ctx.fillRect(qx, sy - 12, 1, 15);
+        // Leather quiver body
+        ctx.fillStyle = "#6b431f";
+        ctx.fillRect(qx, top, 5, 15);
+        ctx.fillStyle = "#3a2410";      // shaded edge
+        ctx.fillRect(qx, top, 1, 15);
+        ctx.fillStyle = "#2a1a0c";      // rounded base
+        ctx.fillRect(qx, top + 14, 5, 1);
+        ctx.fillStyle = "#8a5a2a";      // mouth rim and binding straps
+        ctx.fillRect(qx, top, 5, 2);
+        ctx.fillRect(qx, top + 8, 5, 1);
 
-        // Arrow tips sticking out of quiver
-        if (this.arrows > 0) {
-            const showArrows = Math.min(3, this.arrows);
-            for (let i = 0; i < showArrows; i++) {
-                ctx.fillStyle = "#aaaacc";
-                ctx.fillRect(qx + i * 2, sy - 16, 1, 5);
-                // Fletching
-                ctx.fillStyle = "#cc4444";
-                ctx.fillRect(qx + i * 2, sy - 16, 1, 2);
-            }
+        // Arrows, up to three, rising out of the mouth past his shoulder
+        const showArrows = Math.min(3, this.arrows);
+        for (let i = 0; i < showArrows; i++) {
+            const ax = qx + i * 2;
+            ctx.fillStyle = "#d2d2e0";  // shaft
+            ctx.fillRect(ax, top - 7, 1, 8);
+            ctx.fillStyle = "#cc4444";  // fletching
+            ctx.fillRect(ax, top - 7, 1, 3);
         }
     }
 

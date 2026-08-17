@@ -1,0 +1,5 @@
+# Local document-building and visual-QA files
+tmp/
+
+# macOS metadata
+.DS_Store

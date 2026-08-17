@@ -29,6 +29,7 @@ class UIManager {
         this.arrowCount = document.getElementById("arrow-count");
         this.invBows = document.getElementById("inventory-bows");
         this.invArmor = document.getElementById("inventory-armor");
+        this.invCompanions = document.getElementById("inventory-companions");
         this.dialogBox = document.getElementById("dialog-box");
         this.dialogText = document.getElementById("dialog-text");
         this.gameOverScreen = document.getElementById("game-over-screen");
@@ -161,6 +162,24 @@ class UIManager {
         const potionEl = document.getElementById("potion-count");
         if (potionEl) {
             potionEl.textContent = player.healthPotions + player.greaterHealthPotions;
+        }
+
+        // Apples
+        const appleEl = document.getElementById("apple-count");
+        if (appleEl) {
+            appleEl.textContent = player.apples;
+        }
+
+        // Animal companions (only shown once you have one)
+        const companionWrap = document.getElementById("companion-counter");
+        if (companionWrap) {
+            const following = this.game.aliveCompanionCount ? this.game.aliveCompanionCount() : 0;
+            if (following > 0) {
+                companionWrap.classList.remove("hidden");
+                document.getElementById("companion-count").textContent = following;
+            } else {
+                companionWrap.classList.add("hidden");
+            }
         }
 
         // Weapon & Armor
@@ -470,6 +489,14 @@ class UIManager {
                     player.arrows += isPotion.value;
                     this.showNotification(`Got ${isPotion.value} arrows!`);
                     break;
+                case "apples":
+                    if (player.addApples(isPotion.value)) {
+                        this.showNotification(`Got ${isPotion.value} apple${isPotion.value > 1 ? "s" : ""}! Feed one to a wild animal.`);
+                    } else {
+                        this.showNotification("You can't carry any more apples!");
+                        player.gold += item.price; // refund
+                    }
+                    break;
             }
         }
 
@@ -486,8 +513,40 @@ class UIManager {
     }
 
     // Inventory
+    renderCompanionSection(player) {
+        if (!this.invCompanions) return;
+        this.invCompanions.innerHTML = "";
+
+        const companions = (this.game.companions || []).filter(c => c.alive);
+        const header = document.createElement("h3");
+        header.style.cssText = "color:#88dd88;width:100%;text-align:center;margin-bottom:8px;margin-top:12px;";
+        header.textContent = `Companions ${companions.length} / ${ANIMAL_CONFIG.maxCompanions}   ${APPLE_ITEM.icon} Apples: ${player.apples}`;
+        this.invCompanions.appendChild(header);
+
+        if (companions.length === 0) {
+            const hint = document.createElement("div");
+            hint.style.cssText = "color:#aaa;font-size:11px;width:100%;text-align:center;margin-bottom:6px;";
+            hint.textContent = "Find a wild animal and press E with an apple in hand to tame it.";
+            this.invCompanions.appendChild(hint);
+            return;
+        }
+
+        for (const c of companions) {
+            const el = document.createElement("div");
+            el.className = "inv-item equipped";
+            el.style.borderColor = "#66cc66";
+            el.innerHTML = `
+                <span class="inv-item-icon">${c.icon}</span>
+                <span class="inv-item-name">${c.name}</span>
+                <span class="inv-item-name" style="color:#88dd88;font-size:10px;">HP: ${Math.ceil(c.hp)}/${c.maxHp}  |  DMG: ${c.damage}</span>
+            `;
+            this.invCompanions.appendChild(el);
+        }
+    }
+
     openInventory(player) {
         this.inventoryOverlay.classList.remove("hidden");
+        this.renderCompanionSection(player);
         this.invWeapons.innerHTML = "<h3 style='color:#ffd700;width:100%;text-align:center;margin-bottom:8px;'>Weapons</h3>";
         this.invBows.innerHTML = "<h3 style='color:#cc8844;width:100%;text-align:center;margin-bottom:8px;'>Bows (Arrows: " + player.arrows + ")</h3>";
         this.invGems.innerHTML = "<h3 style='color:#4488ff;width:100%;text-align:center;margin-bottom:8px;'>Blue Gems: " + player.blueGems + " / 5</h3>";

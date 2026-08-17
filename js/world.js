@@ -60,6 +60,10 @@ class World {
         this.coins = [];
         this.placeCoins(rng);
 
+        // Apples for taming animals
+        this.apples = [];
+        this.placeApples(rng);
+
         // Green Knight's Domain (initially blocked, but castle marker always known)
         this.greenCastleBuilt = false;
         this.greenGems = [];
@@ -355,6 +359,32 @@ class World {
                         value: value,
                         collected: false,
                         respawnTimer: 0,
+                    });
+                    placed++;
+                }
+            }
+        }
+    }
+
+    placeApples(rng) {
+        this.apples = [];
+        const zones = APPLE_CONFIG.zones;
+        const applesPerZone = Math.ceil(APPLE_CONFIG.count / zones.length);
+
+        for (const zoneName of zones) {
+            const zone = ZONES[zoneName];
+            if (!zone) continue;
+            let placed = 0;
+            for (let attempt = 0; attempt < applesPerZone * 10 && placed < applesPerZone; attempt++) {
+                const tx = zone.x + Math.floor(rng() * (zone.w - 4)) + 2;
+                const ty = zone.y + Math.floor(rng() * (zone.h - 4)) + 2;
+                if (!this.isSolid(tx, ty)) {
+                    this.apples.push({
+                        x: tx * TILE_SIZE + TILE_SIZE / 2,
+                        y: ty * TILE_SIZE + TILE_SIZE / 2,
+                        collected: false,
+                        respawnTimer: 0,
+                        bobPhase: rng() * Math.PI * 2,
                     });
                     placed++;
                 }
@@ -725,6 +755,15 @@ class World {
             const cy = coin.y - camera.y;
             if (cx < -16 || cx > CANVAS_W + 16 || cy < -16 || cy > CANVAS_H + 16) continue;
             this.renderCoin(ctx, cx, cy, time);
+        }
+
+        // Render apples
+        for (const apple of this.apples) {
+            if (apple.collected) continue;
+            const ax = apple.x - camera.x;
+            const ay = apple.y - camera.y;
+            if (ax < -16 || ax > CANVAS_W + 16 || ay < -16 || ay > CANVAS_H + 16) continue;
+            this.renderApple(ctx, ax, ay, time, apple);
         }
 
         // Render Lady of the Lake (visible until Excalibur is given)
@@ -1140,6 +1179,46 @@ class World {
         ctx.restore();
     }
 
+    renderApple(ctx, sx, sy, time, apple) {
+        const bob = Math.sin(time * 0.004 + apple.bobPhase) * 2;
+        const cy = sy + bob;
+
+        ctx.save();
+
+        // Soft shadow so it reads as lying in the grass
+        ctx.fillStyle = "rgba(0,0,0,0.25)";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 7, 5, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Apple body
+        ctx.fillStyle = "#d63b2f";
+        ctx.beginPath();
+        ctx.arc(sx - 2, cy, 4.2, 0, Math.PI * 2);
+        ctx.arc(sx + 2, cy, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Highlight
+        ctx.fillStyle = "rgba(255, 200, 190, 0.8)";
+        ctx.beginPath();
+        ctx.ellipse(sx - 2, cy - 2, 1.4, 1, -0.6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Stalk + leaf
+        ctx.strokeStyle = "#6a4a2a";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(sx, cy - 4);
+        ctx.lineTo(sx + 1, cy - 8);
+        ctx.stroke();
+        ctx.fillStyle = "#4a9a2a";
+        ctx.beginPath();
+        ctx.ellipse(sx + 4, cy - 7, 3, 1.6, -0.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
     renderLadyOfLake(ctx, sx, sy, time) {
         const float = Math.sin(time * 0.002) * 3;
 
@@ -1549,7 +1628,7 @@ class World {
         } : { r: 0, g: 0, b: 0 };
     }
 
-    renderMinimap(ctx, player, monsters, boss, greenKnight) {
+    renderMinimap(ctx, player, monsters, boss, greenKnight, companions) {
         const mmW = 150, mmH = 150;
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, mmW, mmH);
@@ -1625,6 +1704,15 @@ class World {
         for (const entrance of this.caveEntrances) {
             ctx.fillStyle = "#8866aa";
             ctx.fillRect(entrance.worldX * scale - 2, entrance.worldY * scale - 2, 5, 5);
+        }
+
+        // Draw animal companions
+        if (companions) {
+            for (const c of companions) {
+                if (!c.alive) continue;
+                ctx.fillStyle = "#ffdd66";
+                ctx.fillRect(c.x * scale - 1, c.y * scale - 1, 3, 3);
+            }
         }
 
         // Draw player

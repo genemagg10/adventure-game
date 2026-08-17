@@ -58,6 +58,13 @@ class Game {
         this.fountainCooldownUntil = 0;
         this.fountainRiddleState = null; // { riddles, currentIndex, onComplete }
 
+        // Animal companions
+        this.wildAnimals = [];      // untamed critters roaming the surface
+        this.companions = [];       // tamed animals following the player
+        this.animalSpawnTimer = 0;
+        this.nearAnimal = null;
+        this.firstTameShown = false;
+
         // Camera
         this.camera = { x: 0, y: 0 };
 
@@ -156,6 +163,14 @@ class Game {
         this.monsters = [];
         this.spawnInitialMonsters();
 
+        // Wild animals roaming the biomes
+        this.wildAnimals = [];
+        this.companions = [];
+        this.animalSpawnTimer = 0;
+        this.nearAnimal = null;
+        this.firstTameShown = false;
+        this.spawnInitialAnimals();
+
         // Boss (not yet spawned)
         this.boss = new Boss(this.world.bossSpawnPoint.x, this.world.bossSpawnPoint.y);
         this.bossSpawned = false;
@@ -208,6 +223,7 @@ class Game {
         } else {
             this.ui.showDialog("Press SPACE to attack, R to shoot arrows. Unlock Fire power to ignite your arrows!");
         }
+        this.ui.showDialog("Harmless animals roam the land. Feed one an apple to tame it and it will fight at your side - up to 5 at a time. You start with 2 apples; find more in the wild or buy them at any shop.");
 
         this.lastTime = performance.now();
         requestAnimationFrame((t) => this.gameLoop(t));
@@ -328,6 +344,165 @@ class Game {
 
         // Cleanup dead monsters
         this.monsters = this.monsters.filter(m => m.alive || m.deathTimer > 0);
+    }
+
+    // Find a walkable spot for a wild animal inside (or just outside) a biome.
+    // The margin lets lake turtles settle on the shore, since open water is solid.
+    findAnimalSpawnPos(zoneName, margin) {
+        const zone = ZONES[zoneName];
+        if (!zone) return null;
+        const m = margin || 0;
+        const x0 = Math.max(1, zone.x + 2 - m);
+        const x1 = Math.min(WORLD_W - 2, zone.x + zone.w - 3 + m);
+        const y0 = Math.max(1, zone.y + 2 - m);
+        const y1 = Math.min(WORLD_H - 2, zone.y + zone.h - 3 + m);
+        if (x1 <= x0 || y1 <= y0) return null;
+
+        for (let attempt = 0; attempt < 60; attempt++) {
+            const tx = randInt(x0, x1);
+            const ty = randInt(y0, y1);
+            if (this.world.isSolid(tx, ty)) continue;
+            const pos = tileToWorld(tx, ty);
+            // Keep clear of the Lady of the Lake so taming never steals her dialog
+            if (this.world.ladyOfLake && dist(pos.x, pos.y, this.world.ladyOfLake.x, this.world.ladyOfLake.y) < 140) continue;
+            return pos;
+        }
+        return null;
+    }
+
+    spawnInitialAnimals() {
+        for (const [type, def] of Object.entries(ANIMAL_TYPES)) {
+            for (const zoneName of def.zones) {
+                for (let i = 0; i < ANIMAL_CONFIG.perZone; i++) {
+                    const margin = zoneName === "lake" ? 3 : 0;
+                    const pos = this.findAnimalSpawnPos(zoneName, margin);
+                    if (!pos) continue;
+                    const animal = new Animal(type, pos.x, pos.y);
+                    animal.homeZone = zoneName;
+                    this.wildAnimals.push(animal);
+                }
+            }
+        }
+    }
+
+    spawnWildAnimals(dt) {
+        this.animalSpawnTimer += dt;
+        if (this.animalSpawnTimer < ANIMAL_CONFIG.spawnInterval) return;
+        this.animalSpawnTimer = 0;
+
+        for (const [type, def] of Object.entries(ANIMAL_TYPES)) {
+            for (const zoneName of def.zones) {
+                const count = this.wildAnimals.filter(a => a.alive && a.type === type && a.homeZone === zoneName).length;
+                if (count >= ANIMAL_CONFIG.maxPerZone) continue;
+                if (Math.random() > ANIMAL_CONFIG.spawnChance) continue;
+
+                const margin = zoneName === "lake" ? 3 : 0;
+                const pos = this.findAnimalSpawnPos(zoneName, margin);
+                if (!pos) continue;
+                // Don't pop into existence in front of the player
+                if (dist(pos.x, pos.y, this.player.x, this.player.y) < 250) continue;
+
+                const animal = new Animal(type, pos.x, pos.y);
+                animal.homeZone = zoneName;
+                this.wildAnimals.push(animal);
+            }
+        }
+    }
+
+    // Everything a companion is willing to bite, in the world the player is in.
+    getHostiles(activeMonsters, activeBoss, activeGreenKnight) {
+        const hostiles = [];
+        for (const m of activeMonsters) {
+            if (m.alive) hostiles.push(m);
+        }
+        if (activeBoss && activeBoss.alive && activeBoss.spawned) hostiles.push(activeBoss);
+        if (activeGreenKnight && activeGreenKnight.alive && activeGreenKnight.spawned) hostiles.push(activeGreenKnight);
+        return hostiles;
+    }
+
+    updateAnimals(dt, activeWorld, activeMonsters, activeBoss, activeGreenKnight) {
+        const hostiles = this.getHostiles(activeMonsters, activeBoss, activeGreenKnight);
+
+        // Companions fight alongside the player, in caves as well as on the surface
+        for (const companion of this.companions) {
+            const hits = companion.update(dt, this.player, activeWorld, hostiles, this.combat);
+            for (const hit of hits) {
+                this.sound.monsterHit();
+                if (hit.killed) {
+                    this.onEntityKilled(hit.target, hit.isBoss);
+                }
+            }
+            if (!companion.alive && !companion.deathAnnounced) {
+                companion.deathAnnounced = true;
+                this.sound.monsterDeath();
+                this.ui.showNotification(`${companion.icon} Your ${companion.name} has fallen!`);
+            }
+        }
+        this.companions = this.companions.filter(c => c.alive || c.deathTimer > 0);
+
+        // Keep follow slots contiguous so the pack doesn't leave gaps in formation
+        let slot = 0;
+        for (const c of this.companions) {
+            if (c.alive) c.followIndex = slot++;
+        }
+
+        // Wild animals only roam the surface
+        if (this.inCave) return;
+        for (const animal of this.wildAnimals) {
+            animal.update(dt, this.player, activeWorld, [], this.combat);
+        }
+        this.wildAnimals = this.wildAnimals.filter(a => a.alive);
+        this.spawnWildAnimals(dt);
+    }
+
+    aliveCompanionCount() {
+        return this.companions.filter(c => c.alive).length;
+    }
+
+    // Bring the pack to the player after a teleport (cave transition, respawn)
+    gatherCompanions() {
+        let i = 0;
+        for (const companion of this.companions) {
+            if (!companion.alive) continue;
+            const angle = (i / ANIMAL_CONFIG.maxCompanions) * Math.PI * 2;
+            companion.x = this.player.x + Math.cos(angle) * 26;
+            companion.y = this.player.y + Math.sin(angle) * 26;
+            companion.target = null;
+            companion.knockbackVx = 0;
+            companion.knockbackVy = 0;
+            i++;
+        }
+    }
+
+    tameNearbyAnimal() {
+        const animal = this.nearAnimal;
+        if (!animal || !animal.alive || animal.tamed) return false;
+
+        if (this.aliveCompanionCount() >= ANIMAL_CONFIG.maxCompanions) {
+            this.ui.showNotification(`Your pack is full! (${ANIMAL_CONFIG.maxCompanions}/${ANIMAL_CONFIG.maxCompanions})`);
+            return true;
+        }
+        if (this.player.apples < ANIMAL_CONFIG.applesToTame) {
+            this.ui.showNotification("You need an apple to tame an animal!");
+            return true;
+        }
+
+        this.player.apples -= ANIMAL_CONFIG.applesToTame;
+        animal.tame(this.aliveCompanionCount());
+        this.wildAnimals = this.wildAnimals.filter(a => a !== animal);
+        this.companions.push(animal);
+        this.nearAnimal = null;
+
+        this.sound.animalTame();
+        this.ui.showNotification(`${animal.icon} ${animal.name} joins you! (${this.aliveCompanionCount()}/${ANIMAL_CONFIG.maxCompanions})`);
+
+        if (!this.firstTameShown) {
+            this.firstTameShown = true;
+            this.ui.showDialog(`The ${animal.name} takes the apple and trots to your side. ${animal.flavor}.`, () => {
+                this.ui.showDialog(`It will follow you and fight what threatens you until it falls. You can keep ${ANIMAL_CONFIG.maxCompanions} companions at once.`);
+            });
+        }
+        return true;
     }
 
     gameLoop(timestamp) {
@@ -571,6 +746,9 @@ class Game {
             }
         }
 
+        // Update wild animals and companions
+        this.updateAnimals(dt, activeWorld, activeMonsters, activeBoss, activeGreenKnight);
+
         // Update arrow projectiles
         const arrowHits = this.combat.updateArrows(dt, activeMonsters, activeBoss, activeWorld, activeGreenKnight);
         for (const hit of arrowHits) {
@@ -647,6 +825,17 @@ class Game {
                 if (coin.respawnTimer <= 0) {
                     coin.collected = false;
                     coin.respawnTimer = 0;
+                }
+            }
+        }
+
+        // Respawn apples (surface only)
+        if (!this.inCave) for (const apple of this.world.apples) {
+            if (apple.collected && apple.respawnTimer > 0) {
+                apple.respawnTimer -= dt;
+                if (apple.respawnTimer <= 0) {
+                    apple.collected = false;
+                    apple.respawnTimer = 0;
                 }
             }
         }
@@ -733,6 +922,10 @@ class Game {
         // Brief grace period so nearby monsters can't chain-kill on respawn
         this.player.invincible = true;
         this.player.invincibleTimer = 2000;
+
+        // Surviving companions regroup around the player
+        this.nearAnimal = null;
+        this.gatherCompanions();
 
         // Snap the camera to the respawn point instead of panning across the map
         this.camera.x = clamp(this.player.x - CANVAS_W / 2, 0, WORLD_W * TILE_SIZE - CANVAS_W);
@@ -966,6 +1159,32 @@ class Game {
             }
         }
 
+        // Check apples (auto-collect on proximity)
+        for (const apple of this.world.apples) {
+            if (apple.collected) continue;
+            if (dist(this.player.x, this.player.y, apple.x, apple.y) < APPLE_CONFIG.collectRange) {
+                if (!this.player.addApples(1)) continue;
+                apple.collected = true;
+                apple.respawnTimer = APPLE_CONFIG.respawnTime;
+                this.sound.applePickup();
+                this.ui.showNotification(`${APPLE_ITEM.icon} Apple collected (${this.player.apples})`);
+            }
+        }
+
+        // Check for a nearby wild animal to tame
+        this.nearAnimal = null;
+        if (this.aliveCompanionCount() < ANIMAL_CONFIG.maxCompanions) {
+            let closest = Infinity;
+            for (const animal of this.wildAnimals) {
+                if (!animal.alive || animal.tamed) continue;
+                const d = dist(this.player.x, this.player.y, animal.x, animal.y);
+                if (d < ANIMAL_CONFIG.tameRange && d < closest) {
+                    closest = d;
+                    this.nearAnimal = animal;
+                }
+            }
+        }
+
         // Check Merlin's Hut (for lore access)
         this.nearMerlinHut = false;
         if (this.world.merlinHut) {
@@ -1032,6 +1251,12 @@ class Game {
         if (this.nearMerlinHut) {
             this.sound.menuSelect();
             this.ui.openLore();
+            return;
+        }
+
+        // Tame a nearby wild animal with an apple
+        if (this.nearAnimal) {
+            this.tameNearbyAnimal();
         }
     }
 
@@ -1370,6 +1595,10 @@ class Game {
         this.spawnCaveMonstersForCave(caveWorld);
         this.caveBoss = null;
 
+        // The pack climbs down with you
+        this.nearAnimal = null;
+        this.gatherCompanions();
+
         const ce = CAVE_ENTRANCES.find(e => e.id === entrance.id);
         this.currentZone = "cave";
         this.zoneDisplayTimer = 3000;
@@ -1393,6 +1622,7 @@ class Game {
             this.player.y = mainEntrance.worldY + TILE_SIZE;
         }
 
+        this.gatherCompanions();
         this.sound.menuSelect();
         this.ui.showNotification("Returned to the surface.");
     }
@@ -1670,6 +1900,16 @@ class Game {
         // Player
         renderables.push({ y: this.player.y, render: () => this.player.render(ctx, this.camera, this.time) });
 
+        // Wild animals (surface only) and companions
+        if (!this.inCave) {
+            for (const a of this.wildAnimals) {
+                renderables.push({ y: a.y, render: () => a.render(ctx, this.camera, this.time) });
+            }
+        }
+        for (const c of this.companions) {
+            renderables.push({ y: c.y, render: () => c.render(ctx, this.camera, this.time) });
+        }
+
         // Boss (surface)
         if (!this.inCave && this.boss && this.boss.spawned) {
             renderables.push({ y: this.boss.y, render: () => this.boss.render(ctx, this.camera, this.time) });
@@ -1742,6 +1982,11 @@ class Game {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to enter hut" : "Press E to read ancient lore");
         } else if (this.nearFountain) {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT for Fountain" : "Press E for Fountain of Youth");
+        } else if (this.nearAnimal) {
+            const verb = this.player.apples > 0
+                ? `feed an apple to the ${this.nearAnimal.name} (${APPLE_ITEM.icon} ${this.player.apples})`
+                : `tame the ${this.nearAnimal.name} - you need an apple!`;
+            this.ui.renderInteractionPrompt(ctx, (isMobile ? "Tap ACT to " : "Press E to ") + verb);
         }
 
         // Render cave exit labels
@@ -1753,7 +1998,7 @@ class Game {
         if (this.inCave && this.caveWorlds[this.activeCaveId]) {
             this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss);
         } else {
-            this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss, this.greenKnight);
+            this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss, this.greenKnight, this.companions);
         }
 
         // Render world map if open

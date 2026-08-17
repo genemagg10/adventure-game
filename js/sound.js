@@ -630,6 +630,44 @@ class SoundSystem {
         osc.stop(t + 0.08);
     }
 
+    applePickup() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+
+        // Soft crunchy pop
+        const osc = this.ctx.createOscillator();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(520, t);
+        osc.frequency.exponentialRampToValueAtTime(880, t + 0.09);
+        const gain = this.createGain(0.09);
+        gain.gain.setValueAtTime(0.09 * this.masterVolume, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        osc.connect(gain);
+        osc.start(t);
+        osc.stop(t + 0.12);
+    }
+
+    animalTame() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+
+        // Cheerful little chirp - a friend has joined
+        const notes = [660, 880, 1170];
+        for (let i = 0; i < notes.length; i++) {
+            const delay = i * 0.07;
+            const osc = this.ctx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(notes[i], t + delay);
+            osc.frequency.linearRampToValueAtTime(notes[i] * 1.06, t + delay + 0.12);
+            const gain = this.createGain(0.1);
+            gain.gain.setValueAtTime(0.1 * this.masterVolume, t + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.22);
+            osc.connect(gain);
+            osc.start(t + delay);
+            osc.stop(t + delay + 0.22);
+        }
+    }
+
     weaponPickup() {
         if (!this.ensureContext()) return;
         const t = this.ctx.currentTime;

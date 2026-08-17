@@ -19,19 +19,32 @@
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
         <div id="title-screen">
-            <h1>Ingoizer's World</h1>
-            <p class="subtitle">A Tale of Gems and Glory</p>
-            <div class="title-art">
-                <pre>
-    ⚔️  👑  ⚔️
-   ╔═══════════╗
-   ║  INGOIZER ║
-   ║   AWAITS   ║
-   ╚═══════════╝
-                </pre>
+            <div class="title-atmosphere" aria-hidden="true"></div>
+            <div class="title-lockup">
+                <div class="title-crest" aria-hidden="true">
+                    <span class="crest-sword crest-sword-left">⚔</span>
+                    <span class="crest-crown">♛</span>
+                    <span class="crest-sword crest-sword-right">⚔</span>
+                </div>
+                <h1>Ingoizer's World</h1>
+                <div class="subtitle-row">
+                    <span class="subtitle-rule" aria-hidden="true"></span>
+                    <p class="subtitle">A Tale of Gems and Glory</p>
+                    <span class="subtitle-rule" aria-hidden="true"></span>
+                </div>
             </div>
-            <button id="startBtn" class="menu-btn">Begin Adventure</button>
-            <button id="controlsBtn" class="menu-btn">Controls</button>
+            <div class="title-menu" aria-label="Main menu">
+                <div class="menu-ornament" aria-hidden="true">
+                    <span></span><b>◆</b><span></span>
+                </div>
+                <p class="menu-kicker">The realm awaits</p>
+                <div class="title-actions">
+                    <button id="startBtn" class="menu-btn menu-btn-primary">Begin Adventure</button>
+                    <button id="controlsBtn" class="menu-btn">Controls</button>
+                </div>
+                <p class="menu-note">Your journey begins in Green Meadow</p>
+            </div>
+            <p class="title-version">A world of gems, magic, and glory</p>
         </div>
         <div id="controls-screen" class="hidden">
             <h2>Controls</h2>

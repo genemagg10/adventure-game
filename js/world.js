@@ -1971,6 +1971,8 @@ class World {
                 ctx.fillStyle = "#ffdd66";
                 ctx.fillRect(c.x * scale - 1, c.y * scale - 1, 3, 3);
             }
+        }
+
         // Draw the Worldtree / sky ladder
         if (this.skyTree) {
             ctx.fillStyle = this.skyTree.state === "revealed" ? "#dcefff" : "#66cc55";

@@ -79,6 +79,11 @@ class World {
         this.caveEntrances = [];
         this.placeCaveEntrances();
 
+        // The Worldtree in the top-right corner - burn it to reveal the sky ladder
+        this.skyTree = null;
+        this.skyLadder = null;
+        this.placeSkyTree(rng);
+
         // Fountain of Youth
         this.fountainOfYouth = null;
         this.placeFountainOfYouth(rng);
@@ -622,6 +627,99 @@ class World {
         return cleared;
     }
 
+    // ============================================
+    // The Worldtree (top-right corner) & the ladder to the Cloudlands
+    // ============================================
+
+    placeSkyTree(rng) {
+        const t = SKY_TREE;
+
+        // A quiet approach road so the corner can actually be found on foot.
+        this.carvePath(160, 22, 188, 14, rng);
+        this.carvePath(188, 14, t.x, t.y + 4, rng);
+
+        // Clear a grassy glade around the tree so the canopy reads clearly.
+        for (let dy = -4; dy <= 4; dy++) {
+            for (let dx = -4; dx <= 4; dx++) {
+                const tx = t.x + dx;
+                const ty = t.y + dy;
+                if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
+                if (SOLID_TILES.has(this.tiles[ty][tx])) this.tiles[ty][tx] = TILE.GRASS;
+            }
+        }
+
+        // The canopy itself: a solid block of ancient tree tiles.
+        for (let dy = -t.radius; dy <= t.radius; dy++) {
+            for (let dx = -t.radius; dx <= t.radius; dx++) {
+                const tx = t.x + dx;
+                const ty = t.y + dy;
+                if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
+                this.tiles[ty][tx] = TILE.SKY_TREE;
+            }
+        }
+
+        this.skyTree = {
+            tileX: t.x,
+            tileY: t.y,
+            x: t.x * TILE_SIZE + TILE_SIZE / 2,
+            y: t.y * TILE_SIZE + TILE_SIZE / 2,
+            state: "intact",   // intact -> burning -> revealed
+            burnTimer: 0,
+        };
+    }
+
+    // Set the Worldtree alight. Returns true only on the first ignition.
+    igniteSkyTree() {
+        const st = this.skyTree;
+        if (!st || st.state !== "intact") return false;
+        st.state = "burning";
+        st.burnTimer = SKY_TREE.burnTime;
+
+        for (let dy = -SKY_TREE.radius; dy <= SKY_TREE.radius; dy++) {
+            for (let dx = -SKY_TREE.radius; dx <= SKY_TREE.radius; dx++) {
+                const tx = st.tileX + dx;
+                const ty = st.tileY + dy;
+                if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
+                if (this.tiles[ty][tx] === TILE.SKY_TREE) this.tiles[ty][tx] = TILE.SKY_TREE_BURNING;
+            }
+        }
+        return true;
+    }
+
+    // Burn down the Worldtree over time. Returns true on the frame the ladder appears.
+    updateSkyTree(dt) {
+        const st = this.skyTree;
+        if (!st || st.state !== "burning") return false;
+        st.burnTimer -= dt;
+        if (st.burnTimer > 0) return false;
+        this.revealSkyLadder();
+        return true;
+    }
+
+    revealSkyLadder() {
+        const st = this.skyTree;
+        if (!st || st.state === "revealed") return;
+        st.state = "revealed";
+        st.burnTimer = 0;
+
+        // Everything but the heart of the tree burns away to ash.
+        for (let dy = -SKY_TREE.radius; dy <= SKY_TREE.radius; dy++) {
+            for (let dx = -SKY_TREE.radius; dx <= SKY_TREE.radius; dx++) {
+                const tx = st.tileX + dx;
+                const ty = st.tileY + dy;
+                if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
+                this.tiles[ty][tx] = (dx === 0 && dy === 0) ? TILE.SKY_LADDER : TILE.PATH;
+            }
+        }
+
+        this.skyLadder = {
+            tileX: st.tileX,
+            tileY: st.tileY,
+            x: st.x,
+            y: st.y,
+        };
+    }
+
     placeFountainOfYouth(rng) {
         // Place fountain in a random non-solid location in the meadow/village area
         let fx, fy;
@@ -833,6 +931,166 @@ class World {
 
         // Render the hidden ladder / secret base
         this.renderHiddenLadder(ctx, camera, time);
+
+        // Render the Worldtree / sky ladder in the top-right corner
+        this.renderSkyTree(ctx, camera, time);
+    }
+
+    renderSkyTree(ctx, camera, time) {
+        const st = this.skyTree;
+        if (!st) return;
+        const sx = st.x - camera.x;
+        const sy = st.y - camera.y;
+        if (sx < -160 || sx > CANVAS_W + 160 || sy < -220 || sy > CANVAS_H + 160) return;
+
+        ctx.save();
+        ctx.textAlign = "center";
+
+        if (st.state === "revealed") {
+            this.renderSkyLadderShaft(ctx, sx, sy, time);
+            ctx.restore();
+            return;
+        }
+
+        const burning = st.state === "burning";
+
+        // Trunk - wide, gnarled, older than the kingdom
+        ctx.fillStyle = burning ? "#3a2410" : "#5b3a18";
+        ctx.fillRect(sx - 11, sy - 10, 22, 46);
+        ctx.fillStyle = burning ? "#2a1a0c" : "#4a2e12";
+        ctx.fillRect(sx - 4, sy - 10, 5, 46);
+        // Roots
+        ctx.beginPath();
+        ctx.moveTo(sx - 11, sy + 30);
+        ctx.lineTo(sx - 26, sy + 40);
+        ctx.lineTo(sx - 11, sy + 40);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(sx + 11, sy + 30);
+        ctx.lineTo(sx + 26, sy + 40);
+        ctx.lineTo(sx + 11, sy + 40);
+        ctx.fill();
+
+        // Canopy - three overlapping crowns
+        const sway = Math.sin(time * 0.0012) * 3;
+        const crowns = [
+            { x: sx + sway, y: sy - 34, r: 40 },
+            { x: sx - 28 + sway, y: sy - 14, r: 28 },
+            { x: sx + 28 + sway, y: sy - 16, r: 30 },
+        ];
+        for (const c of crowns) {
+            ctx.fillStyle = burning ? "#4a3a10" : "#1f6a18";
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = burning ? "#5a4412" : "#2b8a22";
+            ctx.beginPath();
+            ctx.arc(c.x - c.r * 0.25, c.y - c.r * 0.25, c.r * 0.65, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        if (burning) {
+            // Roaring fire climbing the crown
+            const progress = 1 - st.burnTimer / SKY_TREE.burnTime;
+            for (let i = 0; i < 16; i++) {
+                const a = (i / 16) * Math.PI * 2 + time * 0.004;
+                const r = 20 + Math.sin(time * 0.01 + i) * 8 + progress * 24;
+                const fx = sx + Math.cos(a) * r * 1.2;
+                const fy = sy - 26 + Math.sin(a) * r * 0.8;
+                ctx.fillStyle = choose(["#ff4400", "#ff8800", "#ffcc00"]);
+                ctx.globalAlpha = 0.55 + Math.sin(time * 0.008 + i) * 0.25;
+                ctx.beginPath();
+                ctx.arc(fx, fy, 5 + Math.random() * 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            // Heat glow
+            const glow = ctx.createRadialGradient(sx, sy - 24, 0, sx, sy - 24, 90);
+            glow.addColorStop(0, "rgba(255, 150, 0, 0.35)");
+            glow.addColorStop(1, "rgba(255, 80, 0, 0)");
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(sx, sy - 24, 90, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#ffcc55";
+            ctx.font = "bold 11px monospace";
+            ctx.fillText("The Worldtree burns...", sx, sy - 86);
+        } else {
+            // Faint golden shimmer hinting that something is hidden inside
+            const shimmer = 0.12 + Math.sin(time * 0.002) * 0.08;
+            ctx.fillStyle = `rgba(255, 235, 150, ${shimmer})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy - 26, 52, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#cfe8a8";
+            ctx.font = "bold 11px monospace";
+            ctx.fillText("The Worldtree", sx, sy - 86);
+            ctx.fillStyle = `rgba(255, 200, 120, ${0.45 + Math.sin(time * 0.004) * 0.2})`;
+            ctx.font = "9px monospace";
+            ctx.fillText("Only fire loosed from a bow can open it", sx, sy + 54);
+        }
+
+        ctx.restore();
+    }
+
+    renderSkyLadderShaft(ctx, sx, sy, time) {
+        // A shaft of light with a ladder climbing out of frame into the clouds
+        const beam = ctx.createLinearGradient(sx, sy - 200, sx, sy + 20);
+        beam.addColorStop(0, "rgba(200, 225, 255, 0)");
+        beam.addColorStop(0.5, "rgba(210, 235, 255, 0.22)");
+        beam.addColorStop(1, "rgba(255, 255, 255, 0.34)");
+        ctx.fillStyle = beam;
+        ctx.beginPath();
+        ctx.moveTo(sx - 12, sy - 200);
+        ctx.lineTo(sx + 12, sy - 200);
+        ctx.lineTo(sx + 30, sy + 20);
+        ctx.lineTo(sx - 30, sy + 20);
+        ctx.closePath();
+        ctx.fill();
+
+        // Ash ring where the tree stood
+        ctx.fillStyle = "rgba(40, 34, 28, 0.5)";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 16, 40, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ladder rails and rungs, fading as they rise
+        for (let i = 0; i < 12; i++) {
+            const ry = sy + 12 - i * 18;
+            const alpha = Math.max(0, 1 - i / 12);
+            ctx.strokeStyle = `rgba(214, 172, 96, ${alpha})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(sx - 9, ry);
+            ctx.lineTo(sx - 9, ry - 18);
+            ctx.moveTo(sx + 9, ry);
+            ctx.lineTo(sx + 9, ry - 18);
+            ctx.stroke();
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(sx - 9, ry);
+            ctx.lineTo(sx + 9, ry);
+            ctx.stroke();
+        }
+
+        // Small clouds drifting past the top of the ladder
+        for (let i = 0; i < 3; i++) {
+            const cx = sx + Math.sin(time * 0.0006 + i * 2.2) * 46;
+            const cy = sy - 120 - i * 34;
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.3 - i * 0.06})`;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, 26 - i * 4, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.fillStyle = "#dcefff";
+        ctx.font = "bold 11px monospace";
+        ctx.fillText("Ladder to the Cloudlands", sx, sy - 196);
+        ctx.fillStyle = `rgba(220, 240, 255, ${0.55 + Math.sin(time * 0.004) * 0.25})`;
+        ctx.font = "9px monospace";
+        ctx.fillText("[E] Climb", sx, sy + 40);
     }
 
     renderHiddenLadder(ctx, camera, time) {
@@ -1713,6 +1971,10 @@ class World {
                 ctx.fillStyle = "#ffdd66";
                 ctx.fillRect(c.x * scale - 1, c.y * scale - 1, 3, 3);
             }
+        // Draw the Worldtree / sky ladder
+        if (this.skyTree) {
+            ctx.fillStyle = this.skyTree.state === "revealed" ? "#dcefff" : "#66cc55";
+            ctx.fillRect(this.skyTree.x * scale - 2, this.skyTree.y * scale - 2, 5, 5);
         }
 
         // Draw player
@@ -1849,6 +2111,23 @@ class World {
             ctx.font = "8px monospace";
             ctx.textAlign = "center";
             ctx.fillText(entrance.label, ex, ey - 7);
+        }
+
+        // Worldtree / sky ladder marker
+        if (this.skyTree) {
+            const tx = this.skyTree.x * scale + offsetX;
+            const ty = this.skyTree.y * scale + offsetY;
+            const revealed = this.skyTree.state === "revealed";
+            ctx.fillStyle = revealed ? "#dcefff" : "#66cc55";
+            ctx.beginPath();
+            ctx.arc(tx, ty, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = revealed ? "#dcefff" : "#cfe8a8";
+            ctx.font = "8px monospace";
+            ctx.textAlign = "center";
+            const label = revealed ? "Sky Ladder" : "Worldtree";
+            const halfW = ctx.measureText(label).width / 2;
+            ctx.fillText(label, clamp(tx, halfW + 2, mapW - halfW - 2), ty - 8);
         }
 
         // Player position
@@ -2415,5 +2694,634 @@ class CaveWorld {
             ctx.fillText("[E] Climb", ex, ey + 26);
             ctx.restore();
         }
+    }
+}
+
+// ============================================
+// Sky World - The Cloudlands above the realm
+// ============================================
+
+class SkyWorld {
+    constructor() {
+        this.tiles = [];
+        this.decorations = [];
+        this.exit = null;          // the ladder back down to the Worldtree
+        this.templeCenter = null;  // tile coords of the Temple of Olympus
+        this.bossSpawnTile = null;
+        this.ambrosia = [];
+        this.generate();
+    }
+
+    generate() {
+        const rng = seededRandom(1207);
+        this.tiles = new Array(SKY_H);
+        for (let y = 0; y < SKY_H; y++) {
+            this.tiles[y] = new Array(SKY_W).fill(TILE.SKY_VOID);
+        }
+
+        // A handful of cloud islands scattered across the open sky.
+        const islands = [];
+        const templeX = Math.floor(SKY_W / 2);
+        const templeY = Math.floor(SKY_H / 2) - 3;
+        const arrivalX = Math.floor(SKY_W / 2);
+        const arrivalY = SKY_H - 7;
+
+        islands.push({ x: arrivalX, y: arrivalY, r: 7 });   // arrival island
+        islands.push({ x: templeX, y: templeY, r: 13 });    // temple island
+
+        const spots = [
+            { x: 12, y: 12 }, { x: 66, y: 13 }, { x: 10, y: 34 }, { x: 69, y: 36 },
+            { x: 26, y: 8 },  { x: 54, y: 9 },  { x: 15, y: 50 }, { x: 64, y: 50 },
+            { x: 38, y: 8 },  { x: 30, y: 46 }, { x: 50, y: 47 },
+        ];
+        for (const s of spots) {
+            islands.push({ x: s.x, y: s.y, r: 5 + Math.floor(rng() * 4) });
+        }
+
+        for (const isl of islands) {
+            this.carveIsland(isl.x, isl.y, isl.r);
+        }
+
+        // Vapour bridges: every island links back toward the temple, and the
+        // arrival island links to the temple directly, so nothing is stranded.
+        for (let i = 2; i < islands.length; i++) {
+            const target = islands[(i % 2 === 0) ? 1 : 0];
+            this.carveBridge(islands[i].x, islands[i].y, target.x, target.y, rng);
+        }
+        this.carveBridge(arrivalX, arrivalY, templeX, templeY, rng);
+
+        // The Temple of Olympus - marble floor ringed with pillars.
+        this.buildTemple(templeX, templeY);
+
+        // Arrival platform with the ladder back down.
+        this.carveIsland(arrivalX, arrivalY, 5);
+        this.tiles[arrivalY][arrivalX] = TILE.SKY_PORTAL;
+        this.exit = {
+            x: arrivalX, y: arrivalY,
+            worldX: arrivalX * TILE_SIZE + TILE_SIZE / 2,
+            worldY: arrivalY * TILE_SIZE + TILE_SIZE / 2,
+        };
+
+        // Trim any cloud fragments the wobbly island edges left stranded, so
+        // keepers and ambrosia can never end up somewhere unreachable.
+        this.pruneUnreachable();
+
+        this.placeAmbrosia(rng, islands);
+        this.generateSkyDecorations(rng);
+    }
+
+    // Flood fill from the arrival pad; anything the player cannot walk to is
+    // dissolved back into open sky.
+    pruneUnreachable() {
+        const reachable = new Set();
+        const stack = [[this.exit.x, this.exit.y]];
+        reachable.add(this.exit.x + "," + this.exit.y);
+        while (stack.length) {
+            const [x, y] = stack.pop();
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                const nx = x + dx, ny = y + dy;
+                const key = nx + "," + ny;
+                if (reachable.has(key) || this.isSolid(nx, ny)) continue;
+                reachable.add(key);
+                stack.push([nx, ny]);
+            }
+        }
+
+        for (let y = 0; y < SKY_H; y++) {
+            for (let x = 0; x < SKY_W; x++) {
+                const t = this.tiles[y][x];
+                if (t === TILE.SKY_VOID) continue;
+                if (t === TILE.PILLAR) {
+                    // A pillar only makes sense while it still borders solid ground
+                    let anchored = false;
+                    for (let dy = -1; dy <= 1 && !anchored; dy++) {
+                        for (let dx = -1; dx <= 1 && !anchored; dx++) {
+                            if (reachable.has((x + dx) + "," + (y + dy))) anchored = true;
+                        }
+                    }
+                    if (!anchored) this.tiles[y][x] = TILE.SKY_VOID;
+                } else if (!reachable.has(x + "," + y)) {
+                    this.tiles[y][x] = TILE.SKY_VOID;
+                }
+            }
+        }
+    }
+
+    carveIsland(cx, cy, radius) {
+        for (let dy = -radius - 2; dy <= radius + 2; dy++) {
+            for (let dx = -radius - 2; dx <= radius + 2; dx++) {
+                const tx = cx + dx, ty = cy + dy;
+                if (tx < 1 || tx >= SKY_W - 1 || ty < 1 || ty >= SKY_H - 1) continue;
+                // Wobbly edge so islands look like drifting cloud banks
+                const wobble = Math.sin((dx * 0.9 + dy * 1.3) + cx) * 1.4 + Math.cos(dy * 0.7 + cy) * 1.1;
+                if (Math.sqrt(dx * dx + dy * dy * 1.35) <= radius + wobble) {
+                    this.tiles[ty][tx] = TILE.CLOUD;
+                }
+            }
+        }
+    }
+
+    carveBridge(x1, y1, x2, y2, rng) {
+        let x = x1, y = y1;
+        let guard = 0;
+        while ((x !== x2 || y !== y2) && guard++ < 4000) {
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const tx = x + dx, ty = y + dy;
+                    if (tx < 1 || tx >= SKY_W - 1 || ty < 1 || ty >= SKY_H - 1) continue;
+                    if (this.tiles[ty][tx] === TILE.SKY_VOID) this.tiles[ty][tx] = TILE.CLOUD;
+                }
+            }
+            if (rng() < 0.55) {
+                if (x < x2) x++; else if (x > x2) x--;
+                else if (y < y2) y++; else if (y > y2) y--;
+            } else {
+                if (y < y2) y++; else if (y > y2) y--;
+                else if (x < x2) x++; else if (x > x2) x--;
+            }
+        }
+    }
+
+    buildTemple(cx, cy) {
+        const half = 9;
+        // Marble platform
+        for (let dy = -half; dy <= half; dy++) {
+            for (let dx = -half; dx <= half; dx++) {
+                const tx = cx + dx, ty = cy + dy;
+                if (tx < 1 || tx >= SKY_W - 1 || ty < 1 || ty >= SKY_H - 1) continue;
+                if (Math.abs(dx) + Math.abs(dy) <= half + 4) {
+                    this.tiles[ty][tx] = TILE.MARBLE;
+                }
+            }
+        }
+        // Pillars around the rim, with wide gaps to fight through
+        const pillarOffsets = [
+            [-7, -7], [0, -8], [7, -7],
+            [-8, 0], [8, 0],
+            [-7, 7], [0, 8], [7, 7],
+        ];
+        for (const [dx, dy] of pillarOffsets) {
+            const tx = cx + dx, ty = cy + dy;
+            if (tx < 1 || tx >= SKY_W - 1 || ty < 1 || ty >= SKY_H - 1) continue;
+            this.tiles[ty][tx] = TILE.PILLAR;
+        }
+
+        this.templeCenter = { x: cx, y: cy };
+        this.bossSpawnTile = { x: cx, y: cy };
+    }
+
+    placeAmbrosia(rng, islands) {
+        this.ambrosia = [];
+        // Only on the outlying islands - never the arrival pad or the temple.
+        const candidates = islands.slice(2);
+        for (let i = 0; i < AMBROSIA.count && candidates.length > 0; i++) {
+            const isl = candidates[Math.floor(rng() * candidates.length)];
+            let placed = false;
+            for (let attempt = 0; attempt < 40 && !placed; attempt++) {
+                const tx = isl.x + Math.floor(rng() * 5) - 2;
+                const ty = isl.y + Math.floor(rng() * 5) - 2;
+                if (!this.isSolid(tx, ty)) {
+                    this.ambrosia.push({
+                        x: tx * TILE_SIZE + TILE_SIZE / 2,
+                        y: ty * TILE_SIZE + TILE_SIZE / 2,
+                        collected: false,
+                        pulsePhase: rng() * Math.PI * 2,
+                    });
+                    placed = true;
+                }
+            }
+        }
+    }
+
+    generateSkyDecorations(rng) {
+        this.decorations = [];
+        for (let i = 0; i < 420; i++) {
+            const tx = Math.floor(rng() * SKY_W);
+            const ty = Math.floor(rng() * SKY_H);
+            const tile = this.tiles[ty][tx];
+            let type;
+            if (tile === TILE.SKY_VOID) {
+                type = "far_cloud";
+            } else if (tile === TILE.CLOUD) {
+                type = rng() < 0.35 ? "puff" : (rng() < 0.5 ? "feather" : "spark");
+            } else if (tile === TILE.MARBLE) {
+                type = rng() < 0.5 ? "laurel" : "glyph";
+            } else {
+                continue;
+            }
+            this.decorations.push({
+                x: tx * TILE_SIZE + rng() * TILE_SIZE,
+                y: ty * TILE_SIZE + rng() * TILE_SIZE,
+                type,
+                size: 3 + rng() * 7,
+                phase: rng() * Math.PI * 2,
+            });
+        }
+    }
+
+    isSolid(tx, ty) {
+        if (tx < 0 || tx >= SKY_W || ty < 0 || ty >= SKY_H) return true;
+        const t = this.tiles[ty][tx];
+        return t === TILE.SKY_VOID || t === TILE.PILLAR;
+    }
+
+    // True when a ground tile touches the open sky, so it gets a rounded rim
+    isEdgeTile(tx, ty) {
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const nx = tx + dx, ny = ty + dy;
+                if (nx < 0 || nx >= SKY_W || ny < 0 || ny >= SKY_H) return true;
+                if (this.tiles[ny][nx] === TILE.SKY_VOID) return true;
+            }
+        }
+        return false;
+    }
+
+    // A walkable tile picked at random, used for monster spawning.
+    randomOpenTile() {
+        for (let attempt = 0; attempt < 200; attempt++) {
+            const tx = randInt(2, SKY_W - 3);
+            const ty = randInt(2, SKY_H - 3);
+            if (!this.isSolid(tx, ty)) return { x: tx, y: ty };
+        }
+        return { x: this.exit.x, y: this.exit.y };
+    }
+
+    render(ctx, camera, time) {
+        const startTX = Math.floor(camera.x / TILE_SIZE) - 1;
+        const startTY = Math.floor(camera.y / TILE_SIZE) - 1;
+        const endTX = startTX + TILES_X + 2;
+        const endTY = startTY + TILES_Y + 2;
+
+        // Sky backdrop gradient behind everything
+        const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+        sky.addColorStop(0, "#2f5fb0");
+        sky.addColorStop(0.55, "#5b96e0");
+        sky.addColorStop(1, "#9fd0f5");
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+        // Clouds are drawn in three passes so the islands get soft, rounded
+        // silhouettes instead of a hard tile grid.
+        const clampTX = (v) => Math.max(0, Math.min(SKY_W - 1, v));
+        const clampTY = (v) => Math.max(0, Math.min(SKY_H - 1, v));
+        const y0 = clampTY(startTY), y1 = clampTY(endTY);
+        const x0 = clampTX(startTX), x1 = clampTX(endTX);
+
+        // Pass 1 - the shaded underbelly of each island, offset downward
+        ctx.fillStyle = "rgba(58, 92, 158, 0.42)";
+        for (let ty = y0; ty <= y1; ty++) {
+            for (let tx = x0; tx <= x1; tx++) {
+                if (this.tiles[ty][tx] === TILE.SKY_VOID) continue;
+                if (!this.isEdgeTile(tx, ty)) continue;
+                const sx = tx * TILE_SIZE + TILE_SIZE / 2 - camera.x;
+                const sy = ty * TILE_SIZE + TILE_SIZE / 2 - camera.y;
+                const drift = Math.sin(time * 0.0009 + tx * 0.5 + ty * 0.4) * 1.5;
+                ctx.beginPath();
+                ctx.arc(sx, sy + 7 + drift, 20, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Pass 2 - the cloud body itself: squares inside, scalloped at the rim
+        for (let ty = y0; ty <= y1; ty++) {
+            for (let tx = x0; tx <= x1; tx++) {
+                if (this.tiles[ty][tx] === TILE.SKY_VOID) continue;
+                const sx = tx * TILE_SIZE - camera.x;
+                const sy = ty * TILE_SIZE - camera.y;
+                const edge = this.isEdgeTile(tx, ty);
+                ctx.fillStyle = "#f4f7ff";
+                if (edge) {
+                    const drift = Math.sin(time * 0.0009 + tx * 0.5 + ty * 0.4) * 1.5;
+                    ctx.beginPath();
+                    ctx.arc(sx + TILE_SIZE / 2, sy + TILE_SIZE / 2 + drift, 19, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.fillRect(sx, sy, TILE_SIZE + 1, TILE_SIZE + 1);
+                }
+            }
+        }
+
+        // Pass 3 - surfaces that sit on top of the cloud (marble, pillars, ladder)
+        for (let ty = y0; ty <= y1; ty++) {
+            for (let tx = x0; tx <= x1; tx++) {
+                const tile = this.tiles[ty][tx];
+                if (tile === TILE.SKY_VOID) continue;
+                const sx = tx * TILE_SIZE - camera.x;
+                const sy = ty * TILE_SIZE - camera.y;
+                this.renderSkyTile(ctx, tile, sx, sy, tx, ty, time);
+            }
+        }
+
+        // Decorations
+        for (const dec of this.decorations) {
+            const sx = dec.x - camera.x;
+            const sy = dec.y - camera.y;
+            if (sx < -30 || sx > CANVAS_W + 30 || sy < -30 || sy > CANVAS_H + 30) continue;
+            this.renderSkyDecoration(ctx, dec, sx, sy, time);
+        }
+
+        // Temple silhouette behind the arena
+        if (this.templeCenter) {
+            const tcx = this.templeCenter.x * TILE_SIZE + TILE_SIZE / 2 - camera.x;
+            const tcy = this.templeCenter.y * TILE_SIZE + TILE_SIZE / 2 - camera.y;
+            if (tcx > -400 && tcx < CANVAS_W + 400 && tcy > -400 && tcy < CANVAS_H + 400) {
+                ctx.save();
+                ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+                ctx.font = "bold 13px monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("TEMPLE OF OLYMPUS", tcx, tcy - 9 * TILE_SIZE - 12);
+                ctx.restore();
+            }
+        }
+
+        // Ambrosia caches
+        for (const a of this.ambrosia) {
+            if (a.collected) continue;
+            const ax = a.x - camera.x;
+            const ay = a.y - camera.y;
+            if (ax < -30 || ax > CANVAS_W + 30 || ay < -30 || ay > CANVAS_H + 30) continue;
+            this.renderAmbrosia(ctx, ax, ay, time, a);
+        }
+    }
+
+    renderSkyTile(ctx, tile, sx, sy, tx, ty, time) {
+        switch (tile) {
+            case TILE.CLOUD: {
+                // Gentle dappling so a big cloud bank doesn't read as flat paper
+                if ((tx * 3 + ty * 5) % 7 === 0) {
+                    const drift = Math.sin(time * 0.0008 + tx * 0.4 + ty * 0.3) * 2;
+                    ctx.fillStyle = "rgba(197, 213, 243, 0.5)";
+                    ctx.beginPath();
+                    ctx.arc(sx + 16, sy + 18 + drift, 11, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                break;
+            }
+            case TILE.MARBLE: {
+                ctx.fillStyle = ((tx + ty) % 2 === 0) ? "#e0dcf0" : "#cbc5e2";
+                if (this.isEdgeTile(tx, ty)) {
+                    ctx.beginPath();
+                    ctx.arc(sx + TILE_SIZE / 2, sy + TILE_SIZE / 2, 18, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.fillRect(sx, sy, TILE_SIZE + 1, TILE_SIZE + 1);
+                }
+                ctx.strokeStyle = "rgba(255,255,255,0.45)";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(sx + 0.5, sy + 0.5, TILE_SIZE, TILE_SIZE);
+                break;
+            }
+            case TILE.PILLAR: {
+                ctx.fillStyle = "#cfcae0";
+                ctx.fillRect(sx, sy, TILE_SIZE + 1, TILE_SIZE + 1);
+                // Fluted marble column
+                ctx.fillStyle = "#f2f0fb";
+                ctx.fillRect(sx + 5, sy - 22, TILE_SIZE - 10, TILE_SIZE + 22);
+                ctx.fillStyle = "#bdb6d2";
+                for (let i = 8; i < TILE_SIZE - 6; i += 6) {
+                    ctx.fillRect(sx + i, sy - 20, 2, TILE_SIZE + 18);
+                }
+                // Capital & base
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(sx + 1, sy - 26, TILE_SIZE - 2, 7);
+                ctx.fillRect(sx + 1, sy + TILE_SIZE - 6, TILE_SIZE - 2, 7);
+                break;
+            }
+            case TILE.SKY_PORTAL: {
+                ctx.fillStyle = "#e8eeff";
+                ctx.fillRect(sx, sy, TILE_SIZE + 1, TILE_SIZE + 1);
+                // Ladder heading back down through the cloud
+                ctx.strokeStyle = "#c69a4e";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(sx + 10, sy + 2); ctx.lineTo(sx + 10, sy + TILE_SIZE - 2);
+                ctx.moveTo(sx + TILE_SIZE - 10, sy + 2); ctx.lineTo(sx + TILE_SIZE - 10, sy + TILE_SIZE - 2);
+                ctx.stroke();
+                ctx.lineWidth = 2;
+                for (let r = 6; r < TILE_SIZE - 2; r += 7) {
+                    ctx.beginPath();
+                    ctx.moveTo(sx + 10, sy + r);
+                    ctx.lineTo(sx + TILE_SIZE - 10, sy + r);
+                    ctx.stroke();
+                }
+                const glow = Math.sin(time * 0.003) * 0.15 + 0.25;
+                ctx.fillStyle = `rgba(120, 170, 255, ${glow})`;
+                ctx.beginPath();
+                ctx.arc(sx + TILE_SIZE / 2, sy + TILE_SIZE / 2, 15, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            }
+        }
+    }
+
+    renderSkyDecoration(ctx, dec, sx, sy, time) {
+        switch (dec.type) {
+            case "far_cloud": {
+                const drift = Math.sin(time * 0.0004 + dec.phase) * 12;
+                ctx.fillStyle = "rgba(255, 255, 255, 0.16)";
+                ctx.beginPath();
+                ctx.ellipse(sx + drift, sy, dec.size * 3, dec.size, 0, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            }
+            case "puff": {
+                ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+                ctx.beginPath();
+                ctx.arc(sx, sy, dec.size * 0.7, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            }
+            case "feather": {
+                const bob = Math.sin(time * 0.0015 + dec.phase) * 3;
+                ctx.strokeStyle = "rgba(210, 225, 255, 0.8)";
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(sx - 3, sy + 4 + bob);
+                ctx.quadraticCurveTo(sx, sy + bob, sx + 3, sy - 5 + bob);
+                ctx.stroke();
+                break;
+            }
+            case "spark": {
+                const a = 0.3 + Math.sin(time * 0.004 + dec.phase) * 0.3;
+                ctx.fillStyle = `rgba(255, 245, 180, ${a})`;
+                ctx.beginPath();
+                ctx.arc(sx, sy, 1.8, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            }
+            case "laurel": {
+                ctx.fillStyle = "rgba(140, 190, 140, 0.5)";
+                ctx.beginPath();
+                ctx.ellipse(sx, sy, 4, 2, dec.phase, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            }
+            case "glyph": {
+                ctx.fillStyle = "rgba(150, 140, 190, 0.4)";
+                ctx.font = "9px monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("Ω", sx, sy);
+                break;
+            }
+        }
+    }
+
+    renderAmbrosia(ctx, sx, sy, time, a) {
+        const bob = Math.sin(time * 0.003 + a.pulsePhase) * 3;
+        ctx.save();
+        ctx.shadowColor = "#ffd970";
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = "rgba(255, 220, 120, 0.35)";
+        ctx.beginPath();
+        ctx.arc(sx, sy + bob, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        // Golden amphora
+        ctx.fillStyle = "#e8b95a";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 2 + bob, 7, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fff0b8";
+        ctx.fillRect(sx - 2, sy - 10 + bob, 4, 6);
+        ctx.fillStyle = "#c99a3c";
+        ctx.fillRect(sx - 6, sy - 5 + bob, 12, 2);
+        ctx.restore();
+    }
+
+    renderExitLabels(ctx, camera, time) {
+        if (!this.exit) return;
+        const ex = this.exit.worldX - camera.x;
+        const ey = this.exit.worldY - camera.y;
+        if (ex < -60 || ex > CANVAS_W + 60 || ey < -60 || ey > CANVAS_H + 60) return;
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.fillStyle = `rgba(45, 65, 115, ${0.75 + Math.sin(time * 0.004) * 0.2})`;
+        ctx.font = "9px monospace";
+        ctx.fillText("Ladder Down to the Realm", ex, ey + 30);
+        ctx.fillText("[E] Descend", ex, ey + 42);
+        ctx.restore();
+    }
+
+    renderMinimap(ctx, player, monsters, boss) {
+        const mmW = 150, mmH = 150;
+        ctx.fillStyle = "#254a80";
+        ctx.fillRect(0, 0, mmW, mmH);
+
+        const scale = mmW / (SKY_W * TILE_SIZE);
+
+        for (let ty = 0; ty < SKY_H; ty += 2) {
+            for (let tx = 0; tx < SKY_W; tx += 2) {
+                const t = this.tiles[ty][tx];
+                if (t === TILE.SKY_VOID) continue;
+                ctx.fillStyle = t === TILE.MARBLE ? "#ddd6f2"
+                    : t === TILE.SKY_PORTAL ? "#c69a4e"
+                    : t === TILE.PILLAR ? "#aaa4c4" : "#eef3ff";
+                ctx.fillRect(tx * TILE_SIZE * scale, ty * TILE_SIZE * scale, 3, 3);
+            }
+        }
+
+        if (this.exit) {
+            ctx.fillStyle = "#c69a4e";
+            ctx.fillRect(this.exit.worldX * scale - 2, this.exit.worldY * scale - 2, 5, 5);
+        }
+
+        for (const a of this.ambrosia) {
+            if (a.collected) continue;
+            ctx.fillStyle = "#ffd970";
+            ctx.fillRect(a.x * scale - 1, a.y * scale - 1, 3, 3);
+        }
+
+        for (const m of monsters) {
+            if (!m.alive) continue;
+            ctx.fillStyle = "#ff4444";
+            ctx.fillRect(m.x * scale - 1, m.y * scale - 1, 2, 2);
+        }
+
+        if (boss && boss.alive && boss.spawned) {
+            ctx.fillStyle = "#ffee44";
+            ctx.fillRect(boss.x * scale - 3, boss.y * scale - 3, 6, 6);
+        }
+
+        ctx.fillStyle = "#00ff00";
+        ctx.fillRect(player.x * scale - 2, player.y * scale - 2, 5, 5);
+
+        ctx.fillStyle = "#dcefff";
+        ctx.font = "9px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("THE CLOUDLANDS", mmW / 2, mmH - 4);
+    }
+
+    renderWorldMap(ctx, player) {
+        const mapW = 600, mapH = 450;
+        const bg = ctx.createLinearGradient(0, 0, 0, mapH);
+        bg.addColorStop(0, "#1d3f78");
+        bg.addColorStop(1, "#4f86c6");
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, mapW, mapH);
+
+        const scale = Math.min(mapW / (SKY_W * TILE_SIZE), mapH / (SKY_H * TILE_SIZE));
+        const offsetX = (mapW - SKY_W * TILE_SIZE * scale) / 2;
+        const offsetY = (mapH - SKY_H * TILE_SIZE * scale) / 2;
+
+        for (let ty = 0; ty < SKY_H; ty += 2) {
+            for (let tx = 0; tx < SKY_W; tx += 2) {
+                const t = this.tiles[ty][tx];
+                if (t === TILE.SKY_VOID) continue;
+                const sx = tx * TILE_SIZE * scale + offsetX;
+                const sy = ty * TILE_SIZE * scale + offsetY;
+                ctx.fillStyle = t === TILE.MARBLE || t === TILE.PILLAR ? "#ded8f4" : "#f2f6ff";
+                ctx.globalAlpha = 0.85;
+                ctx.fillRect(sx, sy, TILE_SIZE * 2 * scale + 1, TILE_SIZE * 2 * scale + 1);
+            }
+        }
+        ctx.globalAlpha = 1;
+
+        ctx.textAlign = "center";
+
+        if (this.templeCenter) {
+            const tx = this.templeCenter.x * TILE_SIZE * scale + offsetX;
+            const ty = this.templeCenter.y * TILE_SIZE * scale + offsetY;
+            ctx.strokeStyle = "#ffee44";
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(tx, ty, 10, 0, Math.PI * 2); ctx.stroke();
+            ctx.font = "bold 10px monospace";
+            ctx.strokeStyle = "#231c00";
+            ctx.lineWidth = 3;
+            ctx.strokeText("Temple of Olympus", tx, ty - 15);
+            ctx.fillStyle = "#ffee44";
+            ctx.fillText("Temple of Olympus", tx, ty - 15);
+        }
+
+        if (this.exit) {
+            const ex = this.exit.worldX * scale + offsetX;
+            const ey = this.exit.worldY * scale + offsetY;
+            ctx.fillStyle = "#c69a4e";
+            ctx.beginPath(); ctx.arc(ex, ey, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#1d3f78";
+            ctx.font = "9px monospace";
+            ctx.fillText("Ladder Down", ex, ey + 16);
+        }
+
+        for (const a of this.ambrosia) {
+            if (a.collected) continue;
+            const ax = a.x * scale + offsetX;
+            const ay = a.y * scale + offsetY;
+            ctx.fillStyle = "#ffd970";
+            ctx.beginPath(); ctx.arc(ax, ay, 4, 0, Math.PI * 2); ctx.fill();
+        }
+
+        const px = player.x * scale + offsetX;
+        const py = player.y * scale + offsetY;
+        ctx.fillStyle = "#00ff00";
+        ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = "9px monospace";
+        ctx.fillText("Ingoizer", px, py - 10);
+
+        ctx.fillStyle = "#dcefff";
+        ctx.font = "bold 14px monospace";
+        ctx.fillText("THE CLOUDLANDS", mapW / 2, 18);
     }
 }

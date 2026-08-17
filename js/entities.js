@@ -86,6 +86,9 @@ class Player {
         // Rainbow gem from the hidden base (+4 to everything)
         this.hasRainbowGem = false;
 
+        // Zeus's lightning bolts - every arrow becomes a bolt (+4 bow damage)
+        this.hasZeusBolts = false;
+
         // Health potion inventory
         this.healthPotions = 0;        // regular potions (heal 40)
         this.greaterHealthPotions = 0; // greater potions (heal 80)
@@ -136,6 +139,8 @@ class Player {
         if (this.hasMagicCharm) dmg += MAGIC_CHARM.damageBonus;
         if (this.hasGauntlet) dmg += CAVE_GAUNTLET.damageBonus;
         if (this.hasRainbowGem) dmg += RAINBOW_GEM.bonus;
+        // Zeus's bolts replace arrows entirely once he falls
+        if (this.hasZeusBolts) dmg += ZEUS_BOLT.damageBonus;
         if (dmg !== bow.damage) return { ...bow, damage: dmg };
         return bow;
     }
@@ -210,6 +215,7 @@ class Player {
             range: bow.range,
             distTraveled: 0,
             isFireArrow: isFireArrow,
+            isZeusBolt: !!this.hasZeusBolts,
             bowEnchant: bowEnchant,
         };
     }
@@ -997,6 +1003,86 @@ class Monster {
                 ctx.arc(sx, sy + 5, this.size + 5, 0, Math.PI * 2);
                 ctx.fill();
                 break;
+
+            // --- Cloudlands keepers ---
+            case "storm_harpy": {
+                // Swept-back stormy wings
+                ctx.fillStyle = "#6f88bd";
+                for (const dir of [-1, 1]) {
+                    ctx.beginPath();
+                    ctx.moveTo(sx + dir * this.size * 0.6, sy - 2);
+                    ctx.lineTo(sx + dir * (this.size + 16), sy - 14);
+                    ctx.lineTo(sx + dir * (this.size + 10), sy + 4);
+                    ctx.fill();
+                }
+                // Beak
+                ctx.fillStyle = "#e8c24a";
+                ctx.beginPath();
+                ctx.moveTo(sx, sy - 1);
+                ctx.lineTo(sx + this.facing.x * 10, sy + this.facing.y * 10 + 2);
+                ctx.lineTo(sx, sy + 4);
+                ctx.fill();
+                break;
+            }
+            case "thunder_wisp": {
+                // Crackling arcs of static
+                ctx.strokeStyle = "rgba(255, 240, 140, 0.85)";
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < 4; i++) {
+                    const a = Math.random() * Math.PI * 2;
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(sx + Math.cos(a) * (this.size + 8), sy + Math.sin(a) * (this.size + 8));
+                    ctx.stroke();
+                }
+                break;
+            }
+            case "golden_griffin": {
+                // Great wings and a tufted lion tail
+                ctx.fillStyle = "#f2cd6a";
+                for (const dir of [-1, 1]) {
+                    ctx.beginPath();
+                    ctx.moveTo(sx + dir * this.size * 0.5, sy - 4);
+                    ctx.lineTo(sx + dir * (this.size + 20), sy - 18);
+                    ctx.lineTo(sx + dir * (this.size + 6), sy + 6);
+                    ctx.fill();
+                }
+                ctx.strokeStyle = "#b8892c";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(sx - this.size * 0.6, sy + this.size * 0.6);
+                ctx.lineTo(sx - this.size - 10, sy + this.size);
+                ctx.stroke();
+                break;
+            }
+            case "cloud_giant": {
+                // Billowing cloud shoulders
+                ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+                for (const [ox, oy, r] of [[-this.size * 0.8, -this.size * 0.5, 10], [this.size * 0.8, -this.size * 0.5, 10], [0, -this.size, 12]]) {
+                    ctx.beginPath();
+                    ctx.arc(sx + ox, sy + oy, r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                break;
+            }
+            case "bronze_talos": {
+                // Riveted bronze plating
+                ctx.strokeStyle = "#7d5a22";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(sx - this.size, sy - 4);
+                ctx.lineTo(sx + this.size, sy - 4);
+                ctx.moveTo(sx - this.size, sy + 6);
+                ctx.lineTo(sx + this.size, sy + 6);
+                ctx.stroke();
+                ctx.fillStyle = "#e0b45c";
+                for (let i = -1; i <= 1; i++) {
+                    ctx.beginPath();
+                    ctx.arc(sx + i * 8, sy + 1, 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                break;
+            }
         }
     }
 }
@@ -1947,5 +2033,949 @@ class GreenKnight {
         ctx.beginPath();
         ctx.arc(sx, sy + bob, this.size + 10 + auraPhase * 5, 0, Math.PI * 2);
         ctx.stroke();
+    }
+}
+
+// ============================================
+// The Olympian - Zeus and the twelve faces he wears
+// ============================================
+//
+// Summoned as Zeus. Every landed hit turns him into the next Olympian, and
+// while he is wearing a god's face he cannot be killed - the damage is only
+// banked as "wrath". Once all twelve have shown themselves he returns to Zeus
+// in his true form, carrying the banked wrath as missing health, and *that*
+// Zeus can be brought down.
+
+class OlympianBoss {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.spawnX = x;
+        this.spawnY = y;
+        this.leashRadius = 420;
+
+        // Cycle state
+        this.formIndex = 0;              // index into OLYMPIANS
+        this.formsCycled = 0;            // transformations completed
+        this.cycleComplete = false;
+        this.bankedDamage = 0;
+        this.morphTimer = 0;             // invulnerable while transforming
+
+        // Health bar doubles as the cycle tracker until Zeus returns
+        this.maxHp = OLYMPIANS.length;
+        this.hp = OLYMPIANS.length;
+
+        this.damage = ZEUS_BOSS.damage;
+        this.size = 26;
+        this.speed = 1.15;
+        this.alive = true;
+        this.spawned = false;
+        this.spawnAnimation = 0;
+        this.deathTimer = 0;
+        this.flashTimer = 0;
+
+        this.facing = { x: 0, y: 1 };
+        this.lastAttackTime = 0;
+        this.walkFrame = 0;
+        this.walkTimer = 0;
+
+        // Attack machinery
+        this.projectiles = [];
+        this.shockwaves = [];
+        this.strikes = [];
+        this.spiralShots = 0;
+        this.spiralTimer = 0;
+        this.spiralAngle = 0;
+
+        this.charging = false;
+        this.chargeDir = { x: 0, y: 0 };
+        this.chargeTimer = 0;
+        this.chargeWindup = 0;
+        this.spinning = false;   // kept for parity with the other bosses
+        this.spinTimer = 0;
+        this.spinAngle = 0;
+
+        this.knockbackVx = 0;
+        this.knockbackVy = 0;
+
+        // Drained by the game loop for sounds, dialog and notifications
+        this.pendingEvents = [];
+    }
+
+    get god() {
+        return OLYMPIANS[this.formIndex];
+    }
+
+    get displayName() {
+        if (this.cycleComplete) return `${ZEUS_BOSS.name}  —  TRUE FORM`;
+        const g = this.god;
+        return `${g.emblem} ${g.name}, ${g.title}  —  Form ${this.formsCycled + 1}/${OLYMPIANS.length}`;
+    }
+
+    spawn() {
+        this.spawned = true;
+        this.spawnAnimation = 2200;
+    }
+
+    getCurrentPhase() {
+        const pct = this.hp / this.maxHp;
+        for (let i = ZEUS_BOSS.phases.length - 1; i >= 0; i--) {
+            if (pct <= ZEUS_BOSS.phases[i].hpThreshold) return ZEUS_BOSS.phases[i];
+        }
+        return ZEUS_BOSS.phases[0];
+    }
+
+    tryMove(dx, dy, world) {
+        const nx = this.x + dx;
+        const ny = this.y + dy;
+        const tileX = worldToTile(nx, this.y);
+        const tileY = worldToTile(this.x, ny);
+        if (!world.isSolid(tileX.x, tileX.y)) this.x = nx;
+        if (!world.isSolid(tileY.x, tileY.y)) this.y = ny;
+    }
+
+    takeDamage(amount, fromX, fromY) {
+        if (!this.spawned || !this.alive || this.spawnAnimation > 0) return false;
+        this.flashTimer = 150;
+
+        // While he wears a god's face, hits only strip the mask.
+        if (!this.cycleComplete) {
+            if (this.morphTimer > 0) return false;
+            this.bankedDamage += amount;
+            this.advanceForm();
+            return false;
+        }
+
+        this.hp -= amount;
+        if (fromX !== undefined) {
+            const norm = normalize(this.x - fromX, this.y - fromY);
+            this.knockbackVx = norm.x * 2.5;
+            this.knockbackVy = norm.y * 2.5;
+        }
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.alive = false;
+            this.deathTimer = 4000;
+            // Nothing he threw survives him
+            this.projectiles = [];
+            this.shockwaves = [];
+            this.strikes = [];
+            this.spiralShots = 0;
+            this.charging = false;
+            this.chargeWindup = 0;
+            return true;
+        }
+        return false;
+    }
+
+    advanceForm() {
+        this.formsCycled++;
+        this.formIndex = this.formsCycled % OLYMPIANS.length;
+        this.morphTimer = OLYMPIAN_CYCLE.morphTime;
+        // Clear the sky between forms so the player gets a breath - the AoE
+        // arrays matter most, since they would otherwise land while he is
+        // untouchable mid-transformation.
+        this.projectiles = [];
+        this.shockwaves = [];
+        this.strikes = [];
+        this.charging = false;
+        this.chargeWindup = 0;
+        this.spiralShots = 0;
+
+        if (this.formsCycled >= OLYMPIANS.length) {
+            this.enterTrueForm();
+            return;
+        }
+
+        this.hp = OLYMPIANS.length - this.formsCycled;
+        this.pendingEvents.push({ type: "morph", god: this.god });
+    }
+
+    enterTrueForm() {
+        this.cycleComplete = true;
+        this.formIndex = 0; // Zeus
+        this.maxHp = ZEUS_BOSS.hp;
+        const cap = ZEUS_BOSS.hp * OLYMPIAN_CYCLE.bankedDamageCap;
+        const banked = Math.floor(Math.min(this.bankedDamage, cap));
+        this.hp = Math.max(1, ZEUS_BOSS.hp - banked);
+        this.size = ZEUS_BOSS.size;
+        this.speed = ZEUS_BOSS.speed;
+        this.morphTimer = OLYMPIAN_CYCLE.returnPause;
+        this.shockwaves = [];
+        this.strikes = [];
+        this.pendingEvents.push({ type: "trueForm", banked });
+    }
+
+    update(dt, player, world) {
+        if (!this.alive) {
+            if (this.deathTimer > 0) this.deathTimer -= dt;
+            return null;
+        }
+        if (!this.spawned) return null;
+
+        if (this.spawnAnimation > 0) {
+            this.spawnAnimation -= dt;
+            return null;
+        }
+
+        if (this.flashTimer > 0) this.flashTimer -= dt;
+
+        this.updateAttacks(dt, player, world);
+
+        // Transformations freeze him in place, hovering and untouchable
+        if (this.morphTimer > 0) {
+            this.morphTimer -= dt;
+            if (this.morphTimer <= 0 && !this.cycleComplete) {
+                this.useSignatureMove(player, world);
+                this.lastAttackTime = Date.now();
+            }
+            return null;
+        }
+
+        const god = this.god;
+        const phase = this.cycleComplete ? this.getCurrentPhase() : null;
+        const spd = this.speed * (this.cycleComplete ? phase.speed : god.speed);
+        const distToPlayer = dist(this.x, this.y, player.x, player.y);
+        const distToSpawn = dist(this.x, this.y, this.spawnX, this.spawnY);
+        const now = Date.now();
+
+        // Charge (Ares, and Zeus in his later phases)
+        if (this.charging) {
+            this.chargeTimer -= dt;
+            this.tryMove(this.chargeDir.x * spd * 4.2, this.chargeDir.y * spd * 4.2, world);
+            if (distToPlayer < this.size + player.size) {
+                player.takeDamage(OLYMPIAN_DAMAGE.charge, this.x, this.y);
+            }
+            if (this.chargeTimer <= 0) this.charging = false;
+            return null;
+        }
+        if (this.chargeWindup > 0) {
+            this.chargeWindup -= dt;
+            if (this.chargeWindup <= 0) {
+                this.charging = true;
+                this.chargeTimer = 620;
+                this.chargeDir = normalize(player.x - this.x, player.y - this.y);
+            }
+            return null;
+        }
+
+        // Safety net - if he ever ends up inside solid ground, ease him back
+        // toward his spawn rather than letting tryMove() lock him in place.
+        const ownTile = worldToTile(this.x, this.y);
+        if (world.isSolid(ownTile.x, ownTile.y)) {
+            const home = normalize(this.spawnX - this.x, this.spawnY - this.y);
+            this.x += home.x * 4;
+            this.y += home.y * 4;
+            return null;
+        }
+
+        // Drift toward the player, keeping a little distance so he stays readable
+        let target = player;
+        if (distToSpawn > this.leashRadius) target = { x: this.spawnX, y: this.spawnY };
+        const norm = normalize(target.x - this.x, target.y - this.y);
+        this.facing = norm;
+        const approach = (target === player && distToPlayer < 90) ? -0.45 : 1;
+        this.tryMove(norm.x * spd * approach, norm.y * spd * approach, world);
+
+        this.walkTimer += dt;
+        if (this.walkTimer > 170) {
+            this.walkFrame = (this.walkFrame + 1) % 4;
+            this.walkTimer = 0;
+        }
+
+        if (this.knockbackVx !== 0 || this.knockbackVy !== 0) {
+            this.tryMove(this.knockbackVx, this.knockbackVy, world);
+            this.knockbackVx *= 0.9;
+            this.knockbackVy *= 0.9;
+            if (Math.abs(this.knockbackVx) < 0.1) this.knockbackVx = 0;
+            if (Math.abs(this.knockbackVy) < 0.1) this.knockbackVy = 0;
+        }
+
+        // Melee smite for anyone who hugs him
+        if (distToPlayer < this.size + player.size + 6 && now - this.lastAttackTime > 900) {
+            this.lastAttackTime = now;
+            player.takeDamage(this.damage, this.x, this.y);
+            return null;
+        }
+
+        const rate = this.cycleComplete ? phase.attackRate : OLYMPIAN_CYCLE.attackRate;
+        if (now - this.lastAttackTime > rate) {
+            this.lastAttackTime = now;
+            if (this.cycleComplete) {
+                this.useZeusPattern(phase.pattern, player, world);
+            } else {
+                this.useSignatureMove(player, world);
+            }
+        }
+
+        return null;
+    }
+
+    // --- Attack construction helpers -------------------------------------
+
+    addProjectile(angle, speed, opts = {}) {
+        const g = this.god;
+        this.projectiles.push({
+            x: opts.x !== undefined ? opts.x : this.x,
+            y: opts.y !== undefined ? opts.y : this.y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: opts.life || 3200,
+            maxLife: opts.life || 3200,
+            size: opts.size || 7,
+            color: opts.color || g.color,
+            accent: opts.accent || g.accent,
+            damage: opts.damage || OLYMPIAN_DAMAGE.projectile,
+            homing: opts.homing || 0,
+            shape: opts.shape || "orb",
+        });
+    }
+
+    addShockwave(opts = {}) {
+        const g = this.god;
+        this.shockwaves.push({
+            x: opts.x !== undefined ? opts.x : this.x,
+            y: opts.y !== undefined ? opts.y : this.y,
+            radius: opts.radius || 20,
+            maxRadius: opts.maxRadius || 230,
+            speed: opts.speed || 0.34,
+            thickness: opts.thickness || 20,
+            color: opts.color || g.aura,
+            damage: opts.damage || OLYMPIAN_DAMAGE.shockwave,
+            hitPlayer: false,
+        });
+    }
+
+    addStrike(x, y, opts = {}) {
+        const g = this.god;
+        this.strikes.push({
+            x, y,
+            warn: opts.warn || 700,
+            timer: opts.warn || 700,
+            radius: opts.radius || 46,
+            color: opts.color || g.aura,
+            damage: opts.damage || OLYMPIAN_DAMAGE.strike,
+            kind: opts.kind || "bolt",
+            detonated: false,
+            fade: 260,
+        });
+    }
+
+    // --- The twelve signature moves --------------------------------------
+
+    useSignatureMove(player, world) {
+        const g = this.god;
+        const toPlayer = dirToAngle(player.x - this.x, player.y - this.y);
+
+        switch (g.move) {
+            case "bolts": // Zeus - forked lightning called down on the player
+                for (let i = 0; i < 3; i++) {
+                    this.addStrike(
+                        player.x + randFloat(-70, 70),
+                        player.y + randFloat(-70, 70),
+                        { warn: 620 + i * 120, color: g.aura }
+                    );
+                }
+                break;
+
+            case "orbit": // Hera - a ring of peacock orbs that blooms outward
+                for (let i = 0; i < 8; i++) {
+                    const a = (i / 8) * Math.PI * 2 + this.spiralAngle;
+                    this.addProjectile(a, 2.1, { size: 8, life: 3600, shape: "eye" });
+                }
+                this.spiralAngle += 0.4;
+                break;
+
+            case "wave": // Poseidon - rolling tidal shockwaves
+                this.addShockwave({ maxRadius: 250, speed: 0.32 });
+                this.addShockwave({ maxRadius: 190, speed: 0.24, radius: -60 });
+                break;
+
+            case "thorns": // Demeter - a creeping line of bramble bursts
+                for (let i = 1; i <= 5; i++) {
+                    const t = i / 5;
+                    this.addStrike(
+                        lerp(this.x, player.x, t) + randFloat(-16, 16),
+                        lerp(this.y, player.y, t) + randFloat(-16, 16),
+                        { warn: 260 + i * 130, radius: 40, kind: "thorn" }
+                    );
+                }
+                break;
+
+            case "spears": // Athena - fast piercing spears
+                for (let i = -1; i <= 1; i++) {
+                    this.addProjectile(toPlayer + i * 0.16, 5.6, {
+                        size: 6, life: 2200, shape: "spear",
+                    });
+                }
+                break;
+
+            case "sunburst": // Apollo - a full radial burst of sunlight
+                for (let i = 0; i < 14; i++) {
+                    this.addProjectile((i / 14) * Math.PI * 2, 2.9, { size: 7, shape: "sun" });
+                }
+                break;
+
+            case "volley": // Artemis - a tight, very fast arrow volley
+                for (let i = -2; i <= 2; i++) {
+                    this.addProjectile(toPlayer + i * 0.1, 6.6, {
+                        size: 5, life: 2000, shape: "arrow",
+                    });
+                }
+                break;
+
+            case "warcharge": // Ares - a headlong armoured charge
+                this.chargeWindup = 520;
+                break;
+
+            case "charm": // Aphrodite - slow homing hearts that hunt you down
+                for (let i = 0; i < 6; i++) {
+                    this.addProjectile((i / 6) * Math.PI * 2, 1.5, {
+                        size: 8, life: 5200, homing: 0.055, shape: "heart",
+                    });
+                }
+                break;
+
+            case "embers": // Hephaestus - forge bombs lobbed around the player
+                for (let i = 0; i < 4; i++) {
+                    this.addStrike(
+                        player.x + randFloat(-110, 110),
+                        player.y + randFloat(-110, 110),
+                        { warn: 780, radius: 54, kind: "ember" }
+                    );
+                }
+                break;
+
+            case "blink": { // Hermes - flickers behind you and detonates
+                // Only ever land on solid cloud; blinking into the open sky
+                // would strand him where tryMove() can never dig him out.
+                let a = Math.random() * Math.PI * 2;
+                for (let attempt = 0; attempt < 8; attempt++) {
+                    const cand = a + attempt * (Math.PI / 4);
+                    const bx = player.x + Math.cos(cand) * 86;
+                    const by = player.y + Math.sin(cand) * 86;
+                    const t = worldToTile(bx, by);
+                    if (!world || !world.isSolid(t.x, t.y)) {
+                        this.x = bx;
+                        this.y = by;
+                        a = cand;
+                        break;
+                    }
+                }
+                for (let i = 0; i < 6; i++) {
+                    this.addProjectile((i / 6) * Math.PI * 2 + a, 3.6, { size: 6, shape: "wing" });
+                }
+                break;
+            }
+
+            case "spiral": // Dionysus - a lazy, inescapable spiral of vine-orbs
+                this.spiralShots = 14;
+                this.spiralTimer = 0;
+                break;
+        }
+    }
+
+    // --- Zeus's true-form patterns ---------------------------------------
+
+    useZeusPattern(pattern, player, world) {
+        const toPlayer = dirToAngle(player.x - this.x, player.y - this.y);
+        const boltOpts = { color: "#ffee88", damage: OLYMPIAN_DAMAGE.zeusBolt };
+
+        switch (pattern) {
+            case "storm":
+                if (Math.random() < 0.5) {
+                    for (let i = 0; i < 3; i++) {
+                        this.addStrike(player.x + randFloat(-80, 80), player.y + randFloat(-80, 80),
+                            { warn: 640, ...boltOpts });
+                    }
+                } else {
+                    for (let i = -1; i <= 1; i++) {
+                        this.addProjectile(toPlayer + i * 0.18, 5.2, { size: 7, shape: "bolt", color: "#ffee88" });
+                    }
+                }
+                break;
+
+            case "tempest":
+                if (Math.random() < 0.4) {
+                    this.addShockwave({ maxRadius: 260, speed: 0.36, color: "#fff3b0" });
+                } else {
+                    for (let i = 0; i < 4; i++) {
+                        this.addStrike(player.x + randFloat(-100, 100), player.y + randFloat(-100, 100),
+                            { warn: 560, ...boltOpts });
+                    }
+                    for (let i = 0; i < 8; i++) {
+                        this.addProjectile((i / 8) * Math.PI * 2, 3.2, { size: 6, shape: "bolt", color: "#ffee88" });
+                    }
+                }
+                break;
+
+            case "wrath":
+                if (Math.random() < 0.32) {
+                    this.chargeWindup = 420;
+                } else if (Math.random() < 0.5) {
+                    for (let i = 0; i < 5; i++) {
+                        this.addStrike(player.x + randFloat(-120, 120), player.y + randFloat(-120, 120),
+                            { warn: 500, ...boltOpts });
+                    }
+                } else {
+                    this.spiralShots = 16;
+                    this.spiralTimer = 0;
+                    this.addShockwave({ maxRadius: 240, speed: 0.34, color: "#fff3b0" });
+                }
+                break;
+
+            case "cataclysm":
+                this.addShockwave({ maxRadius: 300, speed: 0.42, color: "#fff3b0" });
+                for (let i = 0; i < 6; i++) {
+                    this.addStrike(player.x + randFloat(-150, 150), player.y + randFloat(-150, 150),
+                        { warn: 460, ...boltOpts });
+                }
+                for (let i = 0; i < 12; i++) {
+                    this.addProjectile((i / 12) * Math.PI * 2 + this.spiralAngle, 3.6,
+                        { size: 6, shape: "bolt", color: "#ffee88" });
+                }
+                this.spiralAngle += 0.5;
+                if (Math.random() < 0.35) this.chargeWindup = 380;
+                break;
+        }
+    }
+
+    // --- Attack simulation ------------------------------------------------
+
+    updateAttacks(dt, player, world) {
+        // Trailing spiral shots
+        if (this.spiralShots > 0) {
+            this.spiralTimer -= dt;
+            if (this.spiralTimer <= 0) {
+                this.spiralTimer = 85;
+                this.spiralShots--;
+                this.spiralAngle += 0.55;
+                this.addProjectile(this.spiralAngle, 3.0, { size: 7, shape: "vine" });
+                this.addProjectile(this.spiralAngle + Math.PI, 3.0, { size: 7, shape: "vine" });
+            }
+        }
+
+        // Projectiles
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const p = this.projectiles[i];
+            if (p.homing) {
+                const want = normalize(player.x - p.x, player.y - p.y);
+                const sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy) || 1;
+                p.vx = lerp(p.vx, want.x * sp, p.homing);
+                p.vy = lerp(p.vy, want.y * sp, p.homing);
+            }
+            p.x += p.vx * dt * 0.1;
+            p.y += p.vy * dt * 0.1;
+            p.life -= dt;
+            if (p.life <= 0) { this.projectiles.splice(i, 1); continue; }
+            // Divine attacks stop at the temple pillars and the open sky
+            const tile = worldToTile(p.x, p.y);
+            if (world && world.isSolid(tile.x, tile.y)) { this.projectiles.splice(i, 1); continue; }
+            if (circleOverlap(p.x, p.y, p.size + 2, player.x, player.y, player.size)) {
+                if (player.takeDamage(p.damage, p.x, p.y)) {
+                    this.projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        // Shockwaves
+        for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+            const w = this.shockwaves[i];
+            w.radius += w.speed * dt;
+            if (w.radius > w.maxRadius) { this.shockwaves.splice(i, 1); continue; }
+            if (w.radius <= 0 || w.hitPlayer) continue;
+            const d = dist(w.x, w.y, player.x, player.y);
+            if (Math.abs(d - w.radius) < w.thickness) {
+                if (player.takeDamage(w.damage, w.x, w.y)) w.hitPlayer = true;
+            }
+        }
+
+        // Telegraphed ground strikes
+        for (let i = this.strikes.length - 1; i >= 0; i--) {
+            const s = this.strikes[i];
+            if (!s.detonated) {
+                s.timer -= dt;
+                if (s.timer <= 0) {
+                    s.detonated = true;
+                    if (dist(s.x, s.y, player.x, player.y) < s.radius) {
+                        player.takeDamage(s.damage, s.x, s.y);
+                    }
+                }
+            } else {
+                s.fade -= dt;
+                if (s.fade <= 0) this.strikes.splice(i, 1);
+            }
+        }
+    }
+
+    // --- Rendering --------------------------------------------------------
+
+    render(ctx, camera, time) {
+        if (!this.spawned) return;
+        const sx = this.x - camera.x;
+        const sy = this.y - camera.y;
+
+        this.renderStrikes(ctx, camera);
+        this.renderShockwaves(ctx, camera);
+
+        if (this.spawnAnimation > 0) {
+            const progress = 1 - this.spawnAnimation / 2200;
+            ctx.save();
+            ctx.globalAlpha = progress;
+            // Column of light punching down through the clouds
+            const beam = ctx.createLinearGradient(sx, sy - 300, sx, sy + 20);
+            beam.addColorStop(0, "rgba(255, 250, 200, 0)");
+            beam.addColorStop(1, `rgba(255, 245, 170, ${0.5 * progress})`);
+            ctx.fillStyle = beam;
+            ctx.fillRect(sx - 46, sy - 300, 92, 320);
+            ctx.strokeStyle = "#fff3b0";
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 6; i++) {
+                const a = time * 0.006 + i * Math.PI / 3;
+                const r = (1 - progress) * 130 + 24;
+                ctx.beginPath();
+                ctx.arc(sx + Math.cos(a) * r, sy + Math.sin(a) * r, 6, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            this.renderGodBody(ctx, sx, sy, time);
+            ctx.restore();
+            this.renderProjectiles(ctx, camera, time);
+            return;
+        }
+
+        if (!this.alive) {
+            if (this.deathTimer > 0) {
+                const t = this.deathTimer / 4000;
+                ctx.save();
+                ctx.globalAlpha = t;
+                for (let i = 0; i < 14; i++) {
+                    const a = (i / 14) * Math.PI * 2 + time * 0.003;
+                    const r = (1 - t) * 140;
+                    ctx.fillStyle = i % 2 === 0 ? "#fff3b0" : "#ffd23f";
+                    ctx.beginPath();
+                    ctx.arc(sx + Math.cos(a) * r, sy + Math.sin(a) * r, 9, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                this.renderGodBody(ctx, sx, sy, time);
+                ctx.restore();
+            }
+            this.renderProjectiles(ctx, camera, time);
+            return;
+        }
+
+        // Charge telegraph
+        if (this.chargeWindup > 0) {
+            ctx.save();
+            ctx.strokeStyle = this.god.aura;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([6, 6]);
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx + this.facing.x * 260, sy + this.facing.y * 260);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+
+        // Transformation burst
+        if (this.morphTimer > 0) {
+            const total = this.cycleComplete ? OLYMPIAN_CYCLE.returnPause : OLYMPIAN_CYCLE.morphTime;
+            const p = 1 - this.morphTimer / total;
+            ctx.save();
+            for (let i = 0; i < 3; i++) {
+                const r = 20 + p * (90 + i * 34);
+                ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, 0.75 - p - i * 0.15)})`;
+                ctx.lineWidth = 4 - i;
+                ctx.beginPath();
+                ctx.arc(sx, sy, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        if (this.flashTimer > 0 && Math.floor(time / 60) % 2 === 0) {
+            ctx.save();
+            ctx.globalCompositeOperation = "lighter";
+            this.renderGodBody(ctx, sx, sy, time);
+            ctx.restore();
+        } else {
+            this.renderGodBody(ctx, sx, sy, time);
+        }
+
+        this.renderProjectiles(ctx, camera, time);
+
+        // Name plate so the player can read the god at a glance
+        const g = this.god;
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.shadowColor = "#000";
+        ctx.shadowBlur = 4;
+        ctx.fillStyle = this.cycleComplete ? "#fff3b0" : g.accent;
+        ctx.font = "bold 12px monospace";
+        ctx.fillText(this.cycleComplete ? "ZEUS" : `${g.emblem} ${g.name}`, sx, sy - this.size - 30);
+        if (!this.cycleComplete) {
+            ctx.fillStyle = "rgba(255,255,255,0.75)";
+            ctx.font = "9px monospace";
+            ctx.fillText(`${this.formsCycled + 1} / ${OLYMPIANS.length}`, sx, sy - this.size - 18);
+        }
+        ctx.restore();
+    }
+
+    renderGodBody(ctx, sx, sy, time) {
+        const g = this.god;
+        const final = this.cycleComplete;
+        const bob = Math.sin(time * 0.002) * 3 + Math.sin(this.walkFrame * Math.PI / 2) * 1.5;
+        const s = final ? 1.28 : 1;
+
+        ctx.save();
+
+        // Divine aura
+        const auraR = (this.size + 22) * s + Math.sin(time * 0.004) * 5;
+        const aura = ctx.createRadialGradient(sx, sy + bob, 0, sx, sy + bob, auraR);
+        aura.addColorStop(0, this.hexA(g.aura, final ? 0.42 : 0.3));
+        aura.addColorStop(1, this.hexA(g.aura, 0));
+        ctx.fillStyle = aura;
+        ctx.beginPath();
+        ctx.arc(sx, sy + bob, auraR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Shadow on the marble
+        ctx.fillStyle = "rgba(40, 40, 70, 0.35)";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + this.size + 6, this.size * 0.85, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Flowing robe
+        const sway = Math.sin(time * 0.003) * 4;
+        ctx.fillStyle = g.robe;
+        ctx.beginPath();
+        ctx.moveTo(sx - 15 * s, sy - 8 * s + bob);
+        ctx.lineTo(sx - 21 * s + sway, sy + 26 * s);
+        ctx.lineTo(sx + 21 * s - sway, sy + 26 * s);
+        ctx.lineTo(sx + 15 * s, sy - 8 * s + bob);
+        ctx.closePath();
+        ctx.fill();
+
+        // Chiton highlight
+        ctx.fillStyle = g.color;
+        ctx.beginPath();
+        ctx.moveTo(sx - 11 * s, sy - 8 * s + bob);
+        ctx.lineTo(sx - 14 * s + sway * 0.5, sy + 22 * s);
+        ctx.lineTo(sx + 14 * s - sway * 0.5, sy + 22 * s);
+        ctx.lineTo(sx + 11 * s, sy - 8 * s + bob);
+        ctx.closePath();
+        ctx.fill();
+
+        // Gold sash
+        ctx.fillStyle = g.accent;
+        ctx.fillRect(sx - 13 * s, sy + 2 * s + bob, 26 * s, 3);
+
+        // Arms
+        ctx.fillStyle = g.color;
+        ctx.fillRect(sx - 20 * s, sy - 6 * s + bob, 6 * s, 16 * s);
+        ctx.fillRect(sx + 14 * s, sy - 6 * s + bob, 6 * s, 16 * s);
+
+        // Head
+        ctx.fillStyle = "#ffe2c0";
+        ctx.beginPath();
+        ctx.arc(sx, sy - 18 * s + bob, 9 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Hair / beard in the god's own colour
+        ctx.fillStyle = g.robe;
+        ctx.beginPath();
+        ctx.arc(sx, sy - 21 * s + bob, 9 * s, Math.PI, Math.PI * 2);
+        ctx.fill();
+        if (final || g.key === "zeus" || g.key === "poseidon" || g.key === "hephaestus") {
+            ctx.fillStyle = "#f2f2f2";
+            ctx.beginPath();
+            ctx.moveTo(sx - 7 * s, sy - 15 * s + bob);
+            ctx.lineTo(sx, sy - 2 * s + bob);
+            ctx.lineTo(sx + 7 * s, sy - 15 * s + bob);
+            ctx.fill();
+        }
+
+        // Glowing eyes
+        ctx.fillStyle = g.accent;
+        ctx.shadowColor = g.aura;
+        ctx.shadowBlur = 8;
+        ctx.fillRect(sx - 5 * s, sy - 19 * s + bob, 3 * s, 2 * s);
+        ctx.fillRect(sx + 2 * s, sy - 19 * s + bob, 3 * s, 2 * s);
+        ctx.shadowBlur = 0;
+
+        // Laurel crown (a jagged lightning crown for the true Zeus)
+        if (final) {
+            ctx.strokeStyle = "#fff3b0";
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = "#ffee88";
+            ctx.shadowBlur = 12;
+            for (let i = -2; i <= 2; i++) {
+                const bx = sx + i * 7 * s;
+                ctx.beginPath();
+                ctx.moveTo(bx, sy - 26 * s + bob);
+                ctx.lineTo(bx + 3, sy - 34 * s + bob);
+                ctx.lineTo(bx - 2, sy - 33 * s + bob);
+                ctx.lineTo(bx + 2, sy - 42 * s + bob);
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+        } else {
+            ctx.strokeStyle = "#cdb15a";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(sx, sy - 20 * s + bob, 11 * s, Math.PI * 1.15, Math.PI * 1.85);
+            ctx.stroke();
+        }
+
+        // The god's emblem, held aloft
+        ctx.font = `${Math.round(17 * s)}px serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.globalAlpha = 0.95;
+        ctx.fillText(final ? "⚡" : g.emblem, sx + 24 * s, sy - 14 * s + bob + Math.sin(time * 0.004) * 2);
+        ctx.globalAlpha = 1;
+        ctx.textBaseline = "alphabetic";
+
+        ctx.restore();
+    }
+
+    renderProjectiles(ctx, camera, time) {
+        for (const p of this.projectiles) {
+            const px = p.x - camera.x;
+            const py = p.y - camera.y;
+            if (px < -40 || px > CANVAS_W + 40 || py < -40 || py > CANVAS_H + 40) continue;
+            ctx.save();
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 10;
+
+            switch (p.shape) {
+                case "spear":
+                case "arrow": {
+                    const a = Math.atan2(p.vy, p.vx);
+                    ctx.translate(px, py);
+                    ctx.rotate(a);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size * 2, -1.5, p.size * 3, 3);
+                    ctx.fillStyle = p.accent;
+                    ctx.beginPath();
+                    ctx.moveTo(p.size * 1.6, 0);
+                    ctx.lineTo(p.size * 0.4, -p.size * 0.6);
+                    ctx.lineTo(p.size * 0.4, p.size * 0.6);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+                }
+                case "bolt": {
+                    const a = Math.atan2(p.vy, p.vx);
+                    ctx.translate(px, py);
+                    ctx.rotate(a);
+                    ctx.strokeStyle = p.accent || "#fff3b0";
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(-p.size, -p.size * 0.5);
+                    ctx.lineTo(0, 0);
+                    ctx.lineTo(-p.size * 0.4, p.size * 0.4);
+                    ctx.lineTo(p.size, -p.size * 0.2);
+                    ctx.stroke();
+                    break;
+                }
+                case "heart": {
+                    ctx.fillStyle = p.color;
+                    ctx.font = `${p.size * 2.4}px serif`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText("❤", px, py);
+                    ctx.textBaseline = "alphabetic";
+                    break;
+                }
+                default: {
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(px, py, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = p.accent;
+                    ctx.beginPath();
+                    ctx.arc(px - p.size * 0.25, py - p.size * 0.25, p.size * 0.45, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                }
+            }
+            ctx.restore();
+        }
+    }
+
+    renderShockwaves(ctx, camera) {
+        for (const w of this.shockwaves) {
+            if (w.radius <= 0) continue;
+            const sx = w.x - camera.x;
+            const sy = w.y - camera.y;
+            const fade = 1 - w.radius / w.maxRadius;
+            ctx.save();
+            ctx.strokeStyle = this.hexA(w.color, 0.15 + fade * 0.6);
+            ctx.lineWidth = w.thickness * 0.9;
+            ctx.beginPath();
+            ctx.arc(sx, sy, w.radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = `rgba(255,255,255,${fade * 0.55})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(sx, sy, w.radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    renderStrikes(ctx, camera) {
+        for (const s of this.strikes) {
+            const sx = s.x - camera.x;
+            const sy = s.y - camera.y;
+            if (sx < -80 || sx > CANVAS_W + 80 || sy < -80 || sy > CANVAS_H + 80) continue;
+            ctx.save();
+            if (!s.detonated) {
+                const charge = 1 - s.timer / s.warn;
+                // Warning ring on the ground
+                ctx.strokeStyle = this.hexA(s.color, 0.35 + charge * 0.5);
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(sx, sy, s.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fillStyle = this.hexA(s.color, 0.1 + charge * 0.22);
+                ctx.beginPath();
+                ctx.arc(sx, sy, s.radius * charge, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                const f = Math.max(0, s.fade / 260);
+                if (s.kind === "bolt") {
+                    // Jagged bolt slamming down from off-screen
+                    ctx.strokeStyle = `rgba(255, 245, 170, ${f})`;
+                    ctx.shadowColor = "#ffee88";
+                    ctx.shadowBlur = 16;
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy - 400);
+                    for (let i = 1; i <= 8; i++) {
+                        ctx.lineTo(sx + Math.sin(i * 2.7 + s.x) * 14, sy - 400 + (400 / 8) * i);
+                    }
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+                ctx.fillStyle = this.hexA(s.color, f * 0.8);
+                ctx.beginPath();
+                ctx.arc(sx, sy, s.radius * (1 + (1 - f) * 0.25), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = `rgba(255,255,255,${f})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(sx, sy, s.radius * (1 + (1 - f) * 0.25), 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+    }
+
+    hexA(hex, alpha) {
+        const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (!m) return `rgba(255,255,255,${alpha})`;
+        return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`;
     }
 }

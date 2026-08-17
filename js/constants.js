@@ -49,6 +49,14 @@ const TILE = {
     CAVE_WALL: 17,
     CAVE_ENTRANCE: 18,
     LADDER: 19,
+    SKY_TREE: 20,
+    SKY_TREE_BURNING: 21,
+    SKY_LADDER: 22,
+    CLOUD: 23,
+    SKY_VOID: 24,
+    MARBLE: 25,
+    PILLAR: 26,
+    SKY_PORTAL: 27,
 };
 
 // Tile colors
@@ -73,10 +81,18 @@ const TILE_COLORS = {
     [TILE.CAVE_WALL]: "#1a1a1a",
     [TILE.CAVE_ENTRANCE]: "#2a2a2a",
     [TILE.LADDER]: "#3a3a4a",
+    [TILE.SKY_TREE]: "#1a4a12",
+    [TILE.SKY_TREE_BURNING]: "#2a3a12",
+    [TILE.SKY_LADDER]: "#4a4038",
+    [TILE.CLOUD]: "#e6ecff",
+    [TILE.SKY_VOID]: "#4a7fd0",
+    [TILE.MARBLE]: "#d8d4e8",
+    [TILE.PILLAR]: "#bfb9d4",
+    [TILE.SKY_PORTAL]: "#cfd8ff",
 };
 
 // Solid tiles (can't walk through)
-const SOLID_TILES = new Set([TILE.TREE, TILE.WATER, TILE.WALL, TILE.MOUNTAIN, TILE.CASTLE_WALL, TILE.LAVA, TILE.BURNING_TREE, TILE.CAVE_WALL]);
+const SOLID_TILES = new Set([TILE.TREE, TILE.WATER, TILE.WALL, TILE.MOUNTAIN, TILE.CASTLE_WALL, TILE.LAVA, TILE.BURNING_TREE, TILE.CAVE_WALL, TILE.SKY_TREE, TILE.SKY_TREE_BURNING, TILE.SKY_VOID, TILE.PILLAR]);
 
 // Weapons
 const WEAPONS = {
@@ -297,6 +313,21 @@ const MERLIN_LORE = [
         title: "The Lands of the Realm",
         icon: "🗺️",
         text: "The realm stretches from the peaceful Green Meadow in the west to the dread Darklands in the east. Camelot Village shelters honest folk and merchants. The Dark Forest hides dangers and treasures in equal measure. The Scorched Wastes bake under an unforgiving sun, while the Dragon Mountains pierce the clouds with jagged peaks. Merlin's Swamp bubbles with arcane energy, and the Ancient Ruins hold secrets of civilizations long forgotten. Each land harbors unique monsters and challenges for those who dare explore."
+    },
+    {
+        title: "The Worldtree",
+        icon: "🌳",
+        text: "In the farthest northeast corner of the realm, where no road runs and no monster dares nest, there stands a single ancient tree. It was old when the mountains were young. The elders called it the Worldtree, for its roots drink from this world while its crown drinks from another. No axe has ever marked it and no storm has ever bent it — but the old texts whisper of one key: fire loosed from a bowstring. Set a fire arrow into the Worldtree, and what the trunk conceals will finally be laid bare. A ladder. And it does not go down."
+    },
+    {
+        title: "The Cloudlands",
+        icon: "☁️",
+        text: "Above the sky there is another country. Islands of hardened cloud drift over a blue abyss, joined by bridges of vapour, and at their heart stands a temple of white marble that no mortal mason ever raised. This is the Cloudlands. Its guardians — storm harpies, golden griffins, giants of cloud and men of bronze — make the deepest cave troll look like a village nuisance. Slay five of the Cloudlands' keepers and the temple will wake. Something in it has been waiting a very long time for a mortal rude enough to climb."
+    },
+    {
+        title: "The Twelve Olympians",
+        icon: "⚡",
+        text: "Zeus does not fight as men fight. When he is roused he wears his family like armour: strike him and he is Hera; strike Hera and he is Poseidon, then Demeter, Athena, Apollo, Artemis, Ares, Aphrodite, Hephaestus, Hermes, Dionysus — twelve faces, twelve furies, and not one of them can be slain, for you cannot kill a god by killing the mask. Endure all twelve and the masks run out. What stands before you then is Zeus himself, and Zeus himself can bleed. Break him, and his bolts become your arrows."
     },
 ];
 
@@ -612,3 +643,127 @@ const FOUNTAIN_RIDDLES = [
     { question: "What runs all around a yard without moving?", choices: ["A path", "A fence", "A shadow", "Wind"], answer: 1 },
     { question: "I am tall when I am young, and short when I am old. What am I?", choices: ["A tree", "A candle", "A person", "A mountain"], answer: 1 },
 ];
+
+// ============================================
+// The Cloudlands - Sky Realm Constants
+// ============================================
+
+// The Worldtree stands in the far top-right corner of the realm. Burning it
+// with a fire arrow reveals a ladder climbing into the clouds.
+const SKY_TREE = {
+    name: "The Worldtree",
+    x: 193, y: 6,       // tile coordinates (top-right corner of the world)
+    radius: 1,          // canopy is a (radius*2+1) square of solid tree tiles
+    burnTime: 3600,     // ms the tree burns before the ladder is revealed
+    ladderRange: 46,    // interaction range for the revealed ladder
+};
+
+// Sky world dimensions (in tiles) - a wide, shallow archipelago of clouds
+const SKY_W = 80;
+const SKY_H = 60;
+
+// How many Cloudlands monsters must fall before the Olympian is summoned
+const SKY_MONSTERS_TO_SUMMON = 5;
+
+// Cloudlands monsters - markedly stronger than anything in the caves
+const SKY_MONSTER_TYPES = {
+    storm_harpy: {
+        name: "Storm Harpy", icon: "🦅", hp: 130, damage: 24, speed: 2.2,
+        xp: 80, goldDrop: [50, 95], color: "#4f68a4", size: 15,
+        weaponDrop: "knights_blade", weaponDropChance: 0.18, gemDrop: false,
+        armorDrop: "knights_armor", armorDropChance: 0.14,
+    },
+    thunder_wisp: {
+        name: "Thunder Wisp", icon: "⚡", hp: 105, damage: 27, speed: 2.5,
+        xp: 75, goldDrop: [45, 85], color: "#4a4f9e", size: 13,
+        weaponDrop: null, gemDrop: false,
+        armorDrop: "shadow_cloak", armorDropChance: 0.12,
+    },
+    golden_griffin: {
+        name: "Golden Griffin", icon: "🦁", hp: 185, damage: 31, speed: 1.7,
+        xp: 105, goldDrop: [65, 120], color: "#c08a1e", size: 18,
+        weaponDrop: "excalibur", weaponDropChance: 0.05, gemDrop: false,
+        armorDrop: "knights_armor", armorDropChance: 0.18,
+    },
+    cloud_giant: {
+        name: "Cloud Giant", icon: "☁️", hp: 240, damage: 35, speed: 0.85,
+        xp: 120, goldDrop: [80, 140], color: "#7f8cb8", size: 22,
+        weaponDrop: "battle_axe", weaponDropChance: 0.22, gemDrop: false,
+        armorDrop: "iron_plate", armorDropChance: 0.2,
+    },
+    bronze_talos: {
+        name: "Bronze Talos", icon: "🗿", hp: 285, damage: 40, speed: 0.7,
+        xp: 140, goldDrop: [95, 170], color: "#8a5f1c", size: 24,
+        weaponDrop: "dark_blade", weaponDropChance: 0.2, gemDrop: false,
+        armorDrop: "ingozer_armor", armorDropChance: 0.06,
+    },
+};
+
+// The twelve Olympians. The boss cycles through this roster in order: it is
+// summoned as Zeus, every hit turns it into the next god, and after all twelve
+// have shown their faces it returns to Zeus - who can finally be killed.
+const OLYMPIANS = [
+    { key: "zeus",       name: "Zeus",       title: "King of Olympus",      emblem: "⚡", color: "#e8c65a", accent: "#fff3b0", aura: "#ffee88", robe: "#8a6a1a", speed: 1.15, move: "bolts" },
+    { key: "hera",       name: "Hera",       title: "Queen of the Gods",    emblem: "🦚", color: "#a05fd8", accent: "#e6c8ff", aura: "#cc88ff", robe: "#57238a", speed: 1.0,  move: "orbit" },
+    { key: "poseidon",   name: "Poseidon",   title: "The Earthshaker",      emblem: "🔱", color: "#3d8fd8", accent: "#a8dcff", aura: "#4fb0ff", robe: "#1d4f88", speed: 1.05, move: "wave" },
+    { key: "demeter",    name: "Demeter",    title: "Lady of the Harvest",  emblem: "🌾", color: "#cfa63a", accent: "#ffe9a3", aura: "#e8c760", robe: "#7a5a12", speed: 0.9,  move: "thorns" },
+    { key: "athena",     name: "Athena",     title: "Goddess of Wisdom",    emblem: "🦉", color: "#c2ccd8", accent: "#ffffff", aura: "#dfe8ff", robe: "#5d6b7d", speed: 1.2,  move: "spears" },
+    { key: "apollo",     name: "Apollo",     title: "The Radiant",          emblem: "☀️", color: "#ffb347", accent: "#fff0c0", aura: "#ffd070", robe: "#a85f14", speed: 1.1,  move: "sunburst" },
+    { key: "artemis",    name: "Artemis",    title: "The Huntress",         emblem: "🏹", color: "#7fd8c0", accent: "#d8fff2", aura: "#88ffdd", robe: "#1f6b58", speed: 1.35, move: "volley" },
+    { key: "ares",       name: "Ares",       title: "God of War",           emblem: "⚔️", color: "#c0392b", accent: "#ff9a8a", aura: "#ff5544", robe: "#6b1a12", speed: 1.25, move: "warcharge" },
+    { key: "aphrodite",  name: "Aphrodite",  title: "Goddess of Love",      emblem: "🌹", color: "#ff7eb6", accent: "#ffd6e8", aura: "#ff99cc", robe: "#a82f68", speed: 1.0,  move: "charm" },
+    { key: "hephaestus", name: "Hephaestus", title: "The Forgemaster",      emblem: "🔨", color: "#e2673a", accent: "#ffb37a", aura: "#ff7733", robe: "#7a2f12", speed: 0.85, move: "embers" },
+    { key: "hermes",     name: "Hermes",     title: "The Messenger",        emblem: "🪶", color: "#8fe3a0", accent: "#dcffe4", aura: "#88ffaa", robe: "#1f7a3d", speed: 1.5,  move: "blink" },
+    { key: "dionysus",   name: "Dionysus",   title: "Lord of the Vine",     emblem: "🍇", color: "#8e5bd0", accent: "#d9bcff", aura: "#aa77ff", robe: "#4a2280", speed: 1.05, move: "spiral" },
+];
+
+// Tuning for the transformation cycle
+const OLYMPIAN_CYCLE = {
+    morphTime: 700,          // ms of invulnerable transformation between forms
+    attackRate: 1300,        // ms between a form's follow-up attacks
+    returnPause: 1800,       // dramatic pause when Zeus returns
+    bankedDamageCap: 0.35,   // at most this fraction of Zeus's HP can be pre-burned
+};
+
+// Zeus, final form - the only form that can actually be killed
+const ZEUS_BOSS = {
+    name: "Zeus, King of Olympus",
+    hp: 1400,
+    damage: 40,
+    speed: 1.2,
+    size: 32,
+    phases: [
+        { hpThreshold: 1.0,  speed: 1.0, attackRate: 1500, pattern: "storm" },
+        { hpThreshold: 0.70, speed: 1.2, attackRate: 1200, pattern: "tempest" },
+        { hpThreshold: 0.40, speed: 1.4, attackRate: 950,  pattern: "wrath" },
+        { hpThreshold: 0.18, speed: 1.7, attackRate: 700,  pattern: "cataclysm" },
+    ],
+};
+
+// Damage dealt by the Olympians' attacks (before the player's armour reduction)
+const OLYMPIAN_DAMAGE = {
+    projectile: 36,
+    shockwave: 40,
+    strike: 44,
+    charge: 50,
+    zeusBolt: 52,
+};
+
+// Zeus's reward: every arrow becomes one of his lightning bolts
+const ZEUS_BOLT = {
+    name: "Zeus's Lightning Bolts",
+    icon: "⚡",
+    damageBonus: 4,
+    description: "Every arrow you loose is now a bolt of Zeus. +4 damage on top of your bow.",
+};
+
+// Ambrosia caches hidden on the cloud islands
+const AMBROSIA = {
+    name: "Ambrosia of Olympus",
+    icon: "🍯",
+    count: 4,             // caches per sky world
+    healFull: true,
+    potions: 1,
+    gold: [40, 90],
+    collectRange: 30,
+};

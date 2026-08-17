@@ -815,6 +815,153 @@ class SoundSystem {
 
     // --- VICTORY ---
 
+    // --- DIVINE / CLOUDLANDS SOUNDS ---
+
+    // A single crack of thunder, used for Zeus's bolts and his true form
+    thunderCrack() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+
+        // Sharp electrical snap
+        const snapSize = this.ctx.sampleRate * 0.12;
+        const snapBuf = this.ctx.createBuffer(1, snapSize, this.ctx.sampleRate);
+        const sd = snapBuf.getChannelData(0);
+        for (let i = 0; i < snapSize; i++) {
+            sd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / snapSize, 1.5);
+        }
+        const snap = this.ctx.createBufferSource();
+        snap.buffer = snapBuf;
+        const hp = this.ctx.createBiquadFilter();
+        hp.type = "highpass";
+        hp.frequency.value = 2200;
+        const snapGain = this.createGain(0.35);
+        snapGain.gain.setValueAtTime(0.35 * this.masterVolume, t);
+        snapGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        snap.connect(hp);
+        hp.connect(snapGain);
+        snap.start(t);
+        snap.stop(t + 0.12);
+
+        // Rolling low boom behind it
+        const boom = this.ctx.createOscillator();
+        boom.type = "sawtooth";
+        boom.frequency.setValueAtTime(90, t + 0.04);
+        boom.frequency.exponentialRampToValueAtTime(28, t + 0.7);
+        const lp = this.ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = 260;
+        const boomGain = this.createGain(0.32);
+        boomGain.gain.setValueAtTime(0.02 * this.masterVolume, t + 0.04);
+        boomGain.gain.linearRampToValueAtTime(0.32 * this.masterVolume, t + 0.14);
+        boomGain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+        boom.connect(lp);
+        lp.connect(boomGain);
+        boom.start(t + 0.04);
+        boom.stop(t + 0.8);
+    }
+
+    // Airy chime for arriving in the Cloudlands
+    divineChime() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((f, i) => {
+            const osc = this.ctx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.value = f;
+            const g = this.createGain(0.16);
+            const at = t + i * 0.12;
+            g.gain.setValueAtTime(0.001, at);
+            g.gain.exponentialRampToValueAtTime(0.16 * this.masterVolume, at + 0.04);
+            g.gain.exponentialRampToValueAtTime(0.001, at + 0.9);
+            osc.connect(g);
+            osc.start(at);
+            osc.stop(at + 0.9);
+        });
+    }
+
+    // The whip-crack of one god becoming another
+    godMorph() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+
+        // Rising shimmer
+        const osc = this.ctx.createOscillator();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(420, t);
+        osc.frequency.exponentialRampToValueAtTime(1500, t + 0.22);
+        const g = this.createGain(0.22);
+        g.gain.setValueAtTime(0.22 * this.masterVolume, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+        osc.connect(g);
+        osc.start(t);
+        osc.stop(t + 0.28);
+
+        // Breathy transformation wash
+        const bufSize = this.ctx.sampleRate * 0.3;
+        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) {
+            d[i] = (Math.random() * 2 - 1) * Math.sin((i / bufSize) * Math.PI);
+        }
+        const ns = this.ctx.createBufferSource();
+        ns.buffer = buf;
+        const bp = this.ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.setValueAtTime(900, t);
+        bp.frequency.exponentialRampToValueAtTime(3200, t + 0.3);
+        bp.Q.value = 3;
+        const nGain = this.createGain(0.18);
+        nGain.gain.setValueAtTime(0.18 * this.masterVolume, t);
+        nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        ns.connect(bp);
+        bp.connect(nGain);
+        ns.start(t);
+        ns.stop(t + 0.3);
+    }
+
+    // The temple waking up when the fifth keeper falls
+    divineSummon() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        // Swelling chord
+        [261.63, 329.63, 392.0, 523.25].forEach((f) => {
+            const osc = this.ctx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.value = f;
+            const g = this.createGain(0.14);
+            g.gain.setValueAtTime(0.001, t);
+            g.gain.linearRampToValueAtTime(0.14 * this.masterVolume, t + 0.6);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 1.6);
+            osc.connect(g);
+            osc.start(t);
+            osc.stop(t + 1.6);
+        });
+        this.thunderCrack();
+    }
+
+    // Zeus announcing himself
+    zeusRoar() {
+        if (!this.ensureContext()) return;
+        this.thunderCrack();
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(160, t);
+        osc.frequency.exponentialRampToValueAtTime(48, t + 1.1);
+        const lp = this.ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.setValueAtTime(900, t);
+        lp.frequency.exponentialRampToValueAtTime(180, t + 1.1);
+        const g = this.createGain(0.32);
+        g.gain.setValueAtTime(0.32 * this.masterVolume, t + 0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+        osc.connect(lp);
+        lp.connect(g);
+        osc.start(t + 0.1);
+        osc.stop(t + 1.2);
+    }
+
     victoryFanfare() {
         if (!this.ensureContext()) return;
         const t = this.ctx.currentTime;

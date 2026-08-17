@@ -154,8 +154,29 @@ class UIManager {
         // Gold
         this.goldCount.textContent = player.gold;
 
-        // Arrows
+        // Arrows - once Zeus falls, every arrow in the quiver is one of his bolts
         this.arrowCount.textContent = player.arrows;
+        const arrowIcon = document.getElementById("arrow-icon");
+        if (arrowIcon) {
+            const wantIcon = player.hasZeusBolts ? ZEUS_BOLT.icon : "🏹";
+            if (arrowIcon.textContent !== wantIcon) {
+                arrowIcon.textContent = wantIcon;
+                arrowIcon.title = player.hasZeusBolts
+                    ? `${ZEUS_BOLT.name} (+${ZEUS_BOLT.damageBonus} DMG)`
+                    : "Arrows";
+            }
+        }
+
+        // Cloudlands keeper counter (only while up in the sky, before the summon)
+        const skyEl = document.getElementById("sky-counter");
+        if (skyEl) {
+            if (this.game.inSky && !this.game.olympianSummoned && !this.game.olympianDefeated) {
+                skyEl.classList.remove("hidden");
+                document.getElementById("sky-kill-count").textContent = this.game.skyMonsterKills;
+            } else {
+                skyEl.classList.add("hidden");
+            }
+        }
 
         // Health potions
         const potionEl = document.getElementById("potion-count");
@@ -489,7 +510,10 @@ class UIManager {
     openInventory(player) {
         this.inventoryOverlay.classList.remove("hidden");
         this.invWeapons.innerHTML = "<h3 style='color:#ffd700;width:100%;text-align:center;margin-bottom:8px;'>Weapons</h3>";
-        this.invBows.innerHTML = "<h3 style='color:#cc8844;width:100%;text-align:center;margin-bottom:8px;'>Bows (Arrows: " + player.arrows + ")</h3>";
+        const ammoLabel = player.hasZeusBolts
+            ? `Bows (${ZEUS_BOLT.icon} Bolts: ${player.arrows})`
+            : `Bows (Arrows: ${player.arrows})`;
+        this.invBows.innerHTML = "<h3 style='color:#cc8844;width:100%;text-align:center;margin-bottom:8px;'>" + ammoLabel + "</h3>";
         this.invGems.innerHTML = "<h3 style='color:#4488ff;width:100%;text-align:center;margin-bottom:8px;'>Blue Gems: " + player.blueGems + " / 5</h3>";
 
         // Health potions in inventory
@@ -644,6 +668,7 @@ class UIManager {
             if (player.hasMagicCharm) dmgBow += MAGIC_CHARM.damageBonus;
             if (player.hasGauntlet) dmgBow += CAVE_GAUNTLET.damageBonus;
             if (player.hasRainbowGem) dmgBow += RAINBOW_GEM.bonus;
+            if (player.hasZeusBolts) dmgBow += ZEUS_BOLT.damageBonus;
             const isEquipped = player.currentBow === bid;
             const el = document.createElement("div");
             el.className = "inv-item" + (isEquipped ? " equipped" : "");
@@ -662,7 +687,8 @@ class UIManager {
         }
 
         // Show green gems and magic charm
-        if (player.hasDarkCrest || player.greenGemAttack || player.greenGemDefense || player.hasMagicCharm || player.hasGauntlet) {
+        if (player.hasDarkCrest || player.greenGemAttack || player.greenGemDefense || player.hasMagicCharm
+            || player.hasGauntlet || player.hasZeusBolts) {
             const specialHeader = document.createElement("h3");
             specialHeader.style.cssText = "color:#44ff44;width:100%;text-align:center;margin-bottom:8px;margin-top:12px;";
             specialHeader.textContent = "Special Items";
@@ -722,6 +748,18 @@ class UIManager {
                     <span class="inv-item-icon">${CAVE_GAUNTLET.icon}</span>
                     <span class="inv-item-name">${CAVE_GAUNTLET.name}</span>
                     <span class="inv-item-name" style="color:#8866aa;font-size:10px;">+${CAVE_GAUNTLET.damageBonus} DMG (all weapons)</span>
+                `;
+                this.invGems.appendChild(el);
+            }
+            if (player.hasZeusBolts) {
+                const el = document.createElement("div");
+                el.className = "inv-item equipped";
+                el.style.borderColor = "#ffee44";
+                el.style.boxShadow = "0 0 10px rgba(255, 238, 68, 0.5)";
+                el.innerHTML = `
+                    <span class="inv-item-icon">${ZEUS_BOLT.icon}</span>
+                    <span class="inv-item-name">${ZEUS_BOLT.name}</span>
+                    <span class="inv-item-name" style="color:#ffee44;font-size:10px;">+${ZEUS_BOLT.damageBonus} DMG (all arrows)</span>
                 `;
                 this.invGems.appendChild(el);
             }

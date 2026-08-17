@@ -8,6 +8,8 @@ class CombatSystem {
         this.damageNumbers = [];
         this.elementEffects = [];
         this.arrowProjectiles = [];
+        // Things that happened to the world during combat, drained by the game loop
+        this.worldEvents = [];
     }
 
     // Check player attack hitting monsters
@@ -428,10 +430,42 @@ class CombatSystem {
                 });
             }
 
+            // Zeus bolt crackle trail
+            if (a.isZeusBolt) {
+                this.particles.push({
+                    x: a.x + randFloat(-3, 3), y: a.y + randFloat(-3, 3),
+                    vx: randFloat(-0.4, 0.4), vy: randFloat(-0.4, 0.4),
+                    life: 160, maxLife: 160, size: randFloat(1.5, 3.5),
+                    color: choose(["#ffee00", "#ffffaa", "#88ddff"]),
+                });
+            }
+
             // Remove if past range
             if (a.distTraveled >= a.range) {
                 this.arrowProjectiles.splice(i, 1);
                 continue;
+            }
+
+            // Arrows striking the Worldtree: only fire can open it
+            if (world && world.skyTree) {
+                const st = worldToTile(a.x, a.y);
+                const stW = world.tiles[0] ? world.tiles[0].length : WORLD_W;
+                const stH = world.tiles.length || WORLD_H;
+                if (st.x >= 0 && st.x < stW && st.y >= 0 && st.y < stH &&
+                    world.tiles[st.y][st.x] === TILE.SKY_TREE) {
+                    if (a.isFireArrow) {
+                        if (world.igniteSkyTree()) {
+                            this.worldEvents.push({ type: "skyTreeIgnited" });
+                        }
+                        this.spawnHitParticles(a.x, a.y, "#ff6600", 14);
+                        this.spawnElementEffect(a.x, a.y, "fire", 700);
+                    } else {
+                        this.worldEvents.push({ type: "skyTreeResisted" });
+                        this.spawnHitParticles(a.x, a.y, "#88aa66", 5);
+                    }
+                    this.arrowProjectiles.splice(i, 1);
+                    continue;
+                }
             }
 
             // Fire arrow hitting a tree - set it on fire
@@ -484,11 +518,12 @@ class CombatSystem {
                         crit = true;
                     }
                     const killed = m.takeDamage(damage, a.x, a.y);
-                    this.spawnHitParticles(m.x, m.y, a.isFireArrow ? "#ff6600" : "#ff4444", 5);
+                    this.spawnHitParticles(m.x, m.y, a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#ff4444"), 5);
                     this.addDamageNumber(m.x, m.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(m.x, m.y, "fire", 500);
                     }
+                    if (a.isZeusBolt) this.spawnBoltImpact(a, m);
                     // Bow enchantment hit effect
                     if (a.bowEnchant) {
                         this.spawnEnchantHitEffect(a.bowEnchant, { x: a.x, y: a.y }, m);
@@ -512,11 +547,12 @@ class CombatSystem {
                         crit = true;
                     }
                     const killed = boss.takeDamage(damage, a.x, a.y);
-                    this.spawnHitParticles(boss.x, boss.y, a.isFireArrow ? "#ff6600" : "#ff8800", 8);
+                    this.spawnHitParticles(boss.x, boss.y, a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#ff8800"), 8);
                     this.addDamageNumber(boss.x, boss.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(boss.x, boss.y, "fire", 500);
                     }
+                    if (a.isZeusBolt) this.spawnBoltImpact(a, boss);
                     if (a.bowEnchant) {
                         this.spawnEnchantHitEffect(a.bowEnchant, { x: a.x, y: a.y }, boss);
                     }
@@ -536,11 +572,12 @@ class CombatSystem {
                         crit = true;
                     }
                     const killed = greenKnight.takeDamage(damage, a.x, a.y);
-                    this.spawnHitParticles(greenKnight.x, greenKnight.y, a.isFireArrow ? "#ff6600" : "#44ff44", 8);
+                    this.spawnHitParticles(greenKnight.x, greenKnight.y, a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#44ff44"), 8);
                     this.addDamageNumber(greenKnight.x, greenKnight.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(greenKnight.x, greenKnight.y, "fire", 500);
                     }
+                    if (a.isZeusBolt) this.spawnBoltImpact(a, greenKnight);
                     if (a.bowEnchant) {
                         this.spawnEnchantHitEffect(a.bowEnchant, { x: a.x, y: a.y }, greenKnight);
                     }
@@ -552,11 +589,56 @@ class CombatSystem {
         return hits;
     }
 
+    // A bolt of Zeus striking home: a short jagged arc plus a flash
+    spawnBoltImpact(arrow, target) {
+        const backX = arrow.x - arrow.vx * 6;
+        const backY = arrow.y - arrow.vy * 6;
+        this.spawnLightningBolt(backX, backY, target.x, target.y);
+        this.spawnElementEffect(target.x, target.y, "lightning", 400);
+        this.spawnHitParticles(target.x, target.y, "#ffee00", 8);
+    }
+
     renderArrows(ctx, camera) {
         for (const a of this.arrowProjectiles) {
             const sx = a.x - camera.x;
             const sy = a.y - camera.y;
             const angle = Math.atan2(a.vy, a.vx);
+
+            // Zeus's bolts are not arrows at all - draw them as forked lightning
+            if (a.isZeusBolt) {
+                ctx.save();
+                ctx.translate(sx, sy);
+                ctx.rotate(angle);
+                ctx.shadowColor = "#ffee00";
+                ctx.shadowBlur = 12;
+                // Outer glow
+                ctx.strokeStyle = "rgba(255, 255, 200, 0.55)";
+                ctx.lineWidth = 7;
+                ctx.beginPath();
+                ctx.moveTo(-12, 0);
+                ctx.lineTo(12, 0);
+                ctx.stroke();
+                // Jagged core
+                ctx.strokeStyle = a.isFireArrow ? "#ffaa22" : "#ffee44";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(-13, 2);
+                ctx.lineTo(-4, -4);
+                ctx.lineTo(-1, 1);
+                ctx.lineTo(6, -5);
+                ctx.lineTo(4, 0);
+                ctx.lineTo(14, -2);
+                ctx.stroke();
+                // Crackling forks
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+                ctx.beginPath();
+                ctx.moveTo(-2, 0); ctx.lineTo(-6, 6);
+                ctx.moveTo(4, -1); ctx.lineTo(9, 5);
+                ctx.stroke();
+                ctx.restore();
+                continue;
+            }
 
             ctx.save();
             ctx.translate(sx, sy);

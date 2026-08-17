@@ -53,6 +53,20 @@ class Game {
         this.nearCaveExit = null;
         this.savedSurfacePos = null;
 
+        // The Cloudlands (sky realm above the world)
+        this.inSky = false;
+        this.skyWorld = null;
+        this.skyMonsters = [];
+        this.skyMonsterSpawnTimer = 0;
+        this.skyMonsterKills = 0;
+        this.olympianBoss = null;
+        this.olympianSummoned = false;
+        this.olympianSpawned = false;
+        this.olympianDefeated = false;
+        this.nearSkyLadder = false;
+        this.nearSkyExit = false;
+        this.skyTreeHintCooldown = 0;
+
         // Fountain of Youth
         this.nearFountain = false;
         this.fountainCooldownUntil = 0;
@@ -98,6 +112,12 @@ class Game {
         this.touchControls = new TouchControls(this);
 
         this.setupInput();
+    }
+
+    // True only when the player is walking the overworld - not underground,
+    // not up in the Cloudlands.
+    get onSurface() {
+        return !this.inCave && !this.inSky;
     }
 
     setupInput() {
@@ -190,6 +210,20 @@ class Game {
         this.nearCaveEntrance = null;
         this.nearCaveExit = null;
         this.savedSurfacePos = null;
+
+        // The Cloudlands
+        this.inSky = false;
+        this.skyWorld = new SkyWorld();
+        this.skyMonsters = [];
+        this.skyMonsterSpawnTimer = 0;
+        this.skyMonsterKills = 0;
+        this.olympianBoss = null;
+        this.olympianSummoned = false;
+        this.olympianSpawned = false;
+        this.olympianDefeated = false;
+        this.nearSkyLadder = false;
+        this.nearSkyExit = false;
+        this.skyTreeHintCooldown = 0;
 
         // Fountain of Youth
         this.nearFountain = false;
@@ -400,12 +434,12 @@ class Game {
             }
         }
 
-        // Active world/monsters/boss references based on cave state
+        // Active world/monsters/boss references based on which realm we're in
         const activeCave = this.inCave ? this.caveWorlds[this.activeCaveId] : null;
-        const activeWorld = activeCave || this.world;
-        const activeMonsters = this.inCave ? this.caveMonsters : this.monsters;
-        const activeBoss = this.inCave ? this.caveBoss : this.boss;
-        const activeGreenKnight = this.inCave ? null : this.greenKnight;
+        const activeWorld = activeCave || (this.inSky ? this.skyWorld : this.world);
+        const activeMonsters = this.inCave ? this.caveMonsters : (this.inSky ? this.skyMonsters : this.monsters);
+        const activeBoss = this.inCave ? this.caveBoss : (this.inSky ? this.olympianBoss : this.boss);
+        const activeGreenKnight = this.onSurface ? this.greenKnight : null;
 
         // Update player (use correct world for collision)
         this.player.update(dt, this.keys, activeWorld);
@@ -449,7 +483,7 @@ class Game {
                     }
                 }
                 // Check if element clears cave obstacle tiles near player
-                if (!this.inCave) {
+                if (this.onSurface) {
                     for (const entrance of this.world.caveEntrances) {
                         if (dist(this.player.x, this.player.y, entrance.worldX, entrance.worldY) < 150) {
                             const ce = CAVE_ENTRANCES.find(e => e.id === entrance.id);
@@ -461,8 +495,13 @@ class Game {
                 }
 
                 // Ice Gem reveals the hidden ladder in the castle's NW corner
-                if (!this.inCave && elemUsed === "ice") {
+                if (this.onSurface && elemUsed === "ice") {
                     this.tryRevealHiddenLadder();
+                }
+
+                // A point-blank Fire blast will also set the Worldtree alight
+                if (this.onSurface && elemUsed === "fire") {
+                    this.tryIgniteSkyTree(90);
                 }
             }
         }
@@ -525,8 +564,30 @@ class Game {
             }
         }
 
+        // Update the Olympian (Cloudlands only)
+        if (this.inSky && this.olympianBoss && this.olympianBoss.spawned) {
+            const ob = this.olympianBoss;
+            const prevCharging = ob.charging;
+            const prevProjCount = ob.projectiles.length;
+            const prevPlayerHp = this.player.hp;
+            ob.update(dt, this.player, this.skyWorld);
+            this.drainOlympianEvents(ob);
+            if (ob.alive) {
+                this.ui.showBossHealth(ob, ob.displayName);
+                if (!prevCharging && ob.charging) this.sound.bossCharge();
+                if (ob.projectiles.length > prevProjCount) this.sound.bossProjectile();
+                if (this.player.hp < prevPlayerHp && this.player.lastHitArmorEnchant) {
+                    this.combat.spawnArmorDefenseEffect(
+                        this.player.lastHitArmorEnchant, this.player,
+                        this.player.lastHitFromX, this.player.lastHitFromY
+                    );
+                    this.player.lastHitArmorEnchant = null;
+                }
+            }
+        }
+
         // Update boss (surface only)
-        if (!this.inCave && this.boss && this.boss.spawned) {
+        if (this.onSurface && this.boss && this.boss.spawned) {
             const prevCharging = this.boss.charging;
             const prevSpinning = this.boss.spinning;
             const prevProjCount = this.boss.projectiles.length;
@@ -550,7 +611,7 @@ class Game {
         }
 
         // Update Green Knight (surface only)
-        if (!this.inCave && this.greenKnight && this.greenKnight.spawned) {
+        if (this.onSurface && this.greenKnight && this.greenKnight.spawned) {
             const prevCharging = this.greenKnight.charging;
             const prevSpinning = this.greenKnight.spinning;
             const prevProjCount = this.greenKnight.projectiles.length;
@@ -606,10 +667,10 @@ class Game {
         }
 
         // Update burning trees (damage nearby monsters/boss) - surface only
-        if (!this.inCave) this.updateBurningTrees(dt);
+        if (this.onSurface) this.updateBurningTrees(dt);
 
         // Eternal flame damage (SE cave entrance obstacle)
-        if (!this.inCave) {
+        if (this.onSurface) {
             const seCave = this.world.caveEntrances.find(e => e.id === 1);
             if (seCave && !seCave.cleared) {
                 const playerTile = worldToTile(this.player.x, this.player.y);
@@ -629,19 +690,22 @@ class Game {
 
         // Check proximity for interactions
         this.checkCaveProximity();
-        if (!this.inCave) {
+        this.checkSkyProximity();
+        if (this.onSurface) {
             this.checkProximity();
         }
 
         // Spawn monsters
         if (this.inCave) {
             this.spawnCaveMonsters(dt);
+        } else if (this.inSky) {
+            this.spawnSkyMonsters(dt);
         } else {
             this.spawnMonsters(dt);
         }
 
         // Respawn coins (surface only)
-        if (!this.inCave) for (const coin of this.world.coins) {
+        if (this.onSurface) for (const coin of this.world.coins) {
             if (coin.collected && coin.respawnTimer > 0) {
                 coin.respawnTimer -= dt;
                 if (coin.respawnTimer <= 0) {
@@ -666,12 +730,12 @@ class Game {
         }
 
         // Check if boss trigger (all 5 gems) - surface only
-        if (!this.inCave && this.player.blueGems >= 5 && !this.bossSpawned && !this.bossDefeated) {
+        if (this.onSurface && this.player.blueGems >= 5 && !this.bossSpawned && !this.bossDefeated) {
             this.checkBossTrigger();
         }
 
         // Check Green Knight trigger (both green gems + near green castle) - surface only
-        if (!this.inCave && this.greenlandsUnlocked && !this.greenKnightSpawned && !this.greenKnightDefeated
+        if (this.onSurface && this.greenlandsUnlocked && !this.greenKnightSpawned && !this.greenKnightDefeated
             && this.player.greenGemAttack && this.player.greenGemDefense) {
             this.checkGreenKnightTrigger();
         }
@@ -682,11 +746,22 @@ class Game {
             this.checkCaveTreasure();
         }
 
+        // Cloudlands: burn down the Worldtree, summon the Olympian, gather ambrosia
+        if (this.onSurface) {
+            if (this.world.updateSkyTree(dt)) this.onSkyLadderRevealed();
+            if (this.skyTreeHintCooldown > 0) this.skyTreeHintCooldown -= dt;
+        }
+        if (this.inSky) {
+            this.checkOlympianTrigger();
+            this.checkAmbrosia();
+        }
+        this.drainCombatWorldEvents();
+
         // Check fountain proximity
         this.checkFountainProximity();
 
         // Check hidden base treasure (surface only)
-        if (!this.inCave) {
+        if (this.onSurface) {
             this.checkHiddenBaseTreasure();
         }
 
@@ -701,10 +776,17 @@ class Game {
         const goldLost = Math.min(100, this.player.gold);
         this.player.gold -= goldLost;
 
-        // If the player died in a cave, return them to the surface
+        // If the player died in a cave or up in the Cloudlands, return them to the surface
         this.inCave = false;
         this.activeCaveId = null;
         this.caveBoss = null;
+        this.inSky = false;
+
+        // The Olympian resets to his first face so the whole cycle can be fought again
+        if (this.olympianSpawned && !this.olympianDefeated) {
+            this.olympianSpawned = false;
+            this.olympianBoss = null;
+        }
 
         // Reset any undefeated boss encounter so it can be triggered again
         if (this.bossSpawned && !this.bossDefeated) {
@@ -750,6 +832,12 @@ class Game {
     }
 
     onEntityKilled(entity, isBoss) {
+        // The Olympian killed - only possible once Zeus is back in his true form
+        if (isBoss && entity === this.olympianBoss) {
+            this.onOlympianDefeated();
+            return;
+        }
+
         // Cave Boss killed
         if (isBoss && entity === this.caveBoss && this.inCave) {
             const caveId = this.activeCaveId;
@@ -834,6 +922,11 @@ class Game {
 
         this.sound.monsterDeath();
         this.player.monstersKilled++;
+
+        // Cloudlands keepers count toward summoning the Olympian
+        if (entity.isSkyMonster) {
+            this.onSkyMonsterSlain();
+        }
 
         // Check if this was the sheath guardian troll
         if (entity.isSheathGuardian) {
@@ -1000,8 +1093,18 @@ class Game {
             return;
         }
 
-        // Don't allow surface interactions while in cave
-        if (this.inCave) return;
+        // Sky ladder up / down
+        if (this.nearSkyLadder && this.onSurface) {
+            this.enterSky();
+            return;
+        }
+        if (this.nearSkyExit && this.inSky) {
+            this.exitSky();
+            return;
+        }
+
+        // Don't allow surface interactions from another realm
+        if (!this.onSurface) return;
 
         // Fountain of Youth interaction
         if (this.nearFountain) {
@@ -1412,6 +1515,7 @@ class Game {
             }
         } else {
             this.nearCaveEntrance = null;
+            if (!this.onSurface) return;
             for (const entrance of this.world.caveEntrances) {
                 if (dist(this.player.x, this.player.y, entrance.worldX, entrance.worldY) < CAVE_ENTRANCE_RANGE) {
                     this.nearCaveEntrance = entrance;
@@ -1489,6 +1593,308 @@ class Game {
         }
     }
 
+    // ============================================
+    // The Cloudlands
+    // ============================================
+
+    // Build a Monster from a non-standard definition table (cave, green, sky).
+    createCustomMonster(typeKey, def, x, y, extra = {}) {
+        const m = new Monster("goblin", x, y);
+        m.type = typeKey;
+        m.name = def.name;
+        m.hp = def.hp;
+        m.maxHp = def.hp;
+        m.damage = def.damage;
+        m.speed = def.speed;
+        m.xp = def.xp;
+        m.goldDrop = def.goldDrop;
+        m.color = def.color;
+        m.size = def.size;
+        m.weaponDrop = def.weaponDrop || null;
+        m.weaponDropChance = def.weaponDropChance || 0;
+        m.armorDrop = def.armorDrop || null;
+        m.armorDropChance = def.armorDropChance || 0;
+        m.gemDrop = !!def.gemDrop;
+        m.gemChance = def.gemChance || 0;
+        Object.assign(m, extra);
+        return m;
+    }
+
+    // Fire (from an arrow or a point-blank blast) opens the Worldtree.
+    tryIgniteSkyTree(range) {
+        const st = this.world.skyTree;
+        if (!st || st.state !== "intact") return false;
+        if (dist(this.player.x, this.player.y, st.x, st.y) > range) return false;
+        if (!this.world.igniteSkyTree()) return false;
+        this.onSkyTreeIgnited();
+        return true;
+    }
+
+    onSkyTreeIgnited() {
+        this.sound.fireBlast();
+        this.ui.showNotification("The Worldtree catches fire!");
+        this.ui.showDialog(
+            "Flame races up the Worldtree and the ancient bark splits open. Something inside it is " +
+            "not wood at all — rungs, worn smooth by hands that were never mortal. Wait for the fire to do its work."
+        );
+    }
+
+    onSkyLadderRevealed() {
+        this.sound.excaliburReveal();
+        this.ui.showNotification("A ladder into the clouds is revealed!");
+        this.ui.showDialog(
+            "The Worldtree burns away to ash and leaves a ladder standing in empty air, climbing up " +
+            "past the clouds until you lose sight of it.",
+            () => {
+                this.ui.showDialog("Press E at the ladder to climb into the Cloudlands. Whatever lives up there is far stronger than anything below.");
+            }
+        );
+    }
+
+    // Pull world-level events out of the combat system (arrows hitting the Worldtree).
+    drainCombatWorldEvents() {
+        if (!this.combat || this.combat.worldEvents.length === 0) return;
+        for (const ev of this.combat.worldEvents) {
+            if (ev.type === "skyTreeIgnited") {
+                this.onSkyTreeIgnited();
+            } else if (ev.type === "skyTreeResisted") {
+                if (this.skyTreeHintCooldown <= 0) {
+                    this.skyTreeHintCooldown = 4000;
+                    this.sound.monsterHit();
+                    this.ui.showNotification("The Worldtree shrugs off your arrow. Try fire.");
+                }
+            }
+        }
+        this.combat.worldEvents.length = 0;
+    }
+
+    checkSkyProximity() {
+        this.nearSkyLadder = false;
+        this.nearSkyExit = false;
+
+        if (this.onSurface) {
+            const ladder = this.world.skyLadder;
+            if (ladder && dist(this.player.x, this.player.y, ladder.x, ladder.y) < SKY_TREE.ladderRange) {
+                this.nearSkyLadder = true;
+            }
+        } else if (this.inSky && this.skyWorld.exit) {
+            const e = this.skyWorld.exit;
+            if (dist(this.player.x, this.player.y, e.worldX, e.worldY) < CAVE_ENTRANCE_RANGE) {
+                this.nearSkyExit = true;
+            }
+        }
+    }
+
+    enterSky() {
+        this.inSky = true;
+        this.savedSurfacePos = { x: this.player.x, y: this.player.y };
+
+        const exit = this.skyWorld.exit;
+        this.player.x = exit.worldX;
+        this.player.y = exit.worldY - TILE_SIZE;
+        this.snapCamera();
+
+        if (this.skyMonsters.length === 0) this.spawnInitialSkyMonsters();
+
+        this.currentZone = "sky";
+        this.zoneDisplayTimer = 3000;
+        this.sound.divineChime();
+        this.ui.showNotification("You climb into the Cloudlands.");
+        if (!this.olympianSummoned && !this.olympianDefeated) {
+            this.ui.showDialog(
+                "You haul yourself over the edge onto ground that should not hold your weight. Islands of " +
+                "hardened cloud drift above a blue abyss, and a temple of white marble waits at the centre of them."
+            );
+            this.ui.showDialog(
+                `Slay ${SKY_MONSTERS_TO_SUMMON} of the Cloudlands' keepers and the temple will answer. (${this.skyMonsterKills}/${SKY_MONSTERS_TO_SUMMON} so far.)`
+            );
+        }
+    }
+
+    exitSky() {
+        this.inSky = false;
+        this.ui.hideBossHealth();
+
+        const ladder = this.world.skyLadder;
+        if (ladder) {
+            this.player.x = ladder.x;
+            this.player.y = ladder.y + TILE_SIZE;
+        } else if (this.savedSurfacePos) {
+            this.player.x = this.savedSurfacePos.x;
+            this.player.y = this.savedSurfacePos.y;
+        }
+        this.snapCamera();
+
+        // The Olympian never leaves his temple - he waits for the next climb.
+        if (this.olympianBoss && !this.olympianDefeated) {
+            this.olympianBoss = null;
+            this.olympianSpawned = false;
+        }
+
+        this.sound.menuSelect();
+        this.ui.showNotification("You climb back down to the realm below.");
+    }
+
+    snapCamera() {
+        const worldW = this.inCave ? CAVE_W : (this.inSky ? SKY_W : WORLD_W);
+        const worldH = this.inCave ? CAVE_H : (this.inSky ? SKY_H : WORLD_H);
+        this.camera.x = clamp(this.player.x - CANVAS_W / 2, 0, worldW * TILE_SIZE - CANVAS_W);
+        this.camera.y = clamp(this.player.y - CANVAS_H / 2, 0, worldH * TILE_SIZE - CANVAS_H);
+    }
+
+    spawnInitialSkyMonsters() {
+        this.skyMonsters = [];
+        for (const [type, def] of Object.entries(SKY_MONSTER_TYPES)) {
+            const count = randInt(3, 5);
+            for (let i = 0; i < count; i++) {
+                for (let attempt = 0; attempt < 20; attempt++) {
+                    const tile = this.skyWorld.randomOpenTile();
+                    const pos = tileToWorld(tile.x, tile.y);
+                    // Never right on top of the arrival ladder
+                    if (dist(pos.x, pos.y, this.skyWorld.exit.worldX, this.skyWorld.exit.worldY) < 140) continue;
+                    this.skyMonsters.push(this.createCustomMonster(type, def, pos.x, pos.y, {
+                        isSkyMonster: true,
+                        aggroRange: 220,
+                        leashRange: 420,
+                    }));
+                    break;
+                }
+            }
+        }
+    }
+
+    spawnSkyMonsters(dt) {
+        if (!this.inSky) return;
+        this.skyMonsterSpawnTimer += dt;
+        if (this.skyMonsterSpawnTimer < MONSTER_SPAWN_INTERVAL) return;
+        this.skyMonsterSpawnTimer = 0;
+
+        this.skyMonsters = this.skyMonsters.filter(m => m.alive || m.deathTimer > 0);
+        const aliveCount = this.skyMonsters.filter(m => m.alive).length;
+        if (aliveCount >= 16) return;
+        if (Math.random() > MONSTER_SPAWN_RATE * 2) return;
+
+        const type = choose(Object.keys(SKY_MONSTER_TYPES));
+        const def = SKY_MONSTER_TYPES[type];
+        for (let attempt = 0; attempt < 15; attempt++) {
+            const tile = this.skyWorld.randomOpenTile();
+            const pos = tileToWorld(tile.x, tile.y);
+            if (dist(pos.x, pos.y, this.player.x, this.player.y) < 260) continue;
+            this.skyMonsters.push(this.createCustomMonster(type, def, pos.x, pos.y, {
+                isSkyMonster: true,
+                aggroRange: 220,
+                leashRange: 420,
+            }));
+            break;
+        }
+    }
+
+    onSkyMonsterSlain() {
+        if (this.olympianSummoned || this.olympianDefeated) return;
+        this.skyMonsterKills++;
+        if (this.skyMonsterKills < SKY_MONSTERS_TO_SUMMON) {
+            this.ui.showNotification(
+                `Keeper of the Cloudlands slain (${this.skyMonsterKills}/${SKY_MONSTERS_TO_SUMMON})`
+            );
+            return;
+        }
+        this.summonOlympian();
+    }
+
+    summonOlympian() {
+        this.olympianSummoned = true;
+        this.sound.divineSummon();
+        this.ui.showNotification("⚡ The Temple of Olympus has woken!");
+        this.ui.showDialog(
+            "The fifth keeper falls and every cloud in the sky turns the colour of a bruise. Far off at " +
+            "the centre of the Cloudlands, the Temple of Olympus lights from within.",
+            () => {
+                this.ui.showDialog("\"WHO CLIMBS?\" The voice is not sound. It is weather. Go to the temple — something has come down to meet you.");
+            }
+        );
+    }
+
+    checkOlympianTrigger() {
+        if (!this.olympianSummoned || this.olympianSpawned || this.olympianDefeated) return;
+        const t = this.skyWorld.bossSpawnTile;
+        if (!t) return;
+        const pos = tileToWorld(t.x, t.y);
+        if (dist(this.player.x, this.player.y, pos.x, pos.y) > 240) return;
+
+        this.olympianSpawned = true;
+        this.olympianBoss = new OlympianBoss(pos.x, pos.y);
+        this.olympianBoss.spawn();
+        this.sound.zeusRoar();
+        this.ui.showDialog("A bolt splits the temple roof and a figure steps out of the light, crowned in lightning.", () => {
+            this.ui.showDialog("\"I am Zeus, and you are a long way from your meadow, Ingoizer.\"", () => {
+                this.ui.showDialog("\"Strike me if you can. You will find there is always another of us behind the one you hit.\"");
+            });
+        });
+    }
+
+    drainOlympianEvents(boss) {
+        if (!boss.pendingEvents.length) return;
+        for (const ev of boss.pendingEvents) {
+            if (ev.type === "morph") {
+                this.sound.godMorph();
+                this.combat.spawnHitParticles(boss.x, boss.y, ev.god.aura, 14);
+                this.ui.showNotification(`${ev.god.emblem} ${ev.god.name}, ${ev.god.title}!`);
+            } else if (ev.type === "trueForm") {
+                this.sound.zeusRoar();
+                this.ui.showNotification("⚡ ZEUS RETURNS — now he can be killed!");
+                const wounded = ev.banked > 0
+                    ? ` The wrath you spent on the twelve has already cost him ${ev.banked} health.`
+                    : "";
+                this.ui.showDialog(
+                    "The twelfth face burns away and there are no more masks left to wear. Zeus stands before " +
+                    "you as himself, and himself can bleed." + wounded
+                );
+            }
+        }
+        boss.pendingEvents.length = 0;
+    }
+
+    checkAmbrosia() {
+        if (!this.inSky) return;
+        for (const a of this.skyWorld.ambrosia) {
+            if (a.collected) continue;
+            if (dist(this.player.x, this.player.y, a.x, a.y) > AMBROSIA.collectRange) continue;
+            a.collected = true;
+            const gold = randInt(AMBROSIA.gold[0], AMBROSIA.gold[1]);
+            this.player.gold += gold;
+            this.player.hp = this.player.maxHp;
+            for (let i = 0; i < AMBROSIA.potions; i++) this.player.addHealthPotion("greater");
+            this.sound.gemCollect();
+            this.ui.showNotification(`${AMBROSIA.icon} Ambrosia! Fully healed, +${gold} gold, +1 Greater Potion`);
+        }
+    }
+
+    onOlympianDefeated() {
+        this.olympianDefeated = true;
+        this.ui.hideBossHealth();
+        this.sound.bossDefeat();
+        this.player.hasZeusBolts = true;
+
+        setTimeout(() => {
+            this.sound.victoryFanfare();
+            this.ui.showNotification(`${ZEUS_BOLT.icon} Your arrows are now Zeus's lightning bolts! (+${ZEUS_BOLT.damageBonus} DMG)`);
+            this.ui.showDialog("Zeus comes apart into weather. The storm over the Cloudlands goes quiet for the first time in an age.", () => {
+                this.ui.showDialog(
+                    `As the light fades, the arrows in your quiver crackle and change. Every one of them is a bolt of Zeus now — ` +
+                    `and every arrow you ever pick up again will become one too. +${ZEUS_BOLT.damageBonus} damage on top of your bow.`,
+                    () => {
+                        this.ui.showGameOver(true,
+                            "You have thrown down the King of Olympus himself. Ingoizer, who woke in the Green Meadow with a rusty " +
+                            "sword, now carries the lightning of Zeus in his quiver. " +
+                            `Monsters defeated: ${this.player.monstersKilled}. ` +
+                            "The realm below, the caves beneath and the heavens above are all yours to wander."
+                        );
+                    }
+                );
+            });
+        }, 2500);
+    }
+
     tryRevealHiddenLadder() {
         const hl = this.world.hiddenLadder;
         if (!hl || hl.revealed) return;
@@ -1505,7 +1911,7 @@ class Game {
     }
 
     checkHiddenBaseTreasure() {
-        if (this.inCave) return;
+        if (!this.onSurface) return;
         const hl = this.world.hiddenLadder;
         if (!hl || !hl.revealed || hl.looted) return;
         if (dist(this.player.x, this.player.y, hl.baseCenterX, hl.baseCenterY) > 70) return;
@@ -1529,7 +1935,7 @@ class Game {
     }
 
     checkFountainProximity() {
-        if (this.inCave || !this.world.fountainOfYouth) return;
+        if (!this.onSurface || !this.world.fountainOfYouth) return;
         const f = this.world.fountainOfYouth;
         this.nearFountain = dist(this.player.x, this.player.y, f.x, f.y) < 50;
     }
@@ -1616,6 +2022,11 @@ class Game {
                 this.currentZone = "cave";
                 this.zoneDisplayTimer = 3000;
             }
+        } else if (this.inSky) {
+            if (this.currentZone !== "sky") {
+                this.currentZone = "sky";
+                this.zoneDisplayTimer = 3000;
+            }
         } else {
             const tile = worldToTile(this.player.x, this.player.y);
             const zone = getZoneAt(tile.x, tile.y);
@@ -1639,8 +2050,8 @@ class Game {
         this.camera.y = lerp(this.camera.y, targetY, 0.1);
 
         // Clamp camera (use correct world dimensions)
-        const worldW = this.inCave ? CAVE_W : WORLD_W;
-        const worldH = this.inCave ? CAVE_H : WORLD_H;
+        const worldW = this.inCave ? CAVE_W : (this.inSky ? SKY_W : WORLD_W);
+        const worldH = this.inCave ? CAVE_H : (this.inSky ? SKY_H : WORLD_H);
         this.camera.x = clamp(this.camera.x, 0, worldW * TILE_SIZE - CANVAS_W);
         this.camera.y = clamp(this.camera.y, 0, worldH * TILE_SIZE - CANVAS_H);
     }
@@ -1651,16 +2062,18 @@ class Game {
 
         if (this.state !== "playing" && this.state !== "gameover") return;
 
-        // Render world (cave or surface)
+        // Render world (cave, sky or surface)
         if (this.inCave && this.caveWorlds[this.activeCaveId]) {
             this.caveWorlds[this.activeCaveId].render(ctx, this.camera, this.time);
+        } else if (this.inSky) {
+            this.skyWorld.render(ctx, this.camera, this.time);
         } else {
             this.world.render(ctx, this.camera, this.time);
         }
 
         // Render monsters (sorted by Y for depth)
         const renderables = [];
-        const renderMonsters = this.inCave ? this.caveMonsters : this.monsters;
+        const renderMonsters = this.inCave ? this.caveMonsters : (this.inSky ? this.skyMonsters : this.monsters);
         for (const m of renderMonsters) {
             if (m.alive || m.deathTimer > 0) {
                 renderables.push({ y: m.y, render: () => m.render(ctx, this.camera, this.time) });
@@ -1671,7 +2084,7 @@ class Game {
         renderables.push({ y: this.player.y, render: () => this.player.render(ctx, this.camera, this.time) });
 
         // Boss (surface)
-        if (!this.inCave && this.boss && this.boss.spawned) {
+        if (this.onSurface && this.boss && this.boss.spawned) {
             renderables.push({ y: this.boss.y, render: () => this.boss.render(ctx, this.camera, this.time) });
         }
 
@@ -1681,8 +2094,13 @@ class Game {
         }
 
         // Green Knight (surface only)
-        if (!this.inCave && this.greenKnight && this.greenKnight.spawned) {
+        if (this.onSurface && this.greenKnight && this.greenKnight.spawned) {
             renderables.push({ y: this.greenKnight.y, render: () => this.greenKnight.render(ctx, this.camera, this.time) });
+        }
+
+        // The Olympian (Cloudlands only)
+        if (this.inSky && this.olympianBoss && this.olympianBoss.spawned) {
+            renderables.push({ y: this.olympianBoss.y, render: () => this.olympianBoss.render(ctx, this.camera, this.time) });
         }
 
         // Sort by Y and render
@@ -1696,7 +2114,9 @@ class Game {
 
         // Zone display
         if (this.zoneDisplayTimer > 0) {
-            const zoneName = this.currentZone === "cave" ? "The Caves Below" : (ZONES[this.currentZone] ? ZONES[this.currentZone].name : null);
+            const zoneName = this.currentZone === "cave" ? "The Caves Below"
+                : this.currentZone === "sky" ? "The Cloudlands"
+                : (ZONES[this.currentZone] ? ZONES[this.currentZone].name : null);
             if (zoneName) {
                 const alpha = Math.min(1, this.zoneDisplayTimer / 500);
                 ctx.save();
@@ -1707,7 +2127,7 @@ class Game {
         }
 
         // Render fountain of youth marker when nearby
-        if (!this.inCave && this.world.fountainOfYouth) {
+        if (this.onSurface && this.world.fountainOfYouth) {
             const f = this.world.fountainOfYouth;
             const fx = f.x - this.camera.x;
             const fy = f.y - this.camera.y;
@@ -1728,8 +2148,12 @@ class Game {
 
         // Interaction prompts
         const isMobile = this.touchControls.active;
-        if (this.nearCaveEntrance && !this.inCave) {
+        if (this.nearCaveEntrance && this.onSurface) {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to enter cave" : "Press E to enter cave");
+        } else if (this.nearSkyLadder && this.onSurface) {
+            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to climb to the Cloudlands" : "Press E to climb to the Cloudlands");
+        } else if (this.nearSkyExit && this.inSky) {
+            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to climb down" : "Press E to climb back down");
         } else if (this.nearCaveExit && this.inCave) {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to climb out" : "Press E to climb out");
         } else if (this.nearShop) {
@@ -1744,14 +2168,18 @@ class Game {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT for Fountain" : "Press E for Fountain of Youth");
         }
 
-        // Render cave exit labels
+        // Render cave / sky exit labels
         if (this.inCave && this.caveWorlds[this.activeCaveId]) {
             this.caveWorlds[this.activeCaveId].renderExitLabels(ctx, this.camera, this.time);
+        } else if (this.inSky) {
+            this.skyWorld.renderExitLabels(ctx, this.camera, this.time);
         }
 
         // Render minimap
         if (this.inCave && this.caveWorlds[this.activeCaveId]) {
             this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss);
+        } else if (this.inSky) {
+            this.skyWorld.renderMinimap(this.minimapCtx, this.player, this.skyMonsters, this.olympianBoss);
         } else {
             this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss, this.greenKnight);
         }
@@ -1760,6 +2188,8 @@ class Game {
         if (this.ui.isMapOpen()) {
             if (this.inCave && this.caveWorlds[this.activeCaveId]) {
                 this.caveWorlds[this.activeCaveId].renderWorldMap(this.worldmapCtx, this.player);
+            } else if (this.inSky) {
+                this.skyWorld.renderWorldMap(this.worldmapCtx, this.player);
             } else {
                 this.world.renderWorldMap(this.worldmapCtx, this.player);
             }
@@ -1786,8 +2216,28 @@ class Game {
             }
         }
 
+        // Cloudlands progress / Olympian approach warning
+        if (this.inSky) {
+            if (this.olympianSummoned && !this.olympianSpawned && !this.olympianDefeated && this.skyWorld.bossSpawnTile) {
+                const tp = tileToWorld(this.skyWorld.bossSpawnTile.x, this.skyWorld.bossSpawnTile.y);
+                const td = dist(this.player.x, this.player.y, tp.x, tp.y);
+                ctx.save();
+                ctx.textAlign = "center";
+                if (td < 480 && td > 240) {
+                    ctx.fillStyle = `rgba(255, 238, 100, ${0.45 + Math.sin(this.time * 0.005) * 0.2})`;
+                    ctx.font = "bold 18px monospace";
+                    ctx.fillText("The temple is burning with light...", CANVAS_W / 2, 80);
+                } else if (td >= 480) {
+                    ctx.fillStyle = "rgba(255, 238, 100, 0.55)";
+                    ctx.font = "13px monospace";
+                    ctx.fillText("The Temple of Olympus is waiting — check the map (M)", CANVAS_W / 2, 80);
+                }
+                ctx.restore();
+            }
+        }
+
         // Green Knight approaching warning
-        if (!this.inCave && this.greenlandsUnlocked && !this.greenKnightSpawned && !this.greenKnightDefeated
+        if (this.onSurface && this.greenlandsUnlocked && !this.greenKnightSpawned && !this.greenKnightDefeated
             && this.player.greenGemAttack && this.player.greenGemDefense && this.world.greenBossSpawnPoint) {
             const gp = this.world.greenBossSpawnPoint;
             const gd = dist(this.player.x, this.player.y, gp.x, gp.y);
@@ -1802,7 +2252,7 @@ class Game {
         }
 
         // Boss approaching warning (surface only)
-        if (!this.inCave && this.player.blueGems >= 5 && !this.bossSpawned && !this.bossDefeated) {
+        if (this.onSurface && this.player.blueGems >= 5 && !this.bossSpawned && !this.bossDefeated) {
             const bossPoint = this.world.bossSpawnPoint;
             const d = dist(this.player.x, this.player.y, bossPoint.x, bossPoint.y);
             if (d < 400 && d > 200) {

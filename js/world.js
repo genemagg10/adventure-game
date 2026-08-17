@@ -1885,10 +1885,20 @@ class World {
             ctx.fillRect(entrance.worldX * scale - 2, entrance.worldY * scale - 2, 5, 5);
         }
 
-        // Draw the Worldtree / sky ladder
+        // Draw the Worldtree / sky ladder (pulses, so the corner draws the eye)
         if (this.skyTree) {
-            ctx.fillStyle = this.skyTree.state === "revealed" ? "#dcefff" : "#66cc55";
-            ctx.fillRect(this.skyTree.x * scale - 2, this.skyTree.y * scale - 2, 5, 5);
+            const revealed = this.skyTree.state === "revealed";
+            const mx = this.skyTree.x * scale;
+            const my = this.skyTree.y * scale;
+            const pulse = 0.45 + Math.sin(Date.now() * 0.003) * 0.3;
+            ctx.fillStyle = revealed
+                ? `rgba(220, 239, 255, ${pulse})`
+                : `rgba(126, 232, 90, ${pulse})`;
+            ctx.beginPath();
+            ctx.arc(mx, my, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = revealed ? "#dcefff" : "#7ee85a";
+            ctx.fillRect(mx - 2, my - 2, 5, 5);
         }
 
         // Draw player
@@ -2027,21 +2037,48 @@ class World {
             ctx.fillText(entrance.label, ex, ey - 7);
         }
 
-        // Worldtree / sky ladder marker
+        // Worldtree / sky ladder marker - a landmark, so it reads loudly
         if (this.skyTree) {
             const tx = this.skyTree.x * scale + offsetX;
             const ty = this.skyTree.y * scale + offsetY;
             const revealed = this.skyTree.state === "revealed";
-            ctx.fillStyle = revealed ? "#dcefff" : "#66cc55";
+            const markerColor = revealed ? "#dcefff" : "#7ee85a";
+
+            // Halo so the corner marker can't be missed
+            ctx.fillStyle = revealed ? "rgba(220, 239, 255, 0.25)" : "rgba(126, 232, 90, 0.25)";
+            ctx.beginPath();
+            ctx.arc(tx, ty, 13, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = markerColor;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(tx, ty, 9, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = markerColor;
             ctx.beginPath();
             ctx.arc(tx, ty, 5, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = revealed ? "#dcefff" : "#cfe8a8";
-            ctx.font = "8px monospace";
+
             ctx.textAlign = "center";
-            const label = revealed ? "Sky Ladder" : "Worldtree";
-            const halfW = ctx.measureText(label).width / 2;
-            ctx.fillText(label, clamp(tx, halfW + 2, mapW - halfW - 2), ty - 8);
+            // Each label gets its own clamp - the marker sits at the very edge
+            // of the world, so an uncentred label would run off the frame.
+            const drawLabel = (text, font, color, dy) => {
+                ctx.font = font;
+                const halfW = ctx.measureText(text).width / 2;
+                const lx = clamp(tx, halfW + 4, mapW - halfW - 4);
+                ctx.strokeStyle = "#000";
+                ctx.lineWidth = 3;
+                ctx.strokeText(text, lx, ty + dy);
+                ctx.fillStyle = color;
+                ctx.fillText(text, lx, ty + dy);
+            };
+
+            drawLabel(revealed ? "Sky Ladder" : "The Worldtree", "bold 11px monospace", markerColor, -14);
+
+            // Only spell out the solution once the player actually has Fire
+            if (!revealed && player.elements && player.elements.fire) {
+                drawLabel("burn it with a fire arrow", "9px monospace", "#cfe8a8", 22);
+            }
         }
 
         // Player position

@@ -93,6 +93,9 @@ class Player {
         this.healthPotions = 0;        // regular potions (heal 40)
         this.greaterHealthPotions = 0; // greater potions (heal 80)
 
+        // Apples - spent to tame wild animals
+        this.apples = 2;
+
         // Stats
         this.monstersKilled = 0;
     }
@@ -377,6 +380,12 @@ class Player {
             return { type: "regular", healed };
         }
         return null;
+    }
+
+    addApples(count) {
+        if (this.apples >= APPLE_ITEM.maxStack) return false;
+        this.apples = Math.min(APPLE_ITEM.maxStack, this.apples + count);
+        return true;
     }
 
     addHealthPotion(type) {

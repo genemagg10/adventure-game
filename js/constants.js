@@ -200,6 +200,8 @@ const SHOP_POTIONS = {
     greater_health: { name: "Greater Potion", icon: "🧪", price: 60, description: "Adds to inventory (heals 80 HP)", effect: "greater_health_potion", value: 80 },
     shield_potion: { name: "Shield Rune", icon: "🛡️", price: 50, description: "Block next hit", effect: "shield", value: 1 },
     arrows_bundle: { name: "Arrow Bundle", icon: "🏹", price: 15, description: "10 arrows", effect: "arrows", value: 10 },
+    apple: { name: "Apple", icon: "🍎", price: 12, description: "Feed a wild animal to tame it", effect: "apples", value: 1 },
+    apple_basket: { name: "Basket of Apples", icon: "🧺", price: 50, description: "5 apples for taming animals", effect: "apples", value: 5 },
 };
 
 // Player defaults
@@ -218,9 +220,9 @@ const MONSTER_SPAWN_INTERVAL = 5000; // ms
 
 // Shop locations (tile coordinates)
 const SHOP_LOCATIONS = [
-    { x: 15, y: 60, name: "Camelot Armory", inventory: ["iron_sword", "mace", "spear", "hunters_bow", "leather_armor", "chain_mail", "health_potion", "arrows_bundle"] },
-    { x: 130, y: 20, name: "Desert Trader", inventory: ["battle_axe", "knights_blade", "longbow", "iron_plate", "knights_armor", "greater_health", "shield_potion", "arrows_bundle"] },
-    { x: 75, y: 70, name: "Swamp Witch", inventory: ["health_potion", "greater_health", "shield_potion", "arrows_bundle"] },
+    { x: 15, y: 60, name: "Camelot Armory", inventory: ["iron_sword", "mace", "spear", "hunters_bow", "leather_armor", "chain_mail", "health_potion", "arrows_bundle", "apple", "apple_basket"] },
+    { x: 130, y: 20, name: "Desert Trader", inventory: ["battle_axe", "knights_blade", "longbow", "iron_plate", "knights_armor", "greater_health", "shield_potion", "arrows_bundle", "apple", "apple_basket"] },
+    { x: 75, y: 70, name: "Swamp Witch", inventory: ["health_potion", "greater_health", "shield_potion", "arrows_bundle", "apple", "apple_basket"] },
 ];
 
 // Lady of the Lake (Excalibur encounter)
@@ -397,6 +399,77 @@ const COIN_CONFIG = {
     collectRange: 24,    // Auto-collect proximity in pixels
     respawnTime: 60000,  // Respawn timer in ms (60 seconds)
     zones: ["meadow", "forest", "village", "desert", "swamp", "mountains", "ruins", "darklands"],
+};
+
+// ============================================
+// Animal Companions
+// ============================================
+
+// Harmless critters that roam the biomes. Feed one an apple and it fights at your side.
+const ANIMAL_TYPES = {
+    rabbit: {
+        name: "Rabbit", icon: "🐰", hp: 30, damage: 10, speed: 2.6, size: 9,
+        color: "#d8cfc0", accent: "#f4eee4",
+        zones: ["meadow", "village"],
+        flavor: "A quick little thumper with more courage than sense",
+    },
+    fox: {
+        name: "Fox", icon: "🦊", hp: 30, damage: 10, speed: 2.3, size: 11,
+        color: "#d9702c", accent: "#f7ece0",
+        zones: ["forest", "meadow"],
+        flavor: "Clever, russet-furred, and fiercely loyal once fed",
+    },
+    toad: {
+        name: "Toad", icon: "🐸", hp: 20, damage: 10, speed: 1.3, size: 10,
+        color: "#5f9a3c", accent: "#8fce63",
+        zones: ["swamp", "ruins"],
+        flavor: "Warty, cheerful, and startlingly brave for its size",
+    },
+    owl: {
+        name: "Owl", icon: "🦉", hp: 40, damage: 10, speed: 2.1, size: 12,
+        color: "#96794f", accent: "#e8dcc4",
+        zones: ["forest", "mountains", "darklands"],
+        flavor: "A silent hunter that watches over you from above",
+    },
+    turtle: {
+        name: "Turtle", icon: "🐢", hp: 50, damage: 10, speed: 1.0, size: 12,
+        color: "#3f8a63", accent: "#245741",
+        zones: ["lake"],
+        flavor: "Slow, ancient, and shelled like a walking shield",
+    },
+};
+
+const ANIMAL_CONFIG = {
+    maxCompanions: 5,       // how many can follow you at one time
+    applesToTame: 1,        // apples spent per taming
+    tameRange: 46,          // how close you must be to feed an animal
+    perZone: 3,             // wild animals of each type per biome
+    maxPerZone: 4,          // respawn cap per type per biome
+    spawnInterval: 12000,   // ms between wild-animal respawn ticks
+    spawnChance: 0.35,      // chance to respawn one per tick when under the cap
+    followDistance: 46,     // how far behind the player companions trail
+    aggroRange: 230,        // how far from the player a companion will engage
+    leashRange: 320,        // beyond this a companion breaks off and returns
+    attackRange: 26,
+    attackCooldown: 1000,   // ms between companion attacks
+    hurtCooldown: 1100,     // ms between contact hits a companion can suffer
+    skittishRange: 42,      // untamed animals drift away inside this range
+    deathFadeTime: 900,
+};
+
+// Apples - bought from shops or found in the wild, spent to tame animals
+const APPLE_ITEM = {
+    name: "Apple",
+    icon: "🍎",
+    maxStack: 99,
+    description: "Feed a wild animal to make it your companion",
+};
+
+const APPLE_CONFIG = {
+    count: 36,           // apples scattered across the world
+    collectRange: 24,    // auto-collect proximity in pixels
+    respawnTime: 90000,  // respawn timer in ms
+    zones: ["meadow", "forest", "village", "swamp", "mountains", "ruins"],
 };
 
 // Green Knight's Domain monster types

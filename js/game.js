@@ -66,6 +66,8 @@ class Game {
         this.nearSkyLadder = false;
         this.nearSkyExit = false;
         this.skyTreeHintCooldown = 0;
+        this.skyTreeHintGiven = false;
+        this.skyTreeApproachSeen = false;
 
         // Fountain of Youth
         this.nearFountain = false;
@@ -224,6 +226,8 @@ class Game {
         this.nearSkyLadder = false;
         this.nearSkyExit = false;
         this.skyTreeHintCooldown = 0;
+        this.skyTreeHintGiven = false;
+        this.skyTreeApproachSeen = false;
 
         // Fountain of Youth
         this.nearFountain = false;
@@ -750,6 +754,7 @@ class Game {
         if (this.onSurface) {
             if (this.world.updateSkyTree(dt)) this.onSkyLadderRevealed();
             if (this.skyTreeHintCooldown > 0) this.skyTreeHintCooldown -= dt;
+            this.checkWorldtreeApproach();
         }
         if (this.inSky) {
             this.checkOlympianTrigger();
@@ -979,11 +984,38 @@ class Game {
             this.ui.showNotification(`Blue Gem found! (${this.player.blueGems}/5)`);
             if (elem) {
                 this.ui.showDialog(`The Blue Gem resonates with ${ELEMENTS[elem].name} energy! You gained the power of ${ELEMENTS[elem].name}! Press ${this.player.nextElementIndex} to select it, Q to use.`);
+                this.onElementUnlocked(elem);
             }
             if (this.player.blueGems >= 5) {
                 this.ui.showDialog("You have all 5 Blue Gems! Journey to Ing Castle - a dark presence awaits outside its gates...");
             }
         }
+    }
+
+    // Unlocking Fire is the moment the Worldtree becomes solvable, so that is
+    // when the game tells the player it exists.
+    onElementUnlocked(elem) {
+        if (elem !== "fire" || this.skyTreeHintGiven) return;
+        if (!this.world.skyTree || this.world.skyTree.state !== "intact") return;
+        this.skyTreeHintGiven = true;
+        this.ui.showDialog(
+            "As the fire takes hold in your hand, an old verse surfaces in your memory: " +
+            "\"In the far northeast, past the Scorched Wastes where no road runs, stands the Worldtree. " +
+            "No axe has marked it. Only fire loosed from a bowstring will open what it hides.\"",
+            () => {
+                this.ui.showNotification("🌳 The Worldtree is marked on your map (M)");
+            }
+        );
+    }
+
+    // A quiet nudge the first time the player wanders into the northeast corner
+    checkWorldtreeApproach() {
+        if (this.skyTreeApproachSeen) return;
+        const st = this.world.skyTree;
+        if (!st || st.state !== "intact") return;
+        if (dist(this.player.x, this.player.y, st.x, st.y) > 420) return;
+        this.skyTreeApproachSeen = true;
+        this.ui.showNotification("🌳 An enormous, ancient tree stands ahead...");
     }
 
     checkProximity() {
@@ -1076,6 +1108,7 @@ class Game {
         this.ui.showNotification(`Blue Gem found! (${this.player.blueGems}/5)`);
         if (elem) {
             this.ui.showDialog(`The Blue Gem pulses with ${ELEMENTS[elem].name} energy! You gained the power of ${ELEMENTS[elem].name}! Press ${this.player.nextElementIndex} to select it, Q to use.`);
+            this.onElementUnlocked(elem);
         }
         if (this.player.blueGems >= 5) {
             this.ui.showDialog("You have all 5 Blue Gems! Journey to Ing Castle - a dark presence awaits outside its gates...");

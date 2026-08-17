@@ -13,7 +13,7 @@ const INGOIZER_PALETTE = {
     d: "#1c1d29", // dark plate
     a: "#303348", // armour mid-tone
     s: "#565d7d", // steel
-    l: "#9aa2c2", // light steel (horns, pauldron rims)
+    l: "#9aa2c2", // light steel (helm dome, pauldron rims)
     w: "#e2e8f7", // highlight
     r: "#7c3a12", // rust-dark trim
     o: "#c86f1e", // orange trim
@@ -26,14 +26,15 @@ const INGOIZER_SPRITE_W = 14;
 const INGOIZER_SPRITE_H = 17;
 const INGOIZER_SCALE = 2;
 
-// Rows 0-12: horned helm, pauldrons and cuirass. These never change between
-// walk frames - only the legs (rows 13-16) do.
+// Rows 0-12: helm, pauldrons and cuirass. These never change between walk
+// frames - only the legs (rows 13-16) do. Row 0 is deliberately clear so the
+// quiver's arrows, drawn separately in Player.renderQuiver, read against it.
 const INGOIZER_TORSO = {
     down: [
-        ".w..........w.", // horn tips
-        ".lw........wl.", // horns splay up and outward
-        "..lw.kaak.wl..", // helm crown
-        "..lwkaaaakwl..", // horn bases meet the helm
+        "..............", // clear above the helm - the quiver's arrows show here
+        ".....kssk.....", // domed helm
+        "....kslsak....",
+        "...kslllaak...",
         "...klwwwwlk...", // brow ridge
         "...kkeddekk...", // visor, eyes burning through
         "...kdsaasdk...",
@@ -45,11 +46,11 @@ const INGOIZER_TORSO = {
         "..lskrggrksl..", // belt + gauntlets
     ],
     up: [
-        ".w..........w.",
-        ".lw........wl.",
-        "..lw.kaak.wl..",
-        "..lwkaaaakwl..",
-        "...klllllk....",
+        "..............",
+        ".....kssk.....",
+        "....kslsak....",
+        "...kslllaak...",
+        "...klllllak...",
         "...kksaaskk...", // back of the helm - no visor
         "...kdsaasdk...",
         "....ksrrsk....",
@@ -62,11 +63,11 @@ const INGOIZER_TORSO = {
     // Profile view, facing right. The left-facing frames are mirrored at
     // build time so the two sides can never drift apart.
     side: [
-        "..w...........", // horn sweeps up and back
-        "..lw..........",
-        "...lw.kaak....",
-        "...lwkaaaak...",
-        "....lklwwlk...",
+        "..............",
+        ".....ksak.....",
+        "....kslaak....",
+        "....kslaaak...",
+        "....klwwlak...", // brow ridge
         ".....kddeek...", // eyes toward the front
         ".....kdsask...",
         ".....ksrrsk...",

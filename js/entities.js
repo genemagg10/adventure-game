@@ -244,10 +244,14 @@ class Player {
 
             // Walk animation
             this.walkTimer += dt;
-            if (this.walkTimer > 150) {
+            if (this.walkTimer > 110) {
                 this.walkFrame = (this.walkFrame + 1) % 4;
                 this.walkTimer = 0;
             }
+        } else {
+            // Settle onto the standing pose instead of freezing mid-stride
+            this.walkFrame = 0;
+            this.walkTimer = 0;
         }
 
         // Apply movement with knockback
@@ -418,8 +422,8 @@ class Player {
     }
 
     render(ctx, camera, time) {
-        const sx = this.x - camera.x;
-        const sy = this.y - camera.y;
+        const sx = Math.round(this.x - camera.x);
+        const sy = Math.round(this.y - camera.y);
 
         // Skip rendering if invincible flash
         if (this.invincible && Math.floor(time / 80) % 2 === 0) return;
@@ -435,61 +439,33 @@ class Player {
             ctx.stroke();
         }
 
-        // Body - knight in armor
-        const bobY = Math.sin(this.walkFrame * Math.PI / 2) * 2;
-
         // Shadow
         ctx.fillStyle = "rgba(0,0,0,0.3)";
         ctx.beginPath();
         ctx.ellipse(sx, sy + this.size + 2, this.size * 0.8, 4, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Legs
-        const legSpread = Math.sin(this.walkFrame * Math.PI / 2) * 3;
-        ctx.fillStyle = "#2266aa";
-        ctx.fillRect(sx - 5 - legSpread, sy + 4, 4, 10);
-        ctx.fillRect(sx + 1 + legSpread, sy + 4, 4, 10);
+        // Ingoizer pixel sprite. The body lifts a pixel on the stride frames
+        // so the walk reads as a step rather than a slide.
+        const dir = IngoizerSprite.dirFor(this.facing);
+        const bobY = (this.walkFrame === 1 || this.walkFrame === 3) ? -1 : 0;
+        const facingAway = dir === "up";
 
-        // Body armor
-        ctx.fillStyle = COLORS.player;
-        ctx.fillRect(sx - 8, sy - 6 + bobY, 16, 14);
-
-        // Armor detail
-        ctx.fillStyle = "#4499dd";
-        ctx.fillRect(sx - 6, sy - 4 + bobY, 12, 10);
-
-        // Belt
-        ctx.fillStyle = "#8b6914";
-        ctx.fillRect(sx - 8, sy + 4 + bobY, 16, 3);
-
-        // Head
-        ctx.fillStyle = "#ffcc88";
-        ctx.beginPath();
-        ctx.arc(sx, sy - 10 + bobY, 7, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Helmet
-        ctx.fillStyle = "#aaaacc";
-        ctx.beginPath();
-        ctx.arc(sx, sy - 12 + bobY, 7, Math.PI, Math.PI * 2);
-        ctx.fill();
-        ctx.fillRect(sx - 7, sy - 12 + bobY, 14, 3);
-
-        // Eyes
-        ctx.fillStyle = "#333";
-        if (this.facing.x >= 0) {
-            ctx.fillRect(sx + 1, sy - 11 + bobY, 2, 2);
-            ctx.fillRect(sx - 4, sy - 11 + bobY, 2, 2);
+        // Gear that sits on his back goes behind him unless we're looking at
+        // his back, and the sword goes behind him when he faces away.
+        if (facingAway) {
+            this.renderWeapon(ctx, sx, sy + bobY, time);
         } else {
-            ctx.fillRect(sx - 3, sy - 11 + bobY, 2, 2);
-            ctx.fillRect(sx + 2, sy - 11 + bobY, 2, 2);
+            this.renderQuiver(ctx, sx, sy + bobY, dir);
         }
 
-        // Render weapon
-        this.renderWeapon(ctx, sx, sy + bobY, time);
+        IngoizerSprite.draw(ctx, dir, this.walkFrame, sx, sy + bobY);
 
-        // Render quiver on back
-        this.renderQuiver(ctx, sx, sy + bobY);
+        if (facingAway) {
+            this.renderQuiver(ctx, sx, sy + bobY, dir);
+        } else {
+            this.renderWeapon(ctx, sx, sy + bobY, time);
+        }
 
         // Render bow when shooting
         if (this.shooting) {
@@ -527,11 +503,16 @@ class Player {
         const weapon = this.getWeapon();
         const angle = this.attacking
             ? this.attackAngle + Math.sin((200 - this.attackTimer) / 200 * Math.PI) * 1.5 - 0.75
-            : dirToAngle(this.facing.x, this.facing.y);
+            : dirToAngle(this.facing.x, this.facing.y) + 0.6;
 
-        const weaponLen = weapon.range * 0.8;
-        const wx = sx + Math.cos(angle) * 12;
-        const wy = sy - 2 + Math.sin(angle) * 12;
+        // Grip sits at the sprite's gauntlets. Keeping it inside the sprite's
+        // silhouette stops the blade drifting off his hands mid-swing.
+        const handY = sy + 1;
+        // Carried at the side at rest; the full reach only shows on the swing,
+        // where it matches the arc the hitbox actually covers.
+        const weaponLen = weapon.range * (this.attacking ? 0.8 : 0.5);
+        const wx = sx + Math.cos(angle) * 9;
+        const wy = handY + Math.sin(angle) * 9;
         const ex = wx + Math.cos(angle) * weaponLen;
         const ey = wy + Math.sin(angle) * weaponLen;
 
@@ -577,22 +558,27 @@ class Player {
         }
     }
 
-    renderQuiver(ctx, sx, sy) {
-        // Quiver on back (right side)
+    renderQuiver(ctx, sx, sy, dir) {
+        // Slung across the back: centred when we're looking at his back, and
+        // on whichever side is away from us otherwise.
+        const qx = dir === "up" ? sx + 3
+                 : dir === "right" ? sx - 11
+                 : sx + 7;
+
         ctx.fillStyle = "#654321";
-        ctx.fillRect(sx + 7, sy - 10, 3, 14);
+        ctx.fillRect(qx, sy - 12, 4, 15);
+        ctx.fillStyle = "#4a2f18";
+        ctx.fillRect(qx, sy - 12, 1, 15);
 
         // Arrow tips sticking out of quiver
         if (this.arrows > 0) {
             const showArrows = Math.min(3, this.arrows);
-            ctx.fillStyle = "#aaaacc";
             for (let i = 0; i < showArrows; i++) {
-                ctx.fillRect(sx + 6 + i * 2, sy - 13, 1, 4);
-            }
-            // Fletching
-            ctx.fillStyle = "#cc4444";
-            for (let i = 0; i < showArrows; i++) {
-                ctx.fillRect(sx + 6 + i * 2, sy - 13, 1, 1);
+                ctx.fillStyle = "#aaaacc";
+                ctx.fillRect(qx + i * 2, sy - 16, 1, 5);
+                // Fletching
+                ctx.fillStyle = "#cc4444";
+                ctx.fillRect(qx + i * 2, sy - 16, 1, 2);
             }
         }
     }
@@ -603,7 +589,7 @@ class Player {
 
         // Bow (curved arc)
         ctx.save();
-        ctx.translate(sx + Math.cos(angle) * 10, sy - 2 + Math.sin(angle) * 10);
+        ctx.translate(sx + Math.cos(angle) * 11, sy + 2 + Math.sin(angle) * 11);
         ctx.rotate(angle);
 
         // Bow limb

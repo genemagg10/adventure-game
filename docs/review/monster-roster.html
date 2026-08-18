@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ingoizer's World — Monster Art Board</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            background: #080b18;
+            color: #e8dfc2;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        }
+        main { padding: 28px; text-align: center; }
+        h1 { margin: 0 0 6px; color: #e8c65a; letter-spacing: .06em; font-size: 24px; }
+        p { margin: 0 0 18px; color: #8e9ab8; font-size: 12px; }
+        canvas {
+            display: block;
+            max-width: min(1180px, calc(100vw - 40px));
+            height: auto;
+            border: 1px solid #534726;
+            background: #0b1021;
+            image-rendering: pixelated;
+            box-shadow: 0 18px 70px rgba(0, 0, 0, .55);
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>THE HOSTILE BESTIARY</h1>
+        <p>Production art board · gameplay-scale silhouettes · August 2026</p>
+        <canvas id="board" width="1180" height="900" aria-label="Complete monster art board"></canvas>
+    </main>
+    <script src="../../js/constants.js"></script>
+    <script src="../../js/utils.js"></script>
+    <script src="../../js/monster-sprites.js"></script>
+    <script>
+        const board = document.getElementById("board");
+        const ctx = board.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+
+        const groups = [
+            ["OVERWORLD", MONSTER_TYPES],
+            ["GREENLANDS", GREEN_MONSTER_TYPES],
+            ["THE FOUR CAVES", CAVE_MONSTER_TYPES],
+            ["CLOUDLANDS", SKY_MONSTER_TYPES],
+        ];
+        const entries = groups.flatMap(([realm, defs]) =>
+            Object.entries(defs).map(([type, def]) => ({ realm, type, def }))
+        );
+        entries.push({
+            realm: "QUEST GUARDIAN", type: "troll", guardian: true,
+            def: { ...MONSTER_TYPES.troll, ...SHEATH_TROLL },
+        });
+        entries.push(
+            { realm: "BOSS", boss: "black", def: BOSS },
+            { realm: "BOSS", boss: "green", def: GREEN_KNIGHT },
+            { realm: "CAVE BOSS", boss: "stone", def: CAVE_BOSS_3 },
+            { realm: "CAVE BOSS", boss: "crystal", def: CAVE_BOSS_4 },
+        );
+
+        function card(x, y, entry, time) {
+            const w = 220, h = 160;
+            ctx.fillStyle = "#10172b";
+            ctx.fillRect(x, y, w, h);
+            ctx.fillStyle = "#151f38";
+            ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+            ctx.fillStyle = "#0e1528";
+            ctx.fillRect(x + 8, y + 30, w - 16, 92);
+            ctx.strokeStyle = "#2d3855";
+            ctx.strokeRect(x + .5, y + .5, w - 1, h - 1);
+
+            ctx.textAlign = "left";
+            ctx.font = "10px monospace";
+            ctx.fillStyle = entry.realm === "BOSS" || entry.realm === "CAVE BOSS" ? "#d5a74b" : "#7685a5";
+            ctx.fillText(entry.realm, x + 10, y + 17);
+            ctx.fillStyle = "#e8dfc2";
+            ctx.font = "bold 12px monospace";
+            ctx.fillText(entry.def.name, x + 10, y + 143);
+            ctx.fillStyle = "#71809b";
+            ctx.font = "9px monospace";
+            const note = entry.guardian ? "JEWEL-MARKED TROLL VARIANT" : entry.boss ? "NAMED ENCOUNTER" : entry.type.replaceAll("_", " ").toUpperCase();
+            ctx.fillText(note, x + 10, y + 155);
+
+            const cx = x + 110, cy = y + 84;
+            if (entry.boss) {
+                const mock = {
+                    name: entry.def.name, size: entry.def.size, color: entry.def.color,
+                    walkFrame: 1, facing: { x: 1, y: 0 }, charging: false,
+                    chargeDir: { x: 1, y: 0 }, chargeWindup: 0,
+                };
+                if (entry.boss === "green") BossSprite.drawGreenKnight(ctx, mock, cx, cy, time);
+                else BossSprite.draw(ctx, mock, cx, cy, time);
+            } else {
+                const mock = {
+                    type: entry.type, size: entry.def.size, color: entry.def.color,
+                    state: "chase", walkFrame: 1, facing: { x: 1, y: 0 },
+                    lastAttackTime: 0, isSheathGuardian: !!entry.guardian,
+                };
+                MonsterSprite.draw(ctx, mock, cx, cy, time);
+            }
+        }
+
+        function render(time) {
+            ctx.fillStyle = "#0b1021";
+            ctx.fillRect(0, 0, board.width, board.height);
+            ctx.fillStyle = "#111b32";
+            for (let y = 0; y < board.height; y += 8) ctx.fillRect(0, y, board.width, 1);
+            entries.forEach((entry, i) => {
+                const col = i % 5;
+                const row = Math.floor(i / 5);
+                card(20 + col * 230, 20 + row * 170, entry, time);
+            });
+            requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+    </script>
+</body>
+</html>

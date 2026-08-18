@@ -871,12 +871,13 @@ class Monster {
 
         this.renderBody(ctx, sx, sy, time);
 
-        // Health bar
+        // Health bar - use the authored silhouette height, not the collision radius.
         if (this.hp < this.maxHp) {
             const barW = this.size * 2;
             const barH = 3;
             const barX = sx - barW / 2;
-            const barY = sy - this.size - 10;
+            const spriteTop = typeof MonsterSprite !== "undefined" ? MonsterSprite.getTop(this) : -this.size;
+            const barY = sy + spriteTop - 8;
             ctx.fillStyle = "#333";
             ctx.fillRect(barX, barY, barW, barH);
             ctx.fillStyle = "#ff4444";
@@ -893,6 +894,8 @@ class Monster {
     }
 
     renderBody(ctx, sx, sy, time) {
+        if (typeof MonsterSprite !== "undefined" && MonsterSprite.draw(ctx, this, sx, sy, time)) return;
+
         const bob = Math.sin(this.walkFrame * Math.PI / 2) * 1.5;
 
         // Shadow
@@ -1430,6 +1433,8 @@ class Boss {
     }
 
     renderBossBody(ctx, sx, sy, time) {
+        if (typeof BossSprite !== "undefined" && BossSprite.draw(ctx, this, sx, sy, time)) return;
+
         const bob = Math.sin(this.walkFrame * Math.PI / 2) * 2;
 
         // Shadow
@@ -1898,6 +1903,11 @@ class GreenKnight {
     }
 
     renderBody(ctx, sx, sy, time) {
+        if (typeof BossSprite !== "undefined") {
+            BossSprite.drawGreenKnight(ctx, this, sx, sy, time);
+            return;
+        }
+
         const bob = Math.sin(this.walkFrame * Math.PI / 2) * 2;
 
         // Shadow

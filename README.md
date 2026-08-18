@@ -70,6 +70,7 @@ Then open `http://localhost:8000`.
 | `js/ui.js` | Health display, shops, inventory, lore, riddles, speech, enchanting, and endings |
 | `js/game.js` | Main repeating loop, progress, quests, travel between realms, and story events |
 | `js/sprites.js` | Draws the handmade pixel characters and objects |
+| `js/monster-sprites.js` | Draws the species-specific hostile creatures and named bosses |
 | `js/sound.js` | Makes sound and music signals |
 | `js/touch.js` | Mobile and touch controls |
 | `docs/art-direction/` | Art-direction review and visual concepts |
@@ -79,6 +80,7 @@ Then open `http://localhost:8000`.
 ## Development documents
 
 - `docs/art-direction/ART_DIRECTION_REVIEW.md` - review of how the whole game looks, art rules, work order, and concept pictures.
+- `docs/art-direction/MONSTER_ROSTER.md` - complete hostile roster and the production art identity for every monster and boss.
 - `docs/development-binder/BINDER_MASTER.md` - plan for the printed binder and a guide to the current story.
 - `RECOMMENDATIONS.md` - an older review with ideas for the game. It is not the official current story.
 

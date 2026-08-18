@@ -991,6 +991,896 @@ body {
     margin-top: 4px;
 }
 
+/* ============================================
+   Storybook Armory — Inventory & Shop
+   ============================================ */
+
+#shop-overlay,
+#inventory-overlay {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 8px;
+    overflow: hidden;
+    align-items: stretch;
+    justify-content: stretch;
+    color: #e8e1d2;
+    font-family: Georgia, 'Times New Roman', serif;
+    background:
+        linear-gradient(rgba(4, 17, 10, .91), rgba(3, 12, 8, .96)),
+        repeating-linear-gradient(0deg, transparent 0 31px, rgba(53, 109, 67, .12) 32px 33px),
+        repeating-linear-gradient(90deg, transparent 0 31px, rgba(53, 109, 67, .12) 32px 33px);
+    z-index: 55;
+}
+
+.armory-window,
+.inventory-window {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background:
+        radial-gradient(circle at 48% 12%, rgba(54, 70, 99, .17), transparent 34%),
+        linear-gradient(145deg, #111827 0%, #090f1d 66%, #070c16 100%);
+    border: 3px solid #282d38;
+    box-shadow:
+        inset 0 0 0 2px #070a10,
+        inset 0 0 0 4px #75613a,
+        inset 0 0 0 6px #1f2024,
+        inset 0 0 38px rgba(0, 0, 0, .82),
+        0 8px 22px rgba(0, 0, 0, .8);
+}
+
+.armory-window::before,
+.inventory-window::before {
+    content: "";
+    position: absolute;
+    inset: 14px;
+    z-index: 4;
+    pointer-events: none;
+    border: 1px solid rgba(225, 169, 67, .74);
+    clip-path: polygon(0 10px, 10px 10px, 10px 0, calc(100% - 10px) 0, calc(100% - 10px) 10px, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 10px calc(100% - 10px), 0 calc(100% - 10px));
+}
+
+.armory-header {
+    position: relative;
+    z-index: 5;
+    min-height: 66px;
+    padding: 10px 18px 9px 23px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 0 0 auto;
+    border-bottom: 2px solid #826528;
+    background: linear-gradient(180deg, rgba(18, 27, 47, .98), rgba(8, 14, 27, .98));
+    box-shadow: 0 4px 0 #05080f, 0 7px 16px rgba(0, 0, 0, .45);
+}
+
+.armory-heading,
+.armory-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.armory-crest {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    color: #f3c65f;
+    font-size: 25px;
+    border: 2px solid #8d6b2b;
+    border-radius: 4px 4px 13px 13px;
+    background: linear-gradient(135deg, #202e45, #0b1120);
+    box-shadow: inset 0 0 0 2px #080c14, 0 2px 0 #020407;
+    text-shadow: 0 2px 0 #5d330b, 0 0 8px rgba(255, 206, 95, .35);
+}
+
+.armory-eyebrow {
+    display: block;
+    margin-bottom: 1px;
+    color: #857d70;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 2.3px;
+    text-transform: uppercase;
+}
+
+#shop-overlay h2,
+#inventory-overlay h2 {
+    margin: 0;
+    color: #efc361;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 27px;
+    line-height: 1;
+    letter-spacing: .4px;
+    text-shadow: 0 2px 0 #5a330e, 0 4px 8px #000;
+}
+
+.gold-purse {
+    margin: 0;
+    min-width: 112px;
+    padding: 8px 12px;
+    color: #e7d39e;
+    font-size: 13px;
+    text-align: center;
+    background: #090e18;
+    border: 1px solid #66512b;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .025);
+}
+
+.coin-icon,
+.tiny-coin {
+    color: #f5c242;
+    font-style: normal;
+    text-shadow: -1px 0 #a66a11, 0 1px #a66a11, 1px 0 #ffe58d;
+}
+
+.overlay-close {
+    position: relative;
+    z-index: 6;
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    padding: 0 0 4px;
+    color: #edbd57;
+    font-family: Georgia, serif;
+    font-size: 38px;
+    line-height: 1;
+    cursor: pointer;
+    border: 2px solid #8e6b2b;
+    border-radius: 4px;
+    background: linear-gradient(#182236, #0a101c);
+    box-shadow: inset 0 0 0 2px #05080e, 0 2px 0 #05070b;
+    text-shadow: 0 2px #593209;
+}
+
+.overlay-close:hover,
+.overlay-close:focus-visible,
+.back-arrow-btn:hover,
+.back-arrow-btn:focus-visible {
+    color: #ffe39a;
+    border-color: #e5b84f;
+    filter: brightness(1.15);
+    outline: none;
+}
+
+.shop-main {
+    min-height: 0;
+    padding: 13px 17px 9px;
+    display: grid;
+    grid-template-columns: 164px minmax(0, 1fr);
+    gap: 12px;
+    flex: 1 1 auto;
+}
+
+.merchant-card,
+.paper-doll-panel,
+.shop-catalog,
+.inventory-browser {
+    min-width: 0;
+    min-height: 0;
+    border: 1px solid #4f4532;
+    background: rgba(7, 11, 20, .72);
+    box-shadow: inset 0 0 0 2px #03060b, inset 0 0 20px rgba(0, 0, 0, .48);
+}
+
+.merchant-card {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 11px;
+    background:
+        linear-gradient(180deg, rgba(78, 59, 25, .18), transparent 48%),
+        rgba(7, 11, 20, .76);
+}
+
+#merchant-portrait {
+    width: 112px;
+    height: 112px;
+    image-rendering: pixelated;
+    background: #090d17;
+    box-shadow: 0 0 0 2px #05070b, 0 0 0 4px #84642a, 0 6px 14px #000;
+}
+
+.merchant-copy {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    text-align: center;
+}
+
+.merchant-copy strong {
+    color: #e8bd61;
+    font-size: 14px;
+}
+
+.merchant-copy span {
+    color: #9c998e;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 10px;
+    font-style: italic;
+    line-height: 1.45;
+}
+
+.shop-catalog,
+.inventory-browser {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.category-tabs {
+    display: flex;
+    flex: 0 0 auto;
+    border-bottom: 1px solid #595039;
+    background: #090f1a;
+}
+
+.category-tab {
+    position: relative;
+    min-width: 0;
+    min-height: 48px;
+    padding: 5px 9px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    flex: 1 1 0;
+    color: #8c8c8d;
+    cursor: pointer;
+    border: 0;
+    border-right: 1px solid #313440;
+    border-radius: 0;
+    background: linear-gradient(#171e2b, #0c111c);
+    box-shadow: inset 0 -3px 0 #05070c;
+}
+
+.category-tab:last-child { border-right: 0; }
+
+.category-tab span {
+    height: 20px;
+    color: #aaa69d;
+    font-size: 18px;
+    line-height: 18px;
+}
+
+.category-tab b {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 9px;
+    letter-spacing: .15px;
+}
+
+.category-tab i {
+    position: absolute;
+    top: 3px;
+    right: 5px;
+    color: #80755f;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 7px;
+    font-style: normal;
+}
+
+.category-tab:hover,
+.category-tab:focus-visible {
+    color: #d8c99f;
+    background: #182132;
+    outline: none;
+}
+
+.category-tab.active {
+    color: #f3ce77;
+    background: linear-gradient(#51401e, #2b2316);
+    box-shadow: inset 0 -3px 0 #d6a741, inset 0 0 15px rgba(230, 178, 70, .12);
+}
+
+.category-tab.active span { color: #f3c45d; }
+
+.catalog-list,
+.inventory-grid {
+    min-height: 0;
+    padding: 8px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-color: #8f6c2e #080d16;
+    scrollbar-width: thin;
+}
+
+#shop-items.catalog-list {
+    width: auto;
+    max-width: none;
+    margin: 0;
+    display: block;
+    flex: 1 1 auto;
+    justify-content: initial;
+}
+
+.catalog-row {
+    min-height: 78px;
+    margin-bottom: 7px;
+    padding: 7px 8px;
+    display: grid;
+    grid-template-columns: 52px minmax(120px, 1fr) minmax(122px, 155px) 72px;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid #414651;
+    background: linear-gradient(90deg, rgba(18, 25, 40, .96), rgba(8, 13, 23, .96));
+    box-shadow: inset 0 0 0 2px #060912, 0 2px 3px rgba(0, 0, 0, .55);
+}
+
+.catalog-row:hover { border-color: #8b6e38; }
+.catalog-row.equipped { border-left: 3px solid #edbc52; }
+.catalog-row.too-expensive { border-style: dashed; }
+
+.catalog-icon {
+    width: 48px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 30px;
+    border: 1px solid #6a542e;
+    background: radial-gradient(circle, #273144, #0b101a 68%);
+    box-shadow: inset 0 0 0 2px #05080e;
+    filter: saturate(.85);
+}
+
+.catalog-copy { min-width: 0; }
+
+.catalog-name {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+}
+
+.catalog-name strong {
+    overflow: hidden;
+    color: #e9d8ae;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.catalog-name span {
+    color: #84775e;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.catalog-copy p {
+    margin-top: 4px;
+    color: #8f9297;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 9px;
+    line-height: 1.3;
+}
+
+.stat-comparison {
+    padding-left: 9px;
+    border-left: 1px solid #30343f;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.stat-comparison > div {
+    display: grid;
+    grid-template-columns: 28px 20px 16px 22px 13px;
+    align-items: center;
+    color: #a7a9ad;
+    font-size: 11px;
+}
+
+.stat-comparison span { color: #7f8490; font-size: 8px; font-weight: 800; }
+.stat-comparison i { color: #797e86; font-style: normal; }
+.stat-comparison em { font-style: normal; font-weight: 900; }
+.stat-comparison .upgrade { color: #66dc58; }
+.stat-comparison .downgrade { color: #f05c51; }
+.stat-comparison .same { color: #aaa; }
+.stat-comparison small { color: #766f63; font-size: 8px; white-space: nowrap; }
+
+.catalog-action {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+}
+
+.row-price {
+    color: #e9ce81;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.row-price i { margin-right: 4px; }
+
+.trade-button,
+.supply-card button {
+    min-height: 44px;
+    padding: 5px 8px;
+    color: #fff3cf;
+    font-family: Georgia, serif;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    border: 1px solid #d1a84d;
+    border-radius: 2px;
+    background: linear-gradient(#b88832, #704713);
+    box-shadow: inset 0 1px rgba(255, 233, 161, .38), 0 2px 0 #281605;
+}
+
+.trade-button:hover:not(:disabled),
+.trade-button:focus-visible:not(:disabled),
+.supply-card button:hover {
+    filter: brightness(1.22);
+    outline: none;
+}
+
+.trade-button:disabled,
+.owned-button {
+    color: #7d7e80;
+    cursor: default;
+    border-color: #3f4147;
+    background: #22252b;
+    box-shadow: inset 0 0 0 1px #14161a;
+}
+
+.sell-button {
+    color: #ffe3b1;
+    border-color: #c37d3c;
+    background: linear-gradient(#9a5827, #5e2d14);
+}
+
+.catalog-empty {
+    min-height: 100%;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #787e87;
+    text-align: center;
+}
+
+.catalog-empty > span { color: #a78342; font-size: 35px; }
+.catalog-empty strong { margin: 8px 0 5px; color: #cdbb91; font-size: 14px; }
+.catalog-empty p { max-width: 330px; font-family: 'Segoe UI', sans-serif; font-size: 10px; line-height: 1.5; }
+
+.armory-footer {
+    position: relative;
+    z-index: 5;
+    min-height: 50px;
+    padding: 7px 18px 8px 23px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 0 0 auto;
+    border-top: 1px solid #56462a;
+    background: #090e18;
+}
+
+.armory-footer > span {
+    color: #777b80;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 9px;
+}
+
+.back-arrow-btn {
+    min-width: 100px;
+    min-height: 44px;
+    padding: 6px 13px;
+    color: #e7b951;
+    font-family: Georgia, serif;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    border: 2px solid #8e6c30;
+    border-radius: 3px;
+    background: linear-gradient(#1c273a, #0b111d);
+    box-shadow: inset 0 0 0 2px #05080e, 0 2px 0 #020305;
+}
+
+.back-arrow-btn span { margin-right: 5px; font-size: 19px; vertical-align: -1px; }
+
+/* Inventory-specific layout */
+.inventory-main {
+    min-height: 0;
+    padding: 11px 17px 7px;
+    display: grid;
+    grid-template-columns: minmax(300px, 42%) minmax(0, 1fr);
+    gap: 11px;
+    flex: 1 1 auto;
+}
+
+.paper-doll-panel {
+    position: relative;
+    padding: 31px 8px 8px;
+    overflow: hidden;
+}
+
+.section-ribbon {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 29px;
+    display: grid;
+    place-items: center;
+    color: #ddba6e;
+    border-bottom: 1px solid #55482e;
+    background: rgba(12, 18, 30, .95);
+    text-shadow: 0 2px #000;
+}
+
+.section-ribbon span { font-size: 14px; font-weight: 800; }
+
+.paper-doll-stage {
+    position: relative;
+    height: calc(100% - 65px);
+    min-height: 190px;
+    overflow: hidden;
+    background:
+        linear-gradient(90deg, transparent 49.5%, rgba(189, 142, 55, .12) 50%, transparent 50.5%),
+        radial-gradient(circle at center, rgba(69, 82, 111, .18), transparent 56%);
+}
+
+#inventory-hero {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 180px;
+    height: 190px;
+    transform: translate(-50%, -50%);
+    image-rendering: pixelated;
+}
+
+.equipment-slot {
+    position: absolute;
+    z-index: 2;
+    width: 91px;
+    min-height: 55px;
+    padding: 4px 5px 4px 34px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: #d6d1c6;
+    border: 1px solid #5d5036;
+    background: linear-gradient(135deg, rgba(26, 34, 50, .97), rgba(7, 11, 19, .97));
+    box-shadow: inset 0 0 0 2px #05070c, 0 2px 5px rgba(0, 0, 0, .55);
+}
+
+.equipment-slot > span {
+    position: absolute;
+    left: 5px;
+    top: 50%;
+    width: 25px;
+    transform: translateY(-50%);
+    font-size: 22px;
+    text-align: center;
+}
+
+.equipment-slot small,
+.equipment-slot i {
+    overflow: hidden;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 7px;
+    font-style: normal;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.equipment-slot small { color: #8a806d; text-transform: uppercase; letter-spacing: .6px; }
+.equipment-slot strong { overflow: hidden; color: #d8caac; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.equipment-slot i { color: #e3b653; }
+.equipment-slot-weapon { left: 0; top: 13%; border-color: #a77e2f; }
+.equipment-slot-bow { right: 0; top: 13%; }
+.equipment-slot-armor { left: 0; bottom: 8%; }
+.equipment-slot-consumable { right: 0; bottom: 8%; }
+
+.equipped-summary {
+    height: 58px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+}
+
+.equipped-summary > div {
+    padding: 5px 3px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    border: 1px solid #3d414a;
+    background: #090e17;
+}
+
+.equipped-summary span { color: #817969; font-family: 'Segoe UI', sans-serif; font-size: 7px; text-transform: uppercase; }
+.equipped-summary b { grid-row: 1 / 3; grid-column: 2; color: #e4c06c; font-size: 18px; }
+.equipped-summary small { color: #6d727c; font-family: 'Segoe UI', sans-serif; font-size: 7px; }
+
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 6px;
+}
+
+.inventory-group-title {
+    grid-column: 1 / -1;
+    margin: 3px 0 0;
+    padding: 2px 3px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #d6b86d;
+    font-size: 11px;
+    border-bottom: 1px solid #3e392e;
+}
+
+.inventory-group-title i {
+    color: #6f747d;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 7px;
+    font-style: normal;
+    font-weight: 500;
+}
+
+.inventory-card,
+.supply-card,
+.pet-card,
+.relic-card,
+.empty-pet-slot,
+.pet-intro {
+    min-width: 0;
+    min-height: 56px;
+    border: 1px solid #3d424d;
+    background: linear-gradient(100deg, rgba(20, 27, 42, .96), rgba(8, 13, 23, .96));
+    box-shadow: inset 0 0 0 1px #05080d;
+}
+
+.inventory-card {
+    padding: 5px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    grid-template-rows: 1fr auto;
+    gap: 0 5px;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.inventory-card:hover,
+.inventory-card:focus-visible { border-color: #b48a38; outline: none; }
+.inventory-card.equipped { border-color: #ddb04b; background: linear-gradient(100deg, rgba(76, 58, 25, .75), rgba(17, 20, 27, .98)); }
+
+.inventory-card-icon {
+    grid-row: 1 / 3;
+    align-self: center;
+    font-size: 25px;
+    text-align: center;
+}
+
+.inventory-card-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.inventory-card-copy strong {
+    overflow: hidden;
+    color: #dfd7c7;
+    font-family: Georgia, serif;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.inventory-card-copy small,
+.supply-card small,
+.pet-card small,
+.relic-card small {
+    color: #7e838c;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 7px;
+    line-height: 1.25;
+}
+
+.inventory-card-state {
+    color: #a27e37;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 7px;
+    font-weight: 800;
+}
+
+.inventory-card.equipped .inventory-card-state { color: #f0c65f; }
+
+.supply-card {
+    grid-column: 1 / -1;
+    padding: 6px 7px;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) 35px auto;
+    align-items: center;
+    gap: 7px;
+}
+
+.supply-card .inventory-card-icon { grid-row: auto; }
+.supply-card > div { display: flex; flex-direction: column; }
+.supply-card strong { color: #dcd3c1; font-size: 10px; }
+.supply-card > b { color: #d8b966; font-family: 'Segoe UI', sans-serif; font-size: 10px; text-align: right; }
+.supply-card.empty { border-style: dashed; filter: saturate(.4); }
+.supply-card button { min-width: 48px; }
+
+.pet-intro {
+    grid-column: 1 / -1;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-color: #4a6945;
+    background: linear-gradient(100deg, rgba(30, 65, 40, .42), rgba(8, 15, 22, .96));
+}
+
+.pet-intro > span { color: #87c479; font-size: 27px; }
+.pet-intro strong { color: #b9d8a8; font-size: 11px; }
+.pet-intro p { margin-top: 2px; color: #74816f; font-family: 'Segoe UI', sans-serif; font-size: 8px; }
+
+.pet-card {
+    grid-column: 1 / -1;
+    padding: 7px;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) 62px;
+    align-items: center;
+    gap: 8px;
+    border-color: #436240;
+}
+
+.pet-avatar {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    font-size: 27px;
+    border: 1px solid #55764e;
+    border-radius: 50%;
+    background: #13201a;
+}
+
+.pet-card > div { min-width: 0; display: flex; flex-direction: column; }
+.pet-card strong { color: #c8dfbc; font-size: 10px; }
+.pet-card > b { color: #8eae82; font-family: 'Segoe UI', sans-serif; font-size: 8px; line-height: 1.55; text-align: right; }
+.pet-health { height: 4px; margin-top: 5px; overflow: hidden; background: #1b2520; border: 1px solid #344138; }
+.pet-health i { height: 100%; display: block; background: #63ae55; }
+
+.empty-pet-slot {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    color: #626a66;
+    border-style: dashed;
+}
+
+.empty-pet-slot span { font-size: 17px; }
+.empty-pet-slot small { font-family: 'Segoe UI', sans-serif; font-size: 8px; }
+
+.inventory-empty-hint {
+    grid-column: 1 / -1;
+    padding: 8px;
+    color: #7b8088;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 9px;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.relic-card {
+    grid-column: 1 / -1;
+    padding: 6px 8px;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    color: inherit;
+    text-align: left;
+}
+
+button.relic-card { cursor: pointer; }
+button.relic-card:hover { filter: brightness(1.18); }
+.relic-card > span { font-size: 27px; text-align: center; }
+.relic-card > div { display: flex; flex-direction: column; }
+.relic-card strong { color: #ddd3bd; font-size: 10px; }
+.relic-card > b { color: #c19bea; font-family: 'Segoe UI', sans-serif; font-size: 9px; }
+.relic-card.blue { border-color: #345c8a; }
+.relic-card.green { border-color: #47753e; }
+.relic-card.violet { border-color: #6d4582; }
+.relic-card.gold { border-color: #8b6a2a; }
+.relic-card.red { border-color: #7b3c38; }
+.relic-card.rainbow { border-color: #a87ac8; box-shadow: inset 3px 0 #e45b5b, inset -3px 0 #5bcde4; }
+
+.relic-shelf {
+    position: relative;
+    z-index: 3;
+    margin: 0 17px 7px;
+    padding: 21px 7px 6px;
+    flex: 0 0 91px;
+    border: 1px solid #51472f;
+    background: rgba(5, 9, 16, .9);
+    box-shadow: inset 0 0 0 2px #020408;
+}
+
+.relic-shelf-title {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    color: #b99a58;
+    font-size: 10px;
+    border-bottom: 1px solid #3e382a;
+    background: #0d131f;
+}
+
+.relic-row {
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(82px, 1.15fr);
+    gap: 5px;
+}
+
+.element-relic,
+.special-relic-summary {
+    min-width: 0;
+    padding: 3px;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-rows: 1fr 1fr;
+    align-items: center;
+    color: #6e7278;
+    border: 1px solid #343843;
+    background: linear-gradient(#141b29, #090e17);
+}
+
+.element-relic > span,
+.special-relic-summary > span {
+    grid-row: 1 / 3;
+    color: #5d626b;
+    font-size: 21px;
+    text-align: center;
+}
+
+.element-relic small,
+.special-relic-summary small { color: #aaa397; font-family: Georgia, serif; font-size: 8px; text-align: left; }
+.element-relic i,
+.special-relic-summary i { color: #5f646d; font-family: 'Segoe UI', sans-serif; font-size: 7px; font-style: normal; text-align: left; }
+.element-relic.unlocked,
+.special-relic-summary { cursor: pointer; border-color: color-mix(in srgb, var(--element-color, #c89c48) 55%, #343843); }
+.element-relic.unlocked > span { color: var(--element-color); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--element-color) 60%, transparent)); }
+.element-relic.active { border-color: var(--element-color); box-shadow: inset 0 0 12px color-mix(in srgb, var(--element-color) 22%, transparent); }
+.element-relic.active i { color: var(--element-color); }
+.element-relic:disabled { cursor: default; }
+.special-relic-summary { --element-color: #d6a94b; }
+.special-relic-summary > span { color: #d6a94b; }
+.special-relic-summary.active { border-color: #e1b852; box-shadow: inset 0 0 10px rgba(219, 174, 74, .2); }
+
+.legacy-inventory-sections { display: none !important; }
+
 /* Dialog Box */
 #dialog-box {
     position: absolute;
@@ -1920,4 +2810,175 @@ body.touch-mode * {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+}
+
+/* Final compact overrides for the fixed armory layouts. */
+@media (max-width: 700px), (max-height: 520px) {
+    #shop-overlay,
+    #inventory-overlay {
+        padding: 4px;
+    }
+
+    .armory-header {
+        min-height: 50px;
+        padding: 5px 10px 5px 15px;
+    }
+
+    .armory-crest {
+        width: 34px;
+        height: 34px;
+        font-size: 19px;
+    }
+
+    .armory-eyebrow { display: none; }
+
+    #shop-overlay h2,
+    #inventory-overlay h2 {
+        font-size: 19px;
+    }
+
+    .overlay-close {
+        width: 44px;
+        height: 44px;
+        font-size: 31px;
+    }
+
+    .gold-purse {
+        min-width: 90px;
+        padding: 6px 8px;
+        font-size: 10px;
+    }
+
+    .shop-main {
+        padding: 8px 10px 5px;
+        grid-template-columns: 120px minmax(0, 1fr);
+        gap: 7px;
+    }
+
+    .merchant-card { padding: 8px; gap: 7px; }
+
+    #merchant-portrait {
+        width: 82px;
+        height: 82px;
+    }
+
+    .merchant-copy strong { font-size: 11px; }
+    .merchant-copy span { font-size: 7px; line-height: 1.25; }
+
+    .category-tab {
+        min-height: 44px;
+        padding: 3px 5px;
+    }
+
+    .category-tab span { height: 16px; font-size: 14px; line-height: 14px; }
+    .category-tab b { font-size: 7px; }
+
+    .catalog-list,
+    .inventory-grid { padding: 5px; gap: 4px; }
+
+    .catalog-row {
+        min-height: 61px;
+        margin-bottom: 4px;
+        padding: 4px 5px;
+        grid-template-columns: 39px minmax(90px, 1fr) minmax(100px, 124px) 62px;
+        gap: 5px;
+    }
+
+    .catalog-icon {
+        width: 36px;
+        height: 47px;
+        font-size: 21px;
+    }
+
+    .catalog-name strong { font-size: 10px; }
+    .catalog-name span { display: none; }
+    .catalog-copy p { font-size: 7px; }
+    .stat-comparison { padding-left: 5px; }
+    .stat-comparison > div { grid-template-columns: 24px 17px 12px 19px 10px; font-size: 9px; }
+    .stat-comparison small { font-size: 6px; }
+    .row-price { font-size: 8px; }
+    .trade-button { min-height: 44px; padding: 3px 4px; font-size: 9px; }
+
+    .armory-footer {
+        min-height: 40px;
+        padding: 4px 10px 5px 15px;
+    }
+
+    .armory-footer > span { font-size: 7px; }
+
+    .back-arrow-btn {
+        min-width: 82px;
+        min-height: 44px;
+        padding: 3px 9px;
+        font-size: 10px;
+    }
+
+    .back-arrow-btn span { font-size: 15px; }
+
+    .inventory-main {
+        padding: 7px 10px 4px;
+        grid-template-columns: minmax(255px, 40%) minmax(0, 1fr);
+        gap: 7px;
+    }
+
+    .paper-doll-panel { padding: 25px 5px 5px; }
+    .section-ribbon { height: 24px; }
+    .section-ribbon span { font-size: 11px; }
+
+    .paper-doll-stage {
+        height: calc(100% - 48px);
+        min-height: 150px;
+    }
+
+    #inventory-hero {
+        width: 145px;
+        height: 153px;
+    }
+
+    .equipment-slot {
+        width: 76px;
+        min-height: 45px;
+        padding: 3px 3px 3px 27px;
+    }
+
+    .equipment-slot > span { left: 3px; width: 22px; font-size: 18px; }
+    .equipment-slot small,
+    .equipment-slot i { font-size: 6px; }
+    .equipment-slot strong { font-size: 7px; }
+    .equipped-summary { height: 43px; }
+    .equipped-summary > div { padding: 2px; }
+    .equipped-summary b { font-size: 14px; }
+    .equipped-summary span,
+    .equipped-summary small { font-size: 6px; }
+
+    .inventory-card,
+    .supply-card,
+    .pet-card,
+    .relic-card { min-height: 45px; }
+
+    .inventory-card { grid-template-columns: 27px minmax(0, 1fr); padding: 3px; }
+    .inventory-card-icon { font-size: 20px; }
+    .inventory-card-copy strong { font-size: 8px; }
+    .inventory-card-copy small,
+    .inventory-card-state,
+    .supply-card small,
+    .pet-card small,
+    .relic-card small { font-size: 6px; }
+
+    .relic-shelf {
+        margin: 0 10px 4px;
+        padding: 17px 5px 4px;
+        flex-basis: 70px;
+    }
+
+    .relic-shelf-title { height: 16px; font-size: 8px; }
+    .relic-row { gap: 3px; }
+    .element-relic,
+    .special-relic-summary { grid-template-columns: 21px minmax(0, 1fr); padding: 2px; }
+    .element-relic > span,
+    .special-relic-summary > span { font-size: 16px; }
+    .element-relic small,
+    .special-relic-summary small { font-size: 6px; }
+    .element-relic i,
+    .special-relic-summary i { font-size: 5px; }
 }

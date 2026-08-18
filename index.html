@@ -124,19 +124,87 @@
             <p class="map-hint">Press M to close</p>
         </div>
         <div id="shop-overlay" class="hidden">
-            <h2 id="shop-title">Shop</h2>
-            <div id="shop-gold-display">🪙 <span id="shop-gold-count">0</span> gold</div>
-            <div id="shop-items"></div>
-            <button id="shop-close" class="menu-btn">Leave Shop</button>
+            <section class="armory-window" aria-labelledby="shop-title">
+                <header class="armory-header">
+                    <div class="armory-heading">
+                        <span class="armory-crest" aria-hidden="true">⚔</span>
+                        <div>
+                            <span class="armory-eyebrow">Merchant</span>
+                            <h2 id="shop-title">Shop</h2>
+                        </div>
+                    </div>
+                    <div class="armory-header-actions">
+                        <div id="shop-gold-display" class="gold-purse" aria-label="Gold available">
+                            <span class="coin-icon" aria-hidden="true">●</span>
+                            <span id="shop-gold-count">0</span> gold
+                        </div>
+                        <button id="shop-close" class="overlay-close" aria-label="Leave shop" title="Leave shop">×</button>
+                    </div>
+                </header>
+                <div class="shop-main">
+                    <aside class="merchant-card">
+                        <canvas id="merchant-portrait" width="112" height="112" aria-label="Merchant portrait"></canvas>
+                        <div class="merchant-copy">
+                            <strong id="merchant-name">Merchant</strong>
+                            <span id="merchant-greeting">Fine equipment for a brave traveler.</span>
+                        </div>
+                    </aside>
+                    <div class="shop-catalog">
+                        <nav id="shop-tabs" class="category-tabs" aria-label="Shop categories"></nav>
+                        <div id="shop-items" class="catalog-list"></div>
+                    </div>
+                </div>
+                <footer class="armory-footer">
+                    <span id="shop-hint">Choose an item to compare it with your equipped gear.</span>
+                    <button id="shop-back" class="back-arrow-btn" aria-label="Leave shop"><span aria-hidden="true">←</span> Back</button>
+                </footer>
+            </section>
         </div>
         <div id="inventory-overlay" class="hidden">
-            <h2>Inventory</h2>
-            <div id="inventory-weapons"></div>
-            <div id="inventory-bows"></div>
-            <div id="inventory-armor"></div>
-            <div id="inventory-companions"></div>
-            <div id="inventory-gems"></div>
-            <button id="inv-close" class="menu-btn">Close</button>
+            <section class="inventory-window" aria-labelledby="inventory-title">
+                <header class="armory-header inventory-header">
+                    <div class="armory-heading">
+                        <span class="armory-crest shield-crest" aria-hidden="true">♜</span>
+                        <div>
+                            <span class="armory-eyebrow">Hero’s pack</span>
+                            <h2 id="inventory-title">Inventory</h2>
+                        </div>
+                    </div>
+                    <button id="inv-close" class="overlay-close" aria-label="Close inventory" title="Close inventory">×</button>
+                </header>
+                <div class="inventory-main">
+                    <section class="paper-doll-panel" aria-label="Equipped gear">
+                        <div class="section-ribbon"><span>Equipped</span></div>
+                        <div class="paper-doll-stage">
+                            <canvas id="inventory-hero" width="180" height="190" aria-label="Ingoizer wearing equipped gear"></canvas>
+                            <div id="equipped-weapon" class="equipment-slot equipment-slot-weapon"></div>
+                            <div id="equipped-bow" class="equipment-slot equipment-slot-bow"></div>
+                            <div id="equipped-armor" class="equipment-slot equipment-slot-armor"></div>
+                            <div id="equipped-consumable" class="equipment-slot equipment-slot-consumable"></div>
+                        </div>
+                        <div id="equipped-summary" class="equipped-summary"></div>
+                    </section>
+                    <section class="inventory-browser" aria-label="Owned items">
+                        <nav id="inventory-tabs" class="category-tabs inventory-tabs" aria-label="Inventory categories"></nav>
+                        <div id="inventory-items" class="inventory-grid"></div>
+                    </section>
+                </div>
+                <section class="relic-shelf" aria-label="Elemental gems and special items">
+                    <div class="relic-shelf-title">Elemental Powers &amp; Relics</div>
+                    <div id="inventory-relics" class="relic-row"></div>
+                </section>
+                <footer class="armory-footer inventory-footer">
+                    <span id="inventory-hint">Select owned gear to equip it.</span>
+                    <button id="inv-back" class="back-arrow-btn" aria-label="Close inventory"><span aria-hidden="true">←</span> Back</button>
+                </footer>
+                <div class="legacy-inventory-sections" aria-hidden="true">
+                    <div id="inventory-weapons"></div>
+                    <div id="inventory-bows"></div>
+                    <div id="inventory-armor"></div>
+                    <div id="inventory-companions"></div>
+                    <div id="inventory-gems"></div>
+                </div>
+            </section>
         </div>
         <div id="enchant-overlay" class="hidden">
             <h2 id="enchant-title">Enchanter's Mallet</h2>

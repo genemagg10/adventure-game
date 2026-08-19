@@ -98,6 +98,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    width: min(560px, 86%);
     filter: drop-shadow(0 8px 7px rgba(0, 0, 0, 0.85));
 }
 
@@ -129,20 +130,16 @@ body {
 
 #title-screen h1 {
     margin: 0;
-    color: #efbc55;
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: clamp(46px, 8vw, 82px);
-    font-weight: 800;
-    line-height: 0.98;
-    letter-spacing: clamp(1px, 0.4vw, 4px);
-    text-align: center;
-    white-space: nowrap;
-    text-shadow:
-        0 2px 0 #ffe292,
-        0 5px 0 #8a500f,
-        0 8px 0 #2d1b09,
-        0 13px 18px rgba(0, 0, 0, 0.96),
-        0 0 24px rgba(220, 151, 34, 0.2);
+    display: block;
+    width: 100%;
+    line-height: 0;
+    filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.92));
+}
+
+.title-logo-image {
+    display: block;
+    width: 100%;
+    height: auto;
 }
 
 .subtitle-row {
@@ -2342,9 +2339,8 @@ button.relic-card:hover { filter: brightness(1.18); }
         padding: 22px 34px;
     }
 
-    #title-screen h1 {
-        font-size: clamp(38px, 8vw, 60px);
-        letter-spacing: 1px;
+    .title-lockup {
+        width: min(520px, 88%);
     }
 
     .title-crest {
@@ -2702,8 +2698,8 @@ button.relic-card:hover { filter: brightness(1.18); }
         display: none;
     }
 
-    #title-screen h1 {
-        font-size: clamp(34px, 7.5vw, 50px);
+    .title-lockup {
+        width: min(430px, 80%);
     }
 
     .subtitle-row {

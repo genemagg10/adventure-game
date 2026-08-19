@@ -695,7 +695,7 @@ const SKY_MONSTER_TYPES = {
         name: "Bronze Talos", icon: "🗿", hp: 285, damage: 40, speed: 0.7,
         xp: 140, goldDrop: [95, 170], color: "#8a5f1c", size: 24,
         weaponDrop: "dark_blade", weaponDropChance: 0.2, gemDrop: false,
-        armorDrop: "ingozer_armor", armorDropChance: 0.06,
+        armorDrop: "iron_plate", armorDropChance: 0.2,
     },
 };
 

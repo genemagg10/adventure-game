@@ -665,6 +665,7 @@ class World {
             y: t.y * TILE_SIZE + TILE_SIZE / 2,
             state: "intact",   // intact -> burning -> revealed
             burnTimer: 0,
+            discovered: false,
         };
     }
 
@@ -1973,8 +1974,9 @@ class World {
             }
         }
 
-        // Draw the Worldtree / sky ladder (pulses, so the corner draws the eye)
-        if (this.skyTree) {
+        // Draw the Worldtree only after it has been found; the first Fire Gem
+        // memory deliberately leaves its location uncharted.
+        if (this.skyTree && (this.skyTree.discovered || this.skyTree.state !== "intact")) {
             const revealed = this.skyTree.state === "revealed";
             const mx = this.skyTree.x * scale;
             const my = this.skyTree.y * scale;
@@ -2125,8 +2127,8 @@ class World {
             ctx.fillText(entrance.label, ex, ey - 7);
         }
 
-        // Worldtree / sky ladder marker - a landmark, so it reads loudly
-        if (this.skyTree) {
+        // Worldtree / sky ladder marker - visible only after discovery
+        if (this.skyTree && (this.skyTree.discovered || this.skyTree.state !== "intact")) {
             const tx = this.skyTree.x * scale + offsetX;
             const ty = this.skyTree.y * scale + offsetY;
             const revealed = this.skyTree.state === "revealed";

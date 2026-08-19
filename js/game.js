@@ -15,6 +15,7 @@ class Game {
         this.paused = false;
         this.lastTime = 0;
         this.time = 0;
+        this.engagedPlayTime = 0;
 
         // Input
         this.keys = {
@@ -172,6 +173,8 @@ class Game {
 
     startGame() {
         this.state = "playing";
+        this.engagedPlayTime = 0;
+        GameAnalytics.track("game-start");
         this.sound.init();
         this.sound.menuSelect();
         this.world = new World();
@@ -601,6 +604,11 @@ class Game {
 
         if (inMenu) return;
 
+        this.engagedPlayTime += dt;
+        if (this.engagedPlayTime >= 5 * 60 * 1000) {
+            GameAnalytics.track("engaged-5-minutes");
+        }
+
         // Element selection
         const elemKeys = ["elem1", "elem2", "elem3", "elem4", "elem5"];
         const elemNames = ["fire", "water", "ice", "lightning", "earth"];
@@ -1012,9 +1020,14 @@ class Game {
         this.player.invincible = true;
         this.player.invincibleTimer = 2000;
 
-        // Surviving companions regroup around the player
+        // Companions are lost on death; the player can tame a new pack with apples
         this.nearAnimal = null;
-        this.gatherCompanions();
+        this.companions = [];
+
+        // Repopulate roaming animals so a respawn also refreshes the living world
+        this.wildAnimals = [];
+        this.animalSpawnTimer = 0;
+        this.spawnInitialAnimals();
 
         // Snap the camera to the respawn point instead of panning across the map
         this.camera.x = clamp(this.player.x - CANVAS_W / 2, 0, WORLD_W * TILE_SIZE - CANVAS_W);
@@ -1042,6 +1055,7 @@ class Game {
         if (isBoss && entity === this.caveBoss && this.inCave) {
             const caveId = this.activeCaveId;
             this.caveBossDefeated[caveId] = true;
+            GameAnalytics.track("first-cave-completed");
             this.ui.hideBossHealth();
             this.sound.bossDefeat();
             const caveWorld = this.caveWorlds[caveId];
@@ -1073,6 +1087,7 @@ class Game {
         // Green Knight killed
         if (isBoss && entity === this.greenKnight) {
             this.greenKnightDefeated = true;
+            GameAnalytics.track("green-knight-defeated");
             this.ui.hideBossHealth();
             this.sound.bossDefeat();
             // Drop Magic Charm
@@ -1096,6 +1111,7 @@ class Game {
         // Black Knight killed
         if (isBoss && entity === this.boss) {
             this.bossDefeated = true;
+            GameAnalytics.track("black-knight-defeated");
             this.ui.hideBossHealth();
             this.sound.bossDefeat();
             // Drop Dark Knight's Crest
@@ -1175,6 +1191,7 @@ class Game {
         if (drops.gem && this.monsterGemDrops < this.maxMonsterGemDrops && this.player.blueGems < 5) {
             this.monsterGemDrops++;
             const elem = this.player.collectGem();
+            this.trackGemProgress();
             this.sound.gemCollect();
             this.ui.showNotification(`Blue Gem found! (${this.player.blueGems}/5)`);
             if (elem) {
@@ -1187,20 +1204,18 @@ class Game {
         }
     }
 
-    // Unlocking Fire is the moment the Worldtree becomes solvable, so that is
-    // when the game tells the player it exists.
+    trackGemProgress() {
+        if (this.player.blueGems >= 1) GameAnalytics.track("first-blue-gem");
+        if (this.player.blueGems >= 5) GameAnalytics.track("five-blue-gems");
+    }
+
+    // Unlocking Fire gives the player a deliberately vague memory of the tree
+    // without revealing its name, location, map marker, or solution.
     onElementUnlocked(elem) {
         if (elem !== "fire" || this.skyTreeHintGiven) return;
         if (!this.world.skyTree || this.world.skyTree.state !== "intact") return;
         this.skyTreeHintGiven = true;
-        this.ui.showDialog(
-            "As the fire takes hold in your hand, an old verse surfaces in your memory: " +
-            "\"In the far northeast, past the Scorched Wastes where no road runs, stands the Worldtree. " +
-            "No axe has marked it. Only fire loosed from a bowstring will open what it hides.\"",
-            () => {
-                this.ui.showNotification("🌳 The Worldtree is marked on your map (M)");
-            }
-        );
+        this.ui.showDialog("As the fire touches your hand it jogs a memory, \"something about a giant tree, somewhere, uncharted.\"");
     }
 
     // A quiet nudge the first time the player wanders into the northeast corner
@@ -1210,6 +1225,7 @@ class Game {
         if (!st || st.state !== "intact") return;
         if (dist(this.player.x, this.player.y, st.x, st.y) > 420) return;
         this.skyTreeApproachSeen = true;
+        st.discovered = true;
         this.ui.showNotification("🌳 An enormous, ancient tree stands ahead...");
     }
 
@@ -1325,6 +1341,7 @@ class Game {
     collectWorldGem(gem) {
         gem.collected = true;
         const elem = this.player.collectGem();
+        this.trackGemProgress();
         this.sound.gemCollect();
         this.ui.showNotification(`Blue Gem found! (${this.player.blueGems}/5)`);
         if (elem) {
@@ -1827,6 +1844,7 @@ class Game {
 
         if (dist(this.player.x, this.player.y, caveWorld.treasurePos.x, caveWorld.treasurePos.y) < 40) {
             this.caveTreasureCollected[caveId] = true;
+            GameAnalytics.track("first-cave-completed");
             this.sound.gemCollect();
             const ce = CAVE_ENTRANCES.find(e => e.id === caveId);
             if (ce.difficulty === 1) {
@@ -2141,6 +2159,7 @@ class Game {
 
     onOlympianDefeated() {
         this.olympianDefeated = true;
+        GameAnalytics.track("olympus-defeated");
         this.ui.hideBossHealth();
         this.sound.bossDefeat();
         this.player.hasZeusBolts = true;

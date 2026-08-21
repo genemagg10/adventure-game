@@ -97,6 +97,10 @@ class World {
         this.fountainOfYouth = null;
         this.placeFountainOfYouth(rng);
 
+        // The Maker's Hollow, far in the southwest corner
+        this.makersHollow = null;
+        this.placeMakersHollow(rng);
+
         // Add decorations
         this.generateDecorations(rng);
     }
@@ -652,6 +656,41 @@ class World {
             }
         }
         return cleared;
+    }
+
+    // ============================================
+    // The Maker's Hollow (bottom-left corner)
+    // ============================================
+
+    // A ladder at the far southwest edge of the realm, past the last named
+    // land. There is no path to it and nothing points at it - a player only
+    // finds it by walking to the corner of the world to see what is there.
+    placeMakersHollow(rng) {
+        const h = MAKERS_HOLLOW;
+
+        // A ring of old flagstones, as though something was built here once
+        // and the grass has been taking it back ever since.
+        for (let dy = -3; dy <= 3; dy++) {
+            for (let dx = -3; dx <= 3; dx++) {
+                const tx = h.x + dx;
+                const ty = h.y + dy;
+                if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
+                const d = Math.abs(dx) + Math.abs(dy);
+                if (d > 4) continue;
+                this.tiles[ty][tx] = d <= 2 || rng() < 0.6 ? TILE.STONE : TILE.GRASS;
+            }
+        }
+
+        // The shaft itself.
+        this.tiles[h.y][h.x] = TILE.LADDER;
+
+        this.makersHollow = {
+            tileX: h.x,
+            tileY: h.y,
+            x: h.x * TILE_SIZE + TILE_SIZE / 2,
+            y: h.y * TILE_SIZE + TILE_SIZE / 2,
+            discovered: false,
+        };
     }
 
     // ============================================
@@ -2255,6 +2294,15 @@ class World {
 
         if (this.sapling && !(this.sapling.rooted && this.sapling.grown)) {
             marks.push({ x: this.sapling.x, y: this.sapling.y, shape: "star", colour: "#7fd06a", label: "Sapling", size: 4, priority: 2 });
+        }
+
+        // The Maker's Hollow goes on the chart only once somebody has stood in
+        // it. Before that it is not a place, it is a rumour nobody started.
+        if (this.makersHollow && this.makersHollow.discovered) {
+            marks.push({
+                x: this.makersHollow.x, y: this.makersHollow.y,
+                shape: "star", colour: "#ffd27f", label: MAKERS_HOLLOW.name, size: 5, priority: 2,
+            });
         }
 
         return marks;

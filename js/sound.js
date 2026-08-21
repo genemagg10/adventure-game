@@ -1000,6 +1000,60 @@ class SoundSystem {
         osc.stop(t + 1.2);
     }
 
+    // Found the Maker's Hollow. A rising sparkle, a warm chord blooming under
+    // it, and a bell left ringing in the dark - the sound of a secret opening
+    // rather than a fight being won.
+    secretDiscovery() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+
+        // The sparkle: a pentatonic run, so every step of it lands sweetly.
+        const run = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.7, 1568];
+        run.forEach((f, i) => {
+            const osc = this.ctx.createOscillator();
+            osc.type = "triangle";
+            osc.frequency.value = f;
+            const gain = this.createGain(0.001);
+            const at = t + i * 0.07;
+            gain.gain.setValueAtTime(0.0001, at);
+            gain.gain.exponentialRampToValueAtTime(0.11 * this.masterVolume, at + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.38);
+            osc.connect(gain);
+            osc.start(at);
+            osc.stop(at + 0.4);
+        });
+
+        // The chord underneath, swelling in late and holding: C major with an
+        // added ninth, which is what makes it read as warm rather than heroic.
+        const chord = [130.81, 261.63, 329.63, 392, 587.33];
+        chord.forEach((f, i) => {
+            const osc = this.ctx.createOscillator();
+            osc.type = i === 0 ? "sine" : "triangle";
+            osc.frequency.value = f;
+            const gain = this.createGain(0.001);
+            const at = t + 0.34;
+            gain.gain.setValueAtTime(0.0001, at);
+            gain.gain.linearRampToValueAtTime(0.075 * this.masterVolume, at + 0.3);
+            gain.gain.exponentialRampToValueAtTime(0.0001, at + 2.1);
+            osc.connect(gain);
+            osc.start(at);
+            osc.stop(at + 2.2);
+        });
+
+        // A single high bell on the landing, left to ring out.
+        const bell = this.ctx.createOscillator();
+        bell.type = "sine";
+        bell.frequency.value = 2093;
+        const bellGain = this.createGain(0.001);
+        const bellAt = t + 0.62;
+        bellGain.gain.setValueAtTime(0.0001, bellAt);
+        bellGain.gain.exponentialRampToValueAtTime(0.06 * this.masterVolume, bellAt + 0.01);
+        bellGain.gain.exponentialRampToValueAtTime(0.0001, bellAt + 1.8);
+        bell.connect(bellGain);
+        bell.start(bellAt);
+        bell.stop(bellAt + 1.9);
+    }
+
     victoryFanfare() {
         if (!this.ensureContext()) return;
         const t = this.ctx.currentTime;

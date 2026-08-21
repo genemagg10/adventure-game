@@ -12,6 +12,12 @@ class World {
         this.castleTapestry = null;
         // A planted Worldtree Seed: { tileX, tileY, x, y, rooted, growTimer, grown }
         this.sapling = null;
+        // What the player has charted, plus the cached illustrated map layer
+        // both map surfaces are drawn from.
+        this.fog = new FogOfWar(WORLD_W, WORLD_H, FOG_SETTINGS.surface);
+        this.mapTerrain = null;
+        this.mapTerrainSig = "";
+        this.mapEpoch = 0;
         this.generate();
     }
 
@@ -158,6 +164,13 @@ class World {
             case "greenlands":
                 if (rng() < 0.10) return TILE.TREE;
                 if (rng() < 0.03) return TILE.WALL;
+                return TILE.DARK_GRASS;
+
+            case "worldtree":
+                // Old, quiet ground: mossy dark turf under scattered stone,
+                // thickening into woodland as it climbs toward the tree.
+                if (rng() < 0.04) return TILE.STONE;
+                if (rng() < z.treeChance) return TILE.TREE;
                 return TILE.DARK_GRASS;
 
             default:
@@ -2130,308 +2143,303 @@ class World {
         } : { r: 0, g: 0, b: 0 };
     }
 
-    renderMinimap(ctx, player, monsters, boss, greenKnight, companions) {
-        const mmW = 150, mmH = 150;
-        ctx.fillStyle = "#111";
-        ctx.fillRect(0, 0, mmW, mmH);
+    // ============================================
+    // Maps
+    // ============================================
 
-        const scale = mmW / (WORLD_W * TILE_SIZE);
-
-        // Draw zones
-        for (const [key, z] of Object.entries(ZONES)) {
-            ctx.fillStyle = z.color;
-            ctx.globalAlpha = 0.6;
-            ctx.fillRect(z.x * TILE_SIZE * scale, z.y * TILE_SIZE * scale,
-                z.w * TILE_SIZE * scale, z.h * TILE_SIZE * scale);
-        }
-        ctx.globalAlpha = 1;
-
-        // Draw shop markers
-        for (const shop of this.shops) {
-            ctx.fillStyle = COLORS.shopMarker;
-            ctx.fillRect(shop.worldX * scale - 2, shop.worldY * scale - 2, 4, 4);
-        }
-
-        // Draw monsters
-        for (const m of monsters) {
-            if (!m.alive) continue;
-            ctx.fillStyle = "#ff4444";
-            ctx.fillRect(m.x * scale - 1, m.y * scale - 1, 2, 2);
-        }
-
-        // Draw boss
-        if (boss && boss.alive) {
-            ctx.fillStyle = "#ff0000";
-            ctx.fillRect(boss.x * scale - 3, boss.y * scale - 3, 6, 6);
-        }
-
-        // Draw castle
-        ctx.strokeStyle = "#ffd700";
-        ctx.lineWidth = 1;
-        const cz = ZONES.castle;
-        ctx.strokeRect(cz.x * TILE_SIZE * scale, cz.y * TILE_SIZE * scale,
-            cz.w * TILE_SIZE * scale, cz.h * TILE_SIZE * scale);
-
-        // Draw Lady of the Lake
-        if (this.ladyOfLake && !this.ladyOfLake.excaliburGiven) {
-            ctx.fillStyle = "#88ccff";
-            ctx.fillRect(this.ladyOfLake.x * scale - 2, this.ladyOfLake.y * scale - 2, 4, 4);
-        }
-
-        // Draw Merlin
-        if (this.merlin) {
-            ctx.fillStyle = "#aa66ff";
-            ctx.fillRect(this.merlin.x * scale - 2, this.merlin.y * scale - 2, 4, 4);
-        }
-
-        // Draw Merlin's Hut
-        if (this.merlinHut) {
-            ctx.fillStyle = "#aa66ff";
-            ctx.fillRect(this.merlinHut.x * scale - 2, this.merlinHut.y * scale - 2, 4, 4);
-        }
-
-        // Draw Green Knight Castle (always visible on minimap)
-        if (this.greenKnightCastle) {
-            ctx.fillStyle = "#44ff44";
-            ctx.fillRect(this.greenKnightCastle.x * scale - 3, this.greenKnightCastle.y * scale - 3, 6, 6);
-        }
-
-        // Draw Green Knight
-        if (greenKnight && greenKnight.alive) {
-            ctx.fillStyle = "#00ff00";
-            ctx.fillRect(greenKnight.x * scale - 3, greenKnight.y * scale - 3, 6, 6);
-        }
-
-        // Draw cave entrances
-        for (const entrance of this.caveEntrances) {
-            ctx.fillStyle = "#8866aa";
-            ctx.fillRect(entrance.worldX * scale - 2, entrance.worldY * scale - 2, 5, 5);
-        }
-
-        // Draw animal companions
-        if (companions) {
-            for (const c of companions) {
-                if (!c.alive) continue;
-                ctx.fillStyle = "#ffdd66";
-                ctx.fillRect(c.x * scale - 1, c.y * scale - 1, 3, 3);
-            }
-        }
-
-        // Draw the Worldtree only after it has been found; the first Fire Gem
-        // memory deliberately leaves its location uncharted.
-        if (this.skyTree && (this.skyTree.discovered || this.skyTree.state !== "intact")) {
-            const revealed = this.skyTree.state === "revealed";
-            // Static and muted. A blinking marker turns a secret into a waypoint.
-            ctx.fillStyle = revealed ? "#dcefff" : "#2f6b28";
-            ctx.fillRect(this.skyTree.x * scale - 1, this.skyTree.y * scale - 1, 3, 3);
-        }
-
-        // Planted Worldtree Seed
-        if (this.sapling && !(this.sapling.rooted && this.sapling.grown)) {
-            ctx.fillStyle = "#7fd06a";
-            ctx.fillRect(this.sapling.x * scale - 1, this.sapling.y * scale - 1, 3, 3);
-        }
-
-        // Draw player
-        ctx.fillStyle = "#00ff00";
-        ctx.fillRect(player.x * scale - 2, player.y * scale - 2, 5, 5);
+    // Nothing blocks a long view across open country, so the surface reveals
+    // by sight radius alone.
+    blocksSight() {
+        return false;
     }
 
-    renderWorldMap(ctx, player) {
-        const mapW = 600, mapH = 450;
-        ctx.fillStyle = "#1a1a2e";
-        ctx.fillRect(0, 0, mapW, mapH);
-
-        const scaleX = mapW / (WORLD_W * TILE_SIZE);
-        const scaleY = mapH / (WORLD_H * TILE_SIZE);
-        const scale = Math.min(scaleX, scaleY);
-        const offsetX = (mapW - WORLD_W * TILE_SIZE * scale) / 2;
-        const offsetY = (mapH - WORLD_H * TILE_SIZE * scale) / 2;
-
-        // Draw zones with labels
-        for (const [key, z] of Object.entries(ZONES)) {
-            const zx = z.x * TILE_SIZE * scale + offsetX;
-            const zy = z.y * TILE_SIZE * scale + offsetY;
-            const zw = z.w * TILE_SIZE * scale;
-            const zh = z.h * TILE_SIZE * scale;
-
-            ctx.fillStyle = z.color;
-            ctx.globalAlpha = 0.7;
-            ctx.fillRect(zx, zy, zw, zh);
-
-            ctx.strokeStyle = "#555";
-            ctx.lineWidth = 1;
-            ctx.globalAlpha = 0.5;
-            ctx.strokeRect(zx, zy, zw, zh);
-
-            ctx.globalAlpha = 1;
-            ctx.fillStyle = "#fff";
-            ctx.font = "11px monospace";
-            ctx.textAlign = "center";
-            ctx.fillText(z.name, zx + zw / 2, zy + zh / 2 + 4);
+    // Is this zone's identity known to the player? A secret zone is drawn as
+    // anonymous wilderness - no biome colour, no name - until the thing that
+    // gives it its name has actually been found.
+    isZoneRevealed(key) {
+        const z = ZONES[key];
+        if (!z) return false;
+        if (!z.secret) return true;
+        if (key === "worldtree") {
+            const st = this.skyTree;
+            return !!st && (st.discovered || st.state !== "intact");
         }
+        return false;
+    }
 
-        // Draw shop markers
-        ctx.globalAlpha = 1;
-        for (const shop of this.shops) {
-            const sx = shop.worldX * scale + offsetX;
-            const sy = shop.worldY * scale + offsetY;
-            ctx.fillStyle = COLORS.shopMarker;
-            ctx.beginPath();
-            ctx.arc(sx, sy, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#fff";
-            ctx.font = "9px monospace";
-            ctx.fillText(shop.name, sx, sy - 8);
+    // The cached map layer is rebuilt only when the drawing would actually
+    // change: a zone becomes known, the Worldtree burns or regrows, the Green
+    // Knight's castle rises.
+    mapSignature() {
+        const st = this.skyTree;
+        return [
+            this.greenCastleBuilt ? 1 : 0,
+            st ? st.state : "-",
+            st && st.regrown ? 1 : 0,
+            this.isZoneRevealed("worldtree") ? 1 : 0,
+            this.mapEpoch || 0,
+        ].join("|");
+    }
+
+    invalidateMapCache() {
+        this.mapEpoch = (this.mapEpoch || 0) + 1;
+    }
+
+    getMapTerrain() {
+        const sig = this.mapSignature();
+        if (!this.mapTerrain || this.mapTerrainSig !== sig) {
+            this.mapTerrain = MapTerrain.buildSurface(this, WORLD_MAP_LAYOUT.view.w / WORLD_W);
+            this.mapTerrainSig = sig;
         }
+        return this.mapTerrain;
+    }
 
-        // Castle marker
+    // Everything both maps might mark, in one list, so the minimap and the
+    // world map can never disagree about what is out there.
+    //
+    // `always` - known from the start of the story and never fogged.
+    // `rumour` - a quest anchor the player has been told about but not yet
+    //            visited; drawn as a hollow ghost over the fog so a player can
+    //            never be stranded by their own map.
+    mapLandmarks() {
+        const marks = [];
+
         const cz = ZONES.castle;
-        const ccx = (cz.x + cz.w / 2) * TILE_SIZE * scale + offsetX;
-        const ccy = (cz.y + cz.h / 2) * TILE_SIZE * scale + offsetY;
-        ctx.strokeStyle = "#ffd700";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(
-            cz.x * TILE_SIZE * scale + offsetX,
-            cz.y * TILE_SIZE * scale + offsetY,
-            cz.w * TILE_SIZE * scale,
-            cz.h * TILE_SIZE * scale
-        );
-        ctx.fillStyle = "#ffd700";
-        ctx.font = "bold 12px monospace";
-        ctx.fillText("⚔ Ing Castle ⚔", ccx, ccy - 8);
+        marks.push({
+            x: (cz.x + cz.w / 2) * TILE_SIZE,
+            y: (cz.y + cz.h / 2) * TILE_SIZE,
+            shape: "crown", colour: "#ffd700", label: "Ing Castle", size: 7, always: true, priority: 3,
+        });
 
-        // Lady of the Lake marker
-        if (this.ladyOfLake && !this.ladyOfLake.excaliburGiven) {
-            const lx = this.ladyOfLake.x * scale + offsetX;
-            const ly = this.ladyOfLake.y * scale + offsetY;
-            ctx.fillStyle = "#88ccff";
-            ctx.beginPath();
-            ctx.arc(lx, ly, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#fff";
-            ctx.font = "9px monospace";
-            ctx.fillText("Lady of the Lake", lx, ly - 8);
-        }
-
-        // Merlin marker
-        if (this.merlin) {
-            const mx = this.merlin.x * scale + offsetX;
-            const my = this.merlin.y * scale + offsetY;
-            ctx.fillStyle = "#aa66ff";
-            ctx.beginPath();
-            ctx.arc(mx, my, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#fff";
-            ctx.font = "9px monospace";
-            ctx.fillText("Merlin", mx, my - 8);
-        }
-
-        // Merlin's Hut marker
-        if (this.merlinHut) {
-            const hx = this.merlinHut.x * scale + offsetX;
-            const hy = this.merlinHut.y * scale + offsetY;
-            ctx.fillStyle = "#aa66ff";
-            ctx.beginPath();
-            ctx.arc(hx, hy, 4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#fff";
-            ctx.font = "8px monospace";
-            ctx.fillText("Merlin's Hut", hx, hy - 7);
-        }
-
-        // Green Knight Castle marker (always visible on world map)
         if (this.greenKnightCastle) {
-            const gx = this.greenKnightCastle.x * scale + offsetX;
-            const gy = this.greenKnightCastle.y * scale + offsetY;
-            ctx.fillStyle = "#44ff44";
-            ctx.beginPath();
-            ctx.arc(gx, gy, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#fff";
-            ctx.font = "9px monospace";
-            ctx.textAlign = "center";
-            ctx.fillText("Green Castle", gx, gy - 8);
+            marks.push({
+                x: this.greenKnightCastle.x, y: this.greenKnightCastle.y,
+                shape: "crown", colour: "#4cd964", label: "Green Castle", size: 6, always: true, priority: 3,
+            });
         }
 
-        // Cave entrance markers
+        for (const shop of this.shops) {
+            marks.push({ x: shop.worldX, y: shop.worldY, shape: "square", colour: COLORS.shopMarker, label: shop.name, size: 4, priority: 1 });
+        }
+
         for (const entrance of this.caveEntrances) {
-            const ex = entrance.worldX * scale + offsetX;
-            const ey = entrance.worldY * scale + offsetY;
-            ctx.fillStyle = "#8866aa";
-            ctx.beginPath();
-            ctx.arc(ex, ey, 4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#ccc";
-            ctx.font = "8px monospace";
-            ctx.textAlign = "center";
-            ctx.fillText(entrance.label, ex, ey - 7);
+            marks.push({ x: entrance.worldX, y: entrance.worldY, shape: "arch", colour: "#a887d8", label: entrance.label, size: 5, priority: 2 });
         }
 
-        // Worldtree / sky ladder marker - visible only after discovery, and
-        // deliberately quiet: no halo, no pulse, no label while it is still a
-        // secret. It should read as one more dot until the player opens it.
+        if (this.ladyOfLake && !this.ladyOfLake.excaliburGiven) {
+            marks.push({ x: this.ladyOfLake.x, y: this.ladyOfLake.y, shape: "ring", colour: "#88ccff", label: "Lady of the Lake", size: 5, rumour: true, priority: 3 });
+        }
+        if (this.merlin) {
+            marks.push({ x: this.merlin.x, y: this.merlin.y, shape: "ring", colour: "#aa66ff", label: "Merlin", size: 5, rumour: true, priority: 3 });
+        }
+        if (this.merlinHut) {
+            marks.push({ x: this.merlinHut.x, y: this.merlinHut.y, shape: "square", colour: "#aa66ff", label: "Merlin's Hut", size: 4, priority: 1 });
+        }
+        if (this.fountainOfYouth) {
+            marks.push({ x: this.fountainOfYouth.x, y: this.fountainOfYouth.y, shape: "ring", colour: "#64c8ff", label: "Fountain of Youth", size: 4, priority: 1 });
+        }
+
+        // The Worldtree stays off the chart until it has been seen. Once the
+        // ladder is open it is a route worth naming.
         if (this.skyTree && (this.skyTree.discovered || this.skyTree.state !== "intact")) {
-            const tx = this.skyTree.x * scale + offsetX;
-            const ty = this.skyTree.y * scale + offsetY;
             const revealed = this.skyTree.state === "revealed";
-
-            ctx.fillStyle = revealed ? "#dcefff" : "#3f7d33";
-            ctx.beginPath();
-            ctx.arc(tx, ty, revealed ? 5 : 3, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Only once the ladder is open does it become a route worth naming.
-            if (revealed) {
-                const label = this.skyTree.regrown ? "Worldtree" : "Sky Ladder";
-                ctx.font = "9px monospace";
-                ctx.textAlign = "center";
-                const halfW = ctx.measureText(label).width / 2;
-                ctx.fillStyle = this.skyTree.regrown ? "#a8e88a" : "#dcefff";
-                ctx.fillText(label, clamp(tx, halfW + 4, mapW - halfW - 4), ty - 8);
-            }
+            marks.push({
+                x: this.skyTree.x, y: this.skyTree.y,
+                shape: "star",
+                colour: revealed ? (this.skyTree.regrown ? "#a8e88a" : "#dcefff") : "#3f7d33",
+                label: revealed ? (this.skyTree.regrown ? "The Worldtree" : "Sky Ladder") : null,
+                size: revealed ? 6 : 4,
+                priority: 3,
+            });
         }
 
-        // A planted Worldtree Seed - marked so a sapling put down on the far
-        // side of the realm can still be found again.
         if (this.sapling && !(this.sapling.rooted && this.sapling.grown)) {
-            const gx = this.sapling.x * scale + offsetX;
-            const gy = this.sapling.y * scale + offsetY;
-            ctx.fillStyle = "#7fd06a";
-            ctx.beginPath();
-            ctx.arc(gx, gy, 4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.font = "8px monospace";
-            ctx.textAlign = "center";
-            const halfW = ctx.measureText("Sapling").width / 2;
-            ctx.fillStyle = "#cfe8a8";
-            ctx.fillText("Sapling", clamp(gx, halfW + 4, mapW - halfW - 4), gy - 7);
+            marks.push({ x: this.sapling.x, y: this.sapling.y, shape: "star", colour: "#7fd06a", label: "Sapling", size: 4, priority: 2 });
         }
 
-        // Player position
-        const px = player.x * scale + offsetX;
-        const py = player.y * scale + offsetY;
-        ctx.fillStyle = "#00ff00";
-        ctx.beginPath();
-        ctx.arc(px, py, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#fff";
-        ctx.font = "9px monospace";
-        ctx.fillText("Ingoizer", px, py - 10);
+        return marks;
+    }
 
-        // Legend
-        ctx.textAlign = "left";
-        ctx.fillStyle = "#aaa";
-        ctx.font = "10px monospace";
-        const ly = mapH - 50;
-        ctx.fillStyle = "#00ff00"; ctx.fillRect(10, ly, 8, 8);
-        ctx.fillStyle = "#aaa"; ctx.fillText("You", 22, ly + 8);
-        ctx.fillStyle = COLORS.shopMarker; ctx.fillRect(60, ly, 8, 8);
-        ctx.fillStyle = "#aaa"; ctx.fillText("Shop", 72, ly + 8);
-        ctx.fillStyle = "#ffd700"; ctx.fillRect(120, ly, 8, 8);
-        ctx.fillStyle = "#aaa"; ctx.fillText("Castle", 132, ly + 8);
-        ctx.fillStyle = "#8866aa"; ctx.fillRect(190, ly, 8, 8);
-        ctx.fillStyle = "#aaa"; ctx.fillText("Cave", 202, ly + 8);
+    // --------------------------------------------
+    // Minimap (HUD)
+    // --------------------------------------------
+
+    renderMinimap(ctx, player, monsters, boss, greenKnight, companions, opts = {}) {
+        const M = MINIMAP_LAYOUT;
+        const size = M.size;
+        const time = opts.time || 0;
+        const view = { x: M.inset, y: M.inset, w: size - M.inset * 2, h: size - M.inset * 2 };
+
+        ctx.clearRect(0, 0, size, size);
+        ctx.fillStyle = "#0b1024";
+        ctx.fillRect(0, 0, size, size);
+
+        // The window of world the minimap shows, centred on the player and
+        // clamped so the edge of the realm stays put instead of sliding.
+        const tilesAcross = M.tiles;
+        const halfTiles = tilesAcross / 2;
+        const playerTX = player.x / TILE_SIZE;
+        const playerTY = player.y / TILE_SIZE;
+        const viewTX = clamp(playerTX - halfTiles, 0, Math.max(0, WORLD_W - tilesAcross));
+        const viewTY = clamp(playerTY - halfTiles, 0, Math.max(0, WORLD_H - tilesAcross));
+        const pxPerTile = view.w / tilesAcross;
+        const toX = (wx) => view.x + (wx / TILE_SIZE - viewTX) * pxPerTile;
+        const toY = (wy) => view.y + (wy / TILE_SIZE - viewTY) * pxPerTile;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(view.x, view.y, view.w, view.h);
+        ctx.clip();
+
+        // Terrain, blitted straight out of the shared world-map layer.
+        const terrain = this.getMapTerrain();
+        const srcScale = terrain.width / WORLD_W;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(
+            terrain,
+            viewTX * srcScale, viewTY * srcScale, tilesAcross * srcScale, tilesAcross * srcScale,
+            view.x, view.y, view.w, view.h
+        );
+
+        const landmarks = this.mapLandmarks();
+
+        renderFogOfWar(
+            ctx, this.fog, view,
+            { tx: viewTX, ty: viewTY, tw: tilesAcross, th: tilesAcross },
+            { tx: playerTX, ty: playerTY, r: this.fog.sight },
+            "surface"
+        );
+
+        // Landmarks the player knows about stay crisp above the fog - a place
+        // you have found should not fade out with the ground around it.
+        for (const m of landmarks) {
+            if (!m.always && !this.fog.isWorldSeen(m.x, m.y)) continue;
+            MapArt.marker(ctx, toX(m.x), toY(m.y), m.shape, m.colour, { size: Math.max(3, m.size - 1), lineWidth: 1 });
+        }
+
+        // Living things are drawn after the fog: they are what you can see
+        // right now, not what you remember, and the HUD must never hide a
+        // threat that is already on your heels.
+        const sight = this.fog.sight;
+        for (const c of (companions || [])) {
+            if (!c.alive || !inSightOf(player, c, sight)) continue;
+            MapArt.marker(ctx, toX(c.x), toY(c.y), "circle", "#ffdd66", { size: 2.5, lineWidth: 1 });
+        }
+        for (const m of monsters) {
+            if (!m.alive || !inSightOf(player, m, sight)) continue;
+            MapArt.marker(ctx, toX(m.x), toY(m.y), "circle", "#ff5a5a", { size: 2.5, lineWidth: 1 });
+        }
+        if (greenKnight && greenKnight.alive && inSightOf(player, greenKnight, sight)) {
+            MapArt.marker(ctx, toX(greenKnight.x), toY(greenKnight.y), "crown", "#3ddc50", { size: 5 });
+        }
+        if (boss && boss.alive && inSightOf(player, boss, sight)) {
+            MapArt.marker(ctx, toX(boss.x), toY(boss.y), "crown", "#ff3b3b", { size: 6 });
+        }
+
+        MapArt.playerMarker(ctx, toX(player.x), toY(player.y), time, 5);
+        ctx.restore();
+
+        // An arrow to Ing Castle when it has drifted off the window, so a
+        // local view never costs the player their bearings.
+        const castleX = (ZONES.castle.x + ZONES.castle.w / 2) * TILE_SIZE;
+        const castleY = (ZONES.castle.y + ZONES.castle.h / 2) * TILE_SIZE;
+        const cxp = toX(castleX);
+        const cyp = toY(castleY);
+        if (cxp < view.x || cxp > view.x + view.w || cyp < view.y || cyp > view.y + view.h) {
+            MapArt.edgeArrow(ctx, size / 2, size / 2, size / 2 - 16, cxp, cyp, "#ffd700");
+        }
+
+        MapArt.minimapFrame(ctx, size, size);
+        const zone = getZoneAt(Math.floor(player.x / TILE_SIZE), Math.floor(player.y / TILE_SIZE));
+        const named = ZONES[zone] && this.isZoneRevealed(zone) ? ZONES[zone].name : "Wilderness";
+        MapArt.minimapCaption(ctx, size, size, named.toUpperCase());
+    }
+
+    // --------------------------------------------
+    // World map (M)
+    // --------------------------------------------
+
+    renderWorldMap(ctx, player, opts = {}) {
+        const L = WORLD_MAP_LAYOUT;
+        const view = L.view;
+        const time = opts.time || 0;
+
+        MapArt.panel(ctx, L.w, L.h);
+        MapArt.cartouche(ctx, L.w / 2, 12, "World Map", 20);
+        if (opts.closeLabel) MapArt.closeHint(ctx, L.w, opts.closeLabel);
+        MapArt.viewportFrame(ctx, view);
+
+        const s = view.w / (WORLD_W * TILE_SIZE);
+        const toX = (wx) => view.x + wx * s;
+        const toY = (wy) => view.y + wy * s;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(view.x, view.y, view.w, view.h);
+        ctx.clip();
+
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(this.getMapTerrain(), view.x, view.y, view.w, view.h);
+
+        const landmarks = this.mapLandmarks();
+
+        renderFogOfWar(
+            ctx, this.fog, view,
+            { tx: 0, ty: 0, tw: WORLD_W, th: WORLD_H },
+            { tx: player.x / TILE_SIZE, ty: player.y / TILE_SIZE, r: this.fog.sight },
+            "surface"
+        );
+
+        // Landmarks and labels sit above the fog so they stay crisp. Places
+        // the player has not been show only if they were never a secret, or if
+        // the story has already pointed at them.
+        const taken = [];
+        const named = new Set();
+        const px = toX(player.x);
+        const py = toY(player.y);
+        MapArt.reservePlayer(taken, px, py, 7);
+        MapArt.placeLabel(ctx, taken, px, py, "Ingoizer", {
+            size: 10, bounds: view, colour: "#bdf7c6", border: "rgba(78,240,106,0.6)",
+        });
+        const byPriority = landmarks.slice().sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
+        for (const m of byPriority) {
+            const charted = m.always || this.fog.isWorldSeen(m.x, m.y);
+            if (!charted && !m.rumour) continue;
+            // Rumoured markers are hollow and dashed: enough to steer by, not
+            // enough to spoil the walk.
+            const ghost = !charted;
+            MapArt.marker(ctx, toX(m.x), toY(m.y), m.shape, m.colour, { size: m.size, ghost });
+            if (!m.label) continue;
+            const placed = MapArt.placeLabel(ctx, taken, toX(m.x), toY(m.y), m.label, ghost
+                ? { size: 9, bounds: view, colour: MAP_UI.textDim, border: "rgba(154,163,187,0.4)" }
+                : { size: 9, bounds: view });
+            if (placed) named.add(m.label);
+        }
+
+        // Region names last, and never a second copy of a name a landmark
+        // plate has already put on the map.
+        for (const [key, z] of Object.entries(ZONES)) {
+            if (!this.isZoneRevealed(key) || named.has(z.name)) continue;
+            const cx = (z.x + z.w / 2) * TILE_SIZE;
+            const cy = (z.y + z.h / 2) * TILE_SIZE;
+            if (!this.fog.isWorldSeen(cx, cy)) continue;
+            MapArt.placeLabel(ctx, taken, toX(cx), toY(cy), z.name, {
+                size: 11, bounds: view, candidates: [[0, 0], [0, -18], [0, 18], [0, -34], [0, 34]],
+            });
+        }
+
+        MapArt.playerMarker(ctx, px, py, time, 7);
+        ctx.restore();
+
+        MapArt.legend(ctx, L.legend, [
+            { shape: "diamond", colour: "#4ef06a", label: "You" },
+            { shape: "square", colour: COLORS.shopMarker, label: "Shop" },
+            { shape: "crown", colour: "#ffd700", label: "Castle" },
+            { shape: "arch", colour: "#a887d8", label: "Cave" },
+            { shape: "ring", colour: "#9aa3bb", label: "Rumour", ghost: true },
+        ]);
+        MapArt.chartedReadout(ctx, L.w - 20, L.legend.y + L.legend.h / 2, this.fog, "right");
     }
 }
 
@@ -2451,6 +2459,10 @@ class CaveWorld {
         this.bossSpawnTile = null;
         this.treasurePos = null; // location of treasure/gem in center
         this.hoardPos = null;    // the guardian's chest, in boss caves
+        // Each cave keeps its own discovery state - charting one tells you
+        // nothing about the other three.
+        this.fog = new FogOfWar(CAVE_W, CAVE_H, FOG_SETTINGS.cave);
+        this.mapTerrain = null;
         this.generate();
     }
 
@@ -2849,120 +2861,203 @@ class CaveWorld {
         }
     }
 
-    renderMinimap(ctx, player, monsters, caveBoss) {
-        const mmW = 150, mmH = 150;
-        ctx.fillStyle = "#0a0a0a";
-        ctx.fillRect(0, 0, mmW, mmH);
+    // ============================================
+    // Maps
+    // ============================================
 
-        const scale = mmW / (CAVE_W * TILE_SIZE);
+    // Rock stops the eye. Charting a corridor tells you nothing about the
+    // tunnel running parallel to it three paces through the stone.
+    blocksSight(tx, ty) {
+        if (tx < 0 || ty < 0 || tx >= CAVE_W || ty >= CAVE_H) return true;
+        return this.tiles[ty][tx] === TILE.CAVE_WALL;
+    }
 
-        for (let ty = 0; ty < CAVE_H; ty += 2) {
-            for (let tx = 0; tx < CAVE_W; tx += 2) {
-                if (this.tiles[ty][tx] === TILE.CAVE_FLOOR || this.tiles[ty][tx] === TILE.CAVE_ENTRANCE) {
-                    ctx.fillStyle = this.tiles[ty][tx] === TILE.CAVE_ENTRANCE ? "#8a6a3a" : "#3a3a3a";
-                    ctx.fillRect(tx * TILE_SIZE * scale, ty * TILE_SIZE * scale, 3, 3);
+    invalidateMapCache() {
+        this.mapTerrain = null;
+    }
+
+    getMapTerrain() {
+        if (this.mapTerrain) return this.mapTerrain;
+        const pxPerTile = WORLD_MAP_LAYOUT.view.w / CAVE_W;
+        this.mapTerrain = MapTerrain.buildTiles(this.tiles, CAVE_W, CAVE_H, pxPerTile, (tile, tx, ty, rng) => {
+            if (tile === TILE.CAVE_ENTRANCE) return "#8a6a3a";
+            if (tile === TILE.CAVE_FLOOR) return rng() < 0.3 ? "#836a4c" : "#715c41";
+            if (tile === TILE.CAVE_WALL) {
+                // Only the wall faces a walked corridor actually touches get
+                // drawn, which gives the cave a carved rim instead of a
+                // rectangle of black.
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const nx = tx + dx, ny = ty + dy;
+                        if (nx < 0 || ny < 0 || nx >= CAVE_W || ny >= CAVE_H) continue;
+                        const n = this.tiles[ny][nx];
+                        if (n === TILE.CAVE_FLOOR || n === TILE.CAVE_ENTRANCE) return rng() < 0.35 ? "#5b5466" : "#494257";
+                    }
                 }
+                return null;
             }
-        }
+            return "#4a4450";
+        }, null);
+        return this.mapTerrain;
+    }
 
-        // Draw exit
+    mapLandmarks() {
+        const marks = [];
         if (this.exit) {
-            ctx.fillStyle = "#8a6a3a";
-            ctx.fillRect(this.exit.worldX * scale - 2, this.exit.worldY * scale - 2, 5, 5);
+            marks.push({ x: this.exit.worldX, y: this.exit.worldY, shape: "arch", colour: "#d8a95a", label: "Exit", size: 5, always: true, priority: 3 });
         }
         if (this.centerExit) {
-            ctx.fillStyle = "#ffd700";
-            ctx.fillRect(this.centerExit.worldX * scale - 2, this.centerExit.worldY * scale - 2, 5, 5);
+            marks.push({ x: this.centerExit.worldX, y: this.centerExit.worldY, shape: "arch", colour: "#ffd700", label: "Way Out", size: 5, priority: 3 });
+        }
+        if (this.bossSpawnTile) {
+            const p = tileToWorld(this.bossSpawnTile.x, this.bossSpawnTile.y);
+            marks.push({ x: p.x, y: p.y, shape: "crown", colour: "#ff5a5a", label: "Boss Lair", size: 6, priority: 2 });
+        }
+        if (this.treasurePos) {
+            marks.push({ x: this.treasurePos.x, y: this.treasurePos.y, shape: "star", colour: "#ffd700", label: "Treasure", size: 5, priority: 2 });
+        }
+        if (this.hoardPos) {
+            marks.push({ x: this.hoardPos.x, y: this.hoardPos.y, shape: "square", colour: "#ffd700", label: "Hoard", size: 4, priority: 1 });
+        }
+        return marks;
+    }
+
+    caveName() {
+        const entrance = CAVE_ENTRANCES.find(e => e.id === this.entranceId);
+        return entrance ? entrance.label : "Cave";
+    }
+
+    renderMinimap(ctx, player, monsters, caveBoss, opts = {}) {
+        const M = MINIMAP_LAYOUT;
+        const size = M.size;
+        const time = opts.time || 0;
+        const view = { x: M.inset, y: M.inset, w: size - M.inset * 2, h: size - M.inset * 2 };
+
+        ctx.clearRect(0, 0, size, size);
+        ctx.fillStyle = "#0b0d16";
+        ctx.fillRect(0, 0, size, size);
+
+        const tilesAcross = M.caveTiles;
+        const playerTX = player.x / TILE_SIZE;
+        const playerTY = player.y / TILE_SIZE;
+        const viewTX = clamp(playerTX - tilesAcross / 2, 0, Math.max(0, CAVE_W - tilesAcross));
+        const viewTY = clamp(playerTY - tilesAcross / 2, 0, Math.max(0, CAVE_H - tilesAcross));
+        const pxPerTile = view.w / tilesAcross;
+        const toX = (wx) => view.x + (wx / TILE_SIZE - viewTX) * pxPerTile;
+        const toY = (wy) => view.y + (wy / TILE_SIZE - viewTY) * pxPerTile;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(view.x, view.y, view.w, view.h);
+        ctx.clip();
+        ctx.fillStyle = "#14121c";
+        ctx.fillRect(view.x, view.y, view.w, view.h);
+
+        const terrain = this.getMapTerrain();
+        const srcScale = terrain.width / CAVE_W;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(
+            terrain,
+            viewTX * srcScale, viewTY * srcScale, tilesAcross * srcScale, tilesAcross * srcScale,
+            view.x, view.y, view.w, view.h
+        );
+
+        const landmarks = this.mapLandmarks();
+
+        renderFogOfWar(
+            ctx, this.fog, view,
+            { tx: viewTX, ty: viewTY, tw: tilesAcross, th: tilesAcross },
+            { tx: playerTX, ty: playerTY, r: this.fog.sight },
+            "cave"
+        );
+
+        // Landmarks the player knows about stay crisp above the fog - a place
+        // you have found should not fade out with the ground around it.
+        for (const m of landmarks) {
+            if (!m.always && !this.fog.isWorldSeen(m.x, m.y)) continue;
+            MapArt.marker(ctx, toX(m.x), toY(m.y), m.shape, m.colour, { size: Math.max(3, m.size - 1), lineWidth: 1 });
         }
 
         for (const m of monsters) {
-            if (!m.alive) continue;
-            ctx.fillStyle = "#ff4444";
-            ctx.fillRect(m.x * scale - 1, m.y * scale - 1, 2, 2);
+            if (!m.alive || !inSightOf(player, m, this.fog.sight)) continue;
+            MapArt.marker(ctx, toX(m.x), toY(m.y), "circle", "#ff5a5a", { size: 2.5, lineWidth: 1 });
         }
-
-        if (caveBoss && caveBoss.alive) {
-            ctx.fillStyle = "#ff0000";
-            ctx.fillRect(caveBoss.x * scale - 3, caveBoss.y * scale - 3, 6, 6);
+        if (caveBoss && caveBoss.alive && inSightOf(player, caveBoss, this.fog.sight)) {
+            MapArt.marker(ctx, toX(caveBoss.x), toY(caveBoss.y), "crown", "#ff3b3b", { size: 6 });
         }
+        MapArt.playerMarker(ctx, toX(player.x), toY(player.y), time, 5);
+        ctx.restore();
 
-        ctx.fillStyle = "#00ff00";
-        ctx.fillRect(player.x * scale - 2, player.y * scale - 2, 5, 5);
-
-        const entrance = CAVE_ENTRANCES.find(e => e.id === this.entranceId);
-        ctx.fillStyle = "#8866aa";
-        ctx.font = "9px monospace";
-        ctx.textAlign = "center";
-        ctx.fillText(entrance ? entrance.label : "CAVE", mmW / 2, mmH - 4);
-    }
-
-    renderWorldMap(ctx, player) {
-        const mapW = 600, mapH = 450;
-        ctx.fillStyle = "#0a0a0e";
-        ctx.fillRect(0, 0, mapW, mapH);
-
-        const scaleX = mapW / (CAVE_W * TILE_SIZE);
-        const scaleY = mapH / (CAVE_H * TILE_SIZE);
-        const scale = Math.min(scaleX, scaleY);
-        const offsetX = (mapW - CAVE_W * TILE_SIZE * scale) / 2;
-        const offsetY = (mapH - CAVE_H * TILE_SIZE * scale) / 2;
-
-        for (let ty = 0; ty < CAVE_H; ty += 2) {
-            for (let tx = 0; tx < CAVE_W; tx += 2) {
-                if (this.tiles[ty][tx] === TILE.CAVE_FLOOR || this.tiles[ty][tx] === TILE.CAVE_ENTRANCE) {
-                    const sx = tx * TILE_SIZE * scale + offsetX;
-                    const sy = ty * TILE_SIZE * scale + offsetY;
-                    ctx.fillStyle = this.tiles[ty][tx] === TILE.CAVE_ENTRANCE ? "#8a6a3a" : "#3a3a3a";
-                    ctx.globalAlpha = 0.7;
-                    ctx.fillRect(sx, sy, TILE_SIZE * 2 * scale + 1, TILE_SIZE * 2 * scale + 1);
-                }
+        // The way back up, pinned to the edge when it is off the window.
+        if (this.exit) {
+            const ex = toX(this.exit.worldX);
+            const ey = toY(this.exit.worldY);
+            if (ex < view.x || ex > view.x + view.w || ey < view.y || ey > view.y + view.h) {
+                MapArt.edgeArrow(ctx, size / 2, size / 2, size / 2 - 16, ex, ey, "#d8a95a");
             }
         }
-        ctx.globalAlpha = 1;
 
-        // Exit
-        if (this.exit) {
-            const ex = this.exit.worldX * scale + offsetX;
-            const ey = this.exit.worldY * scale + offsetY;
-            ctx.fillStyle = "#8a6a3a";
-            ctx.beginPath(); ctx.arc(ex, ey, 5, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = "#fff"; ctx.font = "9px monospace"; ctx.textAlign = "center";
-            ctx.fillText("Exit", ex, ey - 8);
+        MapArt.minimapFrame(ctx, size, size);
+        MapArt.minimapCaption(ctx, size, size, this.caveName().toUpperCase());
+    }
+
+    renderWorldMap(ctx, player, opts = {}) {
+        const L = WORLD_MAP_LAYOUT;
+        const view = L.view;
+        const time = opts.time || 0;
+
+        MapArt.panel(ctx, L.w, L.h);
+        MapArt.cartouche(ctx, L.w / 2, 12, this.caveName(), 20);
+        if (opts.closeLabel) MapArt.closeHint(ctx, L.w, opts.closeLabel);
+        MapArt.viewportFrame(ctx, view);
+
+        const s = view.w / (CAVE_W * TILE_SIZE);
+        const toX = (wx) => view.x + wx * s;
+        const toY = (wy) => view.y + wy * s;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(view.x, view.y, view.w, view.h);
+        ctx.clip();
+        ctx.fillStyle = "#0d0b14";
+        ctx.fillRect(view.x, view.y, view.w, view.h);
+
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(this.getMapTerrain(), view.x, view.y, view.w, view.h);
+
+        const landmarks = this.mapLandmarks();
+
+        renderFogOfWar(
+            ctx, this.fog, view,
+            { tx: 0, ty: 0, tw: CAVE_W, th: CAVE_H },
+            { tx: player.x / TILE_SIZE, ty: player.y / TILE_SIZE, r: this.fog.sight },
+            "cave"
+        );
+
+        const taken = [];
+        const px = toX(player.x);
+        const py = toY(player.y);
+        MapArt.reservePlayer(taken, px, py, 7);
+        MapArt.placeLabel(ctx, taken, px, py, "Ingoizer", {
+            size: 10, bounds: view, colour: "#bdf7c6", border: "rgba(78,240,106,0.6)",
+        });
+        for (const m of landmarks) {
+            if (!m.always && !this.fog.isWorldSeen(m.x, m.y)) continue;
+            MapArt.marker(ctx, toX(m.x), toY(m.y), m.shape, m.colour, { size: m.size });
+            if (!m.label) continue;
+            MapArt.placeLabel(ctx, taken, toX(m.x), toY(m.y), m.label, { size: 9, bounds: view });
         }
 
-        // Boss room marker
-        if (this.bossSpawnTile) {
-            const bx = this.bossSpawnTile.x * TILE_SIZE * scale + offsetX;
-            const by = this.bossSpawnTile.y * TILE_SIZE * scale + offsetY;
-            ctx.strokeStyle = "#ff4444"; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2); ctx.stroke();
-            ctx.fillStyle = "#ff4444"; ctx.font = "9px monospace";
-            ctx.fillText("Boss Lair", bx, by - 12);
-        }
+        MapArt.playerMarker(ctx, px, py, time, 7);
+        ctx.restore();
 
-        // Treasure marker
-        if (this.treasurePos) {
-            const tx = this.treasurePos.x * scale + offsetX;
-            const ty = this.treasurePos.y * scale + offsetY;
-            ctx.fillStyle = "#ffd700";
-            ctx.beginPath(); ctx.arc(tx, ty, 5, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = "#ffd700"; ctx.font = "9px monospace"; ctx.textAlign = "center";
-            ctx.fillText("Treasure", tx, ty - 8);
-        }
-
-        // Player
-        const px = player.x * scale + offsetX;
-        const py = player.y * scale + offsetY;
-        ctx.fillStyle = "#00ff00";
-        ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#fff"; ctx.font = "9px monospace";
-        ctx.fillText("Ingoizer", px, py - 10);
-
-        const entrance = CAVE_ENTRANCES.find(e => e.id === this.entranceId);
-        ctx.fillStyle = "#8866aa";
-        ctx.font = "bold 14px monospace";
-        ctx.textAlign = "center";
-        ctx.fillText(entrance ? entrance.label.toUpperCase() : "CAVE", mapW / 2, 18);
+        MapArt.legend(ctx, L.legend, [
+            { shape: "diamond", colour: "#4ef06a", label: "You" },
+            { shape: "arch", colour: "#d8a95a", label: "Exit" },
+            { shape: "star", colour: "#ffd700", label: "Treasure" },
+            { shape: "crown", colour: "#ff5a5a", label: "Lair" },
+        ]);
+        MapArt.chartedReadout(ctx, L.w - 20, L.legend.y + L.legend.h / 2, this.fog, "right");
     }
 
     // Render exit labels (used by game render loop)
@@ -2996,6 +3091,8 @@ class SkyWorld {
         this.templeCenter = null;  // tile coords of the Temple of Olympus
         this.bossSpawnTile = null;
         this.ambrosia = [];
+        this.fog = new FogOfWar(SKY_W, SKY_H, FOG_SETTINGS.sky);
+        this.mapTerrain = null;
         this.generate();
     }
 
@@ -3491,124 +3588,193 @@ class SkyWorld {
         ctx.restore();
     }
 
-    renderMinimap(ctx, player, monsters, boss) {
-        const mmW = 150, mmH = 150;
-        ctx.fillStyle = "#254a80";
-        ctx.fillRect(0, 0, mmW, mmH);
+    // ============================================
+    // Maps
+    // ============================================
 
-        const scale = mmW / (SKY_W * TILE_SIZE);
+    // Nothing up here blocks a long view; the uncertainty is the void between
+    // the islands, not anything standing in the way.
+    blocksSight() {
+        return false;
+    }
 
-        for (let ty = 0; ty < SKY_H; ty += 2) {
-            for (let tx = 0; tx < SKY_W; tx += 2) {
-                const t = this.tiles[ty][tx];
-                if (t === TILE.SKY_VOID) continue;
-                ctx.fillStyle = t === TILE.MARBLE ? "#ddd6f2"
-                    : t === TILE.SKY_PORTAL ? "#c69a4e"
-                    : t === TILE.PILLAR ? "#aaa4c4" : "#eef3ff";
-                ctx.fillRect(tx * TILE_SIZE * scale, ty * TILE_SIZE * scale, 3, 3);
+    invalidateMapCache() {
+        this.mapTerrain = null;
+    }
+
+    getMapTerrain() {
+        if (this.mapTerrain) return this.mapTerrain;
+        const pxPerTile = WORLD_MAP_LAYOUT.view.w / SKY_W;
+        this.mapTerrain = MapTerrain.buildTiles(this.tiles, SKY_W, SKY_H, pxPerTile, (tile, tx, ty, rng) => {
+            switch (tile) {
+                case TILE.SKY_VOID: return null;
+                case TILE.MARBLE: return rng() < 0.3 ? "#e7e1fb" : "#ded8f4";
+                case TILE.PILLAR: return "#b9b2d6";
+                case TILE.SKY_PORTAL: return "#e8c98a";
+                case TILE.SKY_LADDER: return "#c9a35e";
+                default: {
+                    // Cloud tops are crisp and opaque with a darker underside,
+                    // so the islands read as solid ground rather than haze.
+                    const below = ty + 1 < SKY_H ? this.tiles[ty + 1][tx] : TILE.SKY_VOID;
+                    if (below === TILE.SKY_VOID) return "#b9c6ea";
+                    return rng() < 0.25 ? "#ffffff" : "#eef3ff";
+                }
             }
-        }
+        }, null);
+        return this.mapTerrain;
+    }
 
+    mapLandmarks() {
+        const marks = [];
         if (this.exit) {
-            ctx.fillStyle = "#c69a4e";
-            ctx.fillRect(this.exit.worldX * scale - 2, this.exit.worldY * scale - 2, 5, 5);
+            marks.push({ x: this.exit.worldX, y: this.exit.worldY, shape: "arch", colour: "#e8c98a", label: "Ladder Down", size: 5, always: true, priority: 3 });
         }
-
+        if (this.templeCenter) {
+            const p = tileToWorld(this.templeCenter.x, this.templeCenter.y);
+            marks.push({ x: p.x, y: p.y, shape: "crown", colour: "#ffee44", label: "Temple of Olympus", size: 7, priority: 3 });
+        }
         for (const a of this.ambrosia) {
             if (a.collected) continue;
-            ctx.fillStyle = "#ffd970";
-            ctx.fillRect(a.x * scale - 1, a.y * scale - 1, 3, 3);
+            marks.push({ x: a.x, y: a.y, shape: "circle", colour: "#ffd970", label: null, size: 3, priority: 0 });
+        }
+        return marks;
+    }
+
+    renderMinimap(ctx, player, monsters, boss, opts = {}) {
+        const M = MINIMAP_LAYOUT;
+        const size = M.size;
+        const time = opts.time || 0;
+        const view = { x: M.inset, y: M.inset, w: size - M.inset * 2, h: size - M.inset * 2 };
+
+        ctx.clearRect(0, 0, size, size);
+        ctx.fillStyle = "#16264a";
+        ctx.fillRect(0, 0, size, size);
+
+        const tilesAcross = M.caveTiles;
+        const playerTX = player.x / TILE_SIZE;
+        const playerTY = player.y / TILE_SIZE;
+        const viewTX = clamp(playerTX - tilesAcross / 2, 0, Math.max(0, SKY_W - tilesAcross));
+        const viewTY = clamp(playerTY - tilesAcross / 2, 0, Math.max(0, SKY_H - tilesAcross));
+        const pxPerTile = view.w / tilesAcross;
+        const toX = (wx) => view.x + (wx / TILE_SIZE - viewTX) * pxPerTile;
+        const toY = (wy) => view.y + (wy / TILE_SIZE - viewTY) * pxPerTile;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(view.x, view.y, view.w, view.h);
+        ctx.clip();
+        const sky = ctx.createLinearGradient(0, view.y, 0, view.y + view.h);
+        sky.addColorStop(0, "#1d3f78");
+        sky.addColorStop(1, "#3f6fb0");
+        ctx.fillStyle = sky;
+        ctx.fillRect(view.x, view.y, view.w, view.h);
+
+        const terrain = this.getMapTerrain();
+        const srcScale = terrain.width / SKY_W;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(
+            terrain,
+            viewTX * srcScale, viewTY * srcScale, tilesAcross * srcScale, tilesAcross * srcScale,
+            view.x, view.y, view.w, view.h
+        );
+
+        const landmarks = this.mapLandmarks();
+
+        renderFogOfWar(
+            ctx, this.fog, view,
+            { tx: viewTX, ty: viewTY, tw: tilesAcross, th: tilesAcross },
+            { tx: playerTX, ty: playerTY, r: this.fog.sight },
+            "sky"
+        );
+
+        // Landmarks the player knows about stay crisp above the fog - a place
+        // you have found should not fade out with the ground around it.
+        for (const m of landmarks) {
+            if (!m.always && !this.fog.isWorldSeen(m.x, m.y)) continue;
+            MapArt.marker(ctx, toX(m.x), toY(m.y), m.shape, m.colour, { size: Math.max(3, m.size - 1), lineWidth: 1 });
         }
 
         for (const m of monsters) {
-            if (!m.alive) continue;
-            ctx.fillStyle = "#ff4444";
-            ctx.fillRect(m.x * scale - 1, m.y * scale - 1, 2, 2);
+            if (!m.alive || !inSightOf(player, m, this.fog.sight)) continue;
+            MapArt.marker(ctx, toX(m.x), toY(m.y), "circle", "#ff5a5a", { size: 2.5, lineWidth: 1 });
         }
-
-        if (boss && boss.alive && boss.spawned) {
-            ctx.fillStyle = "#ffee44";
-            ctx.fillRect(boss.x * scale - 3, boss.y * scale - 3, 6, 6);
+        if (boss && boss.alive && boss.spawned && inSightOf(player, boss, this.fog.sight)) {
+            MapArt.marker(ctx, toX(boss.x), toY(boss.y), "crown", "#ffee44", { size: 6 });
         }
-
-        ctx.fillStyle = "#00ff00";
-        ctx.fillRect(player.x * scale - 2, player.y * scale - 2, 5, 5);
-
-        ctx.fillStyle = "#dcefff";
-        ctx.font = "9px monospace";
-        ctx.textAlign = "center";
-        ctx.fillText("THE CLOUDLANDS", mmW / 2, mmH - 4);
-    }
-
-    renderWorldMap(ctx, player) {
-        const mapW = 600, mapH = 450;
-        const bg = ctx.createLinearGradient(0, 0, 0, mapH);
-        bg.addColorStop(0, "#1d3f78");
-        bg.addColorStop(1, "#4f86c6");
-        ctx.fillStyle = bg;
-        ctx.fillRect(0, 0, mapW, mapH);
-
-        const scale = Math.min(mapW / (SKY_W * TILE_SIZE), mapH / (SKY_H * TILE_SIZE));
-        const offsetX = (mapW - SKY_W * TILE_SIZE * scale) / 2;
-        const offsetY = (mapH - SKY_H * TILE_SIZE * scale) / 2;
-
-        for (let ty = 0; ty < SKY_H; ty += 2) {
-            for (let tx = 0; tx < SKY_W; tx += 2) {
-                const t = this.tiles[ty][tx];
-                if (t === TILE.SKY_VOID) continue;
-                const sx = tx * TILE_SIZE * scale + offsetX;
-                const sy = ty * TILE_SIZE * scale + offsetY;
-                ctx.fillStyle = t === TILE.MARBLE || t === TILE.PILLAR ? "#ded8f4" : "#f2f6ff";
-                ctx.globalAlpha = 0.85;
-                ctx.fillRect(sx, sy, TILE_SIZE * 2 * scale + 1, TILE_SIZE * 2 * scale + 1);
-            }
-        }
-        ctx.globalAlpha = 1;
-
-        ctx.textAlign = "center";
-
-        if (this.templeCenter) {
-            const tx = this.templeCenter.x * TILE_SIZE * scale + offsetX;
-            const ty = this.templeCenter.y * TILE_SIZE * scale + offsetY;
-            ctx.strokeStyle = "#ffee44";
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(tx, ty, 10, 0, Math.PI * 2); ctx.stroke();
-            ctx.font = "bold 10px monospace";
-            ctx.strokeStyle = "#231c00";
-            ctx.lineWidth = 3;
-            ctx.strokeText("Temple of Olympus", tx, ty - 15);
-            ctx.fillStyle = "#ffee44";
-            ctx.fillText("Temple of Olympus", tx, ty - 15);
-        }
+        MapArt.playerMarker(ctx, toX(player.x), toY(player.y), time, 5);
+        ctx.restore();
 
         if (this.exit) {
-            const ex = this.exit.worldX * scale + offsetX;
-            const ey = this.exit.worldY * scale + offsetY;
-            ctx.fillStyle = "#c69a4e";
-            ctx.beginPath(); ctx.arc(ex, ey, 5, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = "#1d3f78";
-            ctx.font = "9px monospace";
-            ctx.fillText("Ladder Down", ex, ey + 16);
+            const ex = toX(this.exit.worldX);
+            const ey = toY(this.exit.worldY);
+            if (ex < view.x || ex > view.x + view.w || ey < view.y || ey > view.y + view.h) {
+                MapArt.edgeArrow(ctx, size / 2, size / 2, size / 2 - 16, ex, ey, "#e8c98a");
+            }
         }
 
-        for (const a of this.ambrosia) {
-            if (a.collected) continue;
-            const ax = a.x * scale + offsetX;
-            const ay = a.y * scale + offsetY;
-            ctx.fillStyle = "#ffd970";
-            ctx.beginPath(); ctx.arc(ax, ay, 4, 0, Math.PI * 2); ctx.fill();
+        MapArt.minimapFrame(ctx, size, size);
+        MapArt.minimapCaption(ctx, size, size, "THE CLOUDLANDS");
+    }
+
+    renderWorldMap(ctx, player, opts = {}) {
+        const L = WORLD_MAP_LAYOUT;
+        const view = L.view;
+        const time = opts.time || 0;
+
+        MapArt.panel(ctx, L.w, L.h);
+        MapArt.cartouche(ctx, L.w / 2, 12, "The Cloudlands", 20);
+        if (opts.closeLabel) MapArt.closeHint(ctx, L.w, opts.closeLabel);
+        MapArt.viewportFrame(ctx, view);
+
+        const s = view.w / (SKY_W * TILE_SIZE);
+        const toX = (wx) => view.x + wx * s;
+        const toY = (wy) => view.y + wy * s;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(view.x, view.y, view.w, view.h);
+        ctx.clip();
+        const sky = ctx.createLinearGradient(0, view.y, 0, view.y + view.h);
+        sky.addColorStop(0, "#1d3f78");
+        sky.addColorStop(1, "#4f86c6");
+        ctx.fillStyle = sky;
+        ctx.fillRect(view.x, view.y, view.w, view.h);
+
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(this.getMapTerrain(), view.x, view.y, view.w, view.h);
+
+        const landmarks = this.mapLandmarks();
+
+        renderFogOfWar(
+            ctx, this.fog, view,
+            { tx: 0, ty: 0, tw: SKY_W, th: SKY_H },
+            { tx: player.x / TILE_SIZE, ty: player.y / TILE_SIZE, r: this.fog.sight },
+            "sky"
+        );
+
+        const taken = [];
+        const px = toX(player.x);
+        const py = toY(player.y);
+        MapArt.reservePlayer(taken, px, py, 7);
+        MapArt.placeLabel(ctx, taken, px, py, "Ingoizer", {
+            size: 10, bounds: view, colour: "#bdf7c6", border: "rgba(78,240,106,0.6)",
+        });
+        for (const m of landmarks) {
+            if (!m.always && !this.fog.isWorldSeen(m.x, m.y)) continue;
+            MapArt.marker(ctx, toX(m.x), toY(m.y), m.shape, m.colour, { size: m.size });
+            if (!m.label) continue;
+            MapArt.placeLabel(ctx, taken, toX(m.x), toY(m.y), m.label, { size: 9, bounds: view });
         }
 
-        const px = player.x * scale + offsetX;
-        const py = player.y * scale + offsetY;
-        ctx.fillStyle = "#00ff00";
-        ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#fff";
-        ctx.font = "9px monospace";
-        ctx.fillText("Ingoizer", px, py - 10);
+        MapArt.playerMarker(ctx, px, py, time, 7);
+        ctx.restore();
 
-        ctx.fillStyle = "#dcefff";
-        ctx.font = "bold 14px monospace";
-        ctx.fillText("THE CLOUDLANDS", mapW / 2, 18);
+        MapArt.legend(ctx, L.legend, [
+            { shape: "diamond", colour: "#4ef06a", label: "You" },
+            { shape: "arch", colour: "#e8c98a", label: "Ladder" },
+            { shape: "circle", colour: "#ffd970", label: "Ambrosia" },
+            { shape: "crown", colour: "#ffee44", label: "Temple" },
+        ]);
+        MapArt.chartedReadout(ctx, L.w - 20, L.legend.y + L.legend.h / 2, this.fog, "right");
     }
 }

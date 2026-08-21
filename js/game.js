@@ -2885,7 +2885,7 @@ class Game {
         }
 
         // Render minimap
-        const mapOpts = { time: this.time, closeLabel: isMobile ? "TAP" : "M" };
+        const mapOpts = { time: this.time };
         if (this.inCave && this.caveWorlds[this.activeCaveId]) {
             this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss, mapOpts);
         } else if (this.inSky) {
@@ -2902,10 +2902,6 @@ class Game {
                 this.skyWorld.renderWorldMap(this.worldmapCtx, this.player, mapOpts);
             } else {
                 this.world.renderWorldMap(this.worldmapCtx, this.player, mapOpts);
-            }
-            const mapHint = document.querySelector(".map-hint");
-            if (mapHint) {
-                mapHint.textContent = isMobile ? "Tap MAP to close" : "Press M to close";
             }
         }
 

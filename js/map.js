@@ -907,27 +907,6 @@ const MapArt = {
         ctx.restore();
     },
 
-    // A small framed key hint in the top-right of the panel.
-    closeHint(ctx, panelW, label) {
-        ctx.save();
-        ctx.font = "bold 11px 'Courier New', monospace";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        const text = `${label} ✕`;
-        const w = ctx.measureText(text).width + 18;
-        const h = 22;
-        const x = panelW - 18 - w;
-        const y = 16;
-        ctx.fillStyle = "rgba(8,12,26,0.9)";
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = MAP_UI.gold;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-        ctx.fillStyle = MAP_UI.goldBright;
-        ctx.fillText(text, x + w / 2, y + h / 2 + 1);
-        ctx.restore();
-    },
-
     // How much of the realm has been charted. Quiet progress feedback that
     // rewards wandering without turning exploration into a checklist.
     chartedReadout(ctx, x, y, fog, align = "left") {

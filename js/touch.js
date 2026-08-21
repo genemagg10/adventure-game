@@ -208,7 +208,20 @@ class TouchControls {
             }, { passive: false });
         }
 
-        // Map overlay tap to close
+        // Map overlay tap to close. The X sitting on the map has to swallow its
+        // own tap, or the overlay would close it and the synthetic click would
+        // toggle it straight back open.
+        const mapClose = document.getElementById("map-close");
+        if (mapClose) {
+            mapClose.addEventListener("touchstart", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (this.game.ui.isMapOpen()) {
+                    this.game.ui.toggleMap();
+                }
+            }, { passive: false });
+        }
+
         const mapOverlay = document.getElementById("map-overlay");
         mapOverlay.addEventListener("touchstart", (e) => {
             e.stopPropagation();

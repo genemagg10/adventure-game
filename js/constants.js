@@ -2,11 +2,27 @@
 // Ingoizer's World - Game Constants
 // ============================================
 
-const CANVAS_W = 800;
+// The playfield keeps a fixed height and takes the shape of the window. A
+// phone held sideways is far wider than 4:3, and the old fixed 800x600 box
+// threw that width away as letterbox - space both the thumbs and the overlay
+// screens want. Because only the width moves, nothing changes size on screen:
+// a wider window simply shows more ground to either side.
 const CANVAS_H = 600;
+const CANVAS_MIN_W = 800;    // 4:3 - the shape the game was drawn at
+const CANVAS_MAX_W = 1400;   // 7:3 - wider than any phone; the view stops here
+let CANVAS_W = CANVAS_MIN_W;
+
 const TILE_SIZE = 32;
-const TILES_X = Math.ceil(CANVAS_W / TILE_SIZE) + 2;
+let TILES_X = Math.ceil(CANVAS_W / TILE_SIZE) + 2;
 const TILES_Y = Math.ceil(CANVAS_H / TILE_SIZE) + 2;
+
+// Backing-store width for a window of this shape, rounded to a whole number of
+// half-tiles so the tile grid never lands on a fractional pixel.
+function canvasWidthForAspect(aspect) {
+    if (!aspect || !isFinite(aspect) || aspect <= 0) return CANVAS_MIN_W;
+    const raw = Math.round(aspect * CANVAS_H / 16) * 16;
+    return Math.max(CANVAS_MIN_W, Math.min(CANVAS_MAX_W, raw));
+}
 
 // World dimensions (in tiles)
 const WORLD_W = 200;

@@ -11,6 +11,10 @@ class Game {
         this.worldmapCanvas = document.getElementById("worldmap");
         this.worldmapCtx = this.worldmapCanvas.getContext("2d");
 
+        this.resizeViewport();
+        window.addEventListener("resize", () => this.resizeViewport());
+        window.addEventListener("orientationchange", () => this.resizeViewport());
+
         this.running = false;
         this.paused = false;
         this.lastTime = 0;
@@ -145,6 +149,39 @@ class Game {
         return !this.inCave && !this.inSky;
     }
 
+    // Match the drawing surface to the shape of the window. The height never
+    // moves, so nothing changes size on screen - a wider window simply shows
+    // more ground to left and right, and hands the overlay screens and the
+    // thumb controls the room they were letterboxing away.
+    resizeViewport() {
+        const host = this.canvas.parentElement;
+        const rect = host.getBoundingClientRect();
+        const width = canvasWidthForAspect(rect.height > 0 ? rect.width / rect.height : 0);
+        if (width === CANVAS_W && this.canvas.width === width) return;
+
+        CANVAS_W = width;
+        TILES_X = Math.ceil(CANVAS_W / TILE_SIZE) + 2;
+        this.canvas.width = CANVAS_W;
+        this.canvas.height = CANVAS_H;
+        applyViewSight();
+
+        // Ground that just came into view should chart on the next frame, not
+        // wait for the player to step onto a new tile.
+        for (const fog of this.allFogs()) fog.lastTile = null;
+        if (this.player && this.state === "playing") this.snapCamera();
+    }
+
+    allFogs() {
+        const fogs = [];
+        if (this.world) fogs.push(this.world.fog);
+        if (this.skyWorld) fogs.push(this.skyWorld.fog);
+        for (const id of Object.keys(this.caveWorlds || {})) {
+            const cave = this.caveWorlds[id];
+            if (cave) fogs.push(cave.fog);
+        }
+        return fogs.filter(Boolean);
+    }
+
     setupInput() {
         const keyMap = {
             "ArrowUp": "up", "KeyW": "up",
@@ -209,6 +246,7 @@ class Game {
         GameAnalytics.track("game-start");
         this.sound.init();
         this.sound.menuSelect();
+        this.resizeViewport();
         this.world = new World();
         this.combat = new CombatSystem();
 

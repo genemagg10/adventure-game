@@ -51,6 +51,7 @@ class Animal {
         this.target = null;
         this.knockbackVx = 0;
         this.knockbackVy = 0;
+        this.stuckTimer = 0;
     }
 
     // Feed an apple: the animal joins the pack for good.
@@ -122,13 +123,23 @@ class Animal {
         if (Math.abs(this.knockbackVx) < 0.1) this.knockbackVx = 0;
         if (Math.abs(this.knockbackVy) < 0.1) this.knockbackVy = 0;
 
-        // Move with tile collision (axis separated, like monsters)
-        const newX = this.x + moveX;
-        const newY = this.y + moveY;
-        const tileX = worldToTile(newX, this.y);
-        const tileY = worldToTile(this.x, newY);
-        if (!world.isSolid(tileX.x, tileX.y)) this.x = newX;
-        if (!world.isSolid(tileY.x, tileY.y)) this.y = newY;
+        // Move, going around whatever is in the way rather than into it.
+        const beforeX = this.x, beforeY = this.y;
+        this.stepWithSteering(world, moveX, moveY);
+        const gained = dist(beforeX, beforeY, this.x, this.y);
+
+        // A companion that is trying to walk and getting nowhere has found a
+        // piece of landscape it cannot solve. Give it a moment, then let it
+        // scamper up rather than losing it behind a hedge for ever.
+        if (this.tamed) {
+            const trying = Math.abs(moveX) + Math.abs(moveY) > 0.35;
+            this.stuckTimer = trying && gained < 0.2 ? this.stuckTimer + dt : 0;
+            const behind = dist(this.x, this.y, player.x, player.y);
+            const lost = behind > ANIMAL_CONFIG.recallRange;
+            const wedged = this.stuckTimer > ANIMAL_CONFIG.unstickTime &&
+                behind > ANIMAL_CONFIG.followDistance * 1.8;
+            if (lost || wedged) this.scamperTo(player, world);
+        }
 
         // Hop / walk animation
         if (Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1) {
@@ -142,6 +153,76 @@ class Animal {
         this.hopPhase += dt * 0.006;
 
         return hits;
+    }
+
+    // One axis-separated step, the same rule the player and the monsters use.
+    // Returns how much ground it actually gained.
+    tryStep(world, moveX, moveY) {
+        const fromX = this.x, fromY = this.y;
+        const tileX = worldToTile(this.x + moveX, this.y);
+        if (!world.isSolid(tileX.x, tileX.y)) this.x += moveX;
+        const tileY = worldToTile(this.x, this.y + moveY);
+        if (!world.isSolid(tileY.x, tileY.y)) this.y += moveY;
+        return dist(fromX, fromY, this.x, this.y);
+    }
+
+    // Walking straight at a tree used to stop an animal dead and leave it
+    // pressed against the trunk for good. When the heading it wants is refused,
+    // sweep outward from it - alternating sides, so the detour taken is the
+    // shallowest one that works.
+    //
+    // Candidates are scored by ground gained *towards where it was going*, not
+    // by how far it moved: squeezing sideways past a trunk counts for something
+    // and wandering off at a right angle does not.
+    stepWithSteering(world, moveX, moveY) {
+        const wanted = Math.hypot(moveX, moveY);
+        if (wanted < 0.01) return;
+
+        const fromX = this.x, fromY = this.y;
+        const ux = moveX / wanted, uy = moveY / wanted;
+        const enough = wanted * 0.7;
+
+        // The heading it actually wants, first.
+        this.tryStep(world, moveX, moveY);
+        let best = { x: this.x, y: this.y, score: (this.x - fromX) * ux + (this.y - fromY) * uy };
+        if (best.score >= enough) return;
+
+        const base = Math.atan2(moveY, moveX);
+        for (const spread of ANIMAL_STEER_ANGLES) {
+            for (const side of [1, -1]) {
+                this.x = fromX;
+                this.y = fromY;
+                const a = base + spread * side;
+                this.tryStep(world, Math.cos(a) * wanted, Math.sin(a) * wanted);
+                const score = (this.x - fromX) * ux + (this.y - fromY) * uy;
+                if (score > best.score) best = { x: this.x, y: this.y, score };
+                if (best.score >= enough) break;
+            }
+            if (best.score >= enough) break;
+        }
+
+        this.x = best.x;
+        this.y = best.y;
+    }
+
+    // Give up on the landscape and reappear at the player's heel, on the first
+    // clear ground going round them.
+    scamperTo(player, world) {
+        for (let i = 0; i < 14; i++) {
+            const a = (i / 7) * Math.PI + i * 0.37;
+            const r = 24 + (i % 3) * 11;
+            const nx = player.x + Math.cos(a) * r;
+            const ny = player.y + Math.sin(a) * r;
+            const t = worldToTile(nx, ny);
+            if (world.isSolid(t.x, t.y)) continue;
+            this.x = nx;
+            this.y = ny;
+            break;
+        }
+        this.stuckTimer = 0;
+        this.knockbackVx = 0;
+        this.knockbackVy = 0;
+        this.tameGlow = 420;   // a small puff, so it reads as arriving
     }
 
     updateCompanion(dt, player, hostiles, combat, hits) {
@@ -191,11 +272,24 @@ class Animal {
 
         if (dSpot < 8) return { x: 0, y: 0 };
 
-        // Sprint a little when left behind so nobody gets lost in the meadow.
-        const catchUp = distToPlayer > 160 ? 1.7 : 1;
+        // A companion has to be able to out-walk the player or it can never
+        // close a gap, and half the roster is slower on its feet than Ingoizer
+        // is - a toad or a turtle fell behind once and stayed behind for the
+        // rest of the game. A trailing animal borrows its pace from him rather
+        // than using its own; its own speed still decides how it hunts and
+        // wanders, which is where the difference belongs.
+        const pace = player.speed || PLAYER_DEFAULTS.speed;
+        let spd = this.speed;
+        if (distToPlayer > ANIMAL_CONFIG.sprintRange) {
+            spd = Math.max(this.speed * ANIMAL_CONFIG.sprintSelf, pace * ANIMAL_CONFIG.sprintFloor);
+        }
+        if (distToPlayer > ANIMAL_CONFIG.aggroRange) {
+            spd = Math.max(this.speed * ANIMAL_CONFIG.dashSelf, pace * ANIMAL_CONFIG.dashFloor);
+        }
+
         const norm = normalize(spotX - this.x, spotY - this.y);
-        const spd = Math.min(this.speed * catchUp, dSpot);
-        return { x: norm.x * spd, y: norm.y * spd };
+        const step = Math.min(spd, dSpot);
+        return { x: norm.x * step, y: norm.y * step };
     }
 
     takeContactDamage(hostiles, player) {

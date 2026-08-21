@@ -25,6 +25,10 @@ const ZONES = {
     ruins: { name: "Ancient Ruins", x: 0, y: 90, w: 50, h: 40, color: "#5a5a4a", treeChance: 0.03 },
     darklands: { name: "The Darklands", x: 110, y: 100, w: 60, h: 50, color: "#1a1a2e", treeChance: 0.04 },
     greenlands: { name: "Green Knight's Domain", x: 50, y: 120, w: 60, h: 30, color: "#0a3a0e", treeChance: 0.06, locked: true },
+    // The corner the Worldtree grows in. Marked secret: until the tree itself
+    // has been found, the maps draw this ground as unnamed wilderness, so the
+    // first Fire Gem memory still points at a blank on the chart.
+    worldtree: { name: "The Worldtree Reach", x: 160, y: 0, w: 40, h: 40, color: "#1c3d4e", treeChance: 0.09, secret: true },
 };
 
 // Tile types

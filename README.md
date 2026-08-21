@@ -13,6 +13,7 @@ The player wakes up as Ingoizer in Green Meadow with a rusty sword and bow. Ingo
 Current features include:
 
 - A large main world with named lands, landmarks, shops, quests, and maps.
+- Drawn maps with fog of war: the mini map and the world map start blank and fill in as the player travels.
 - Close-range weapons, bows, armor, usable items, elemental powers, enchanting, monster drops, and treasure.
 - The Lady of the Lake, the Excalibur quest, and the Fountain of Youth she also keeps.
 - Merlin's wand quest, Enchanter's Mallet, and a fifteen-entry Ancient Lore library whose last three entries stay hidden until the player earns them.
@@ -22,7 +23,7 @@ Current features include:
 - The Worldtree Seed: plant it back where the tree stood and Zeus grants his lightning without a fight.
 - Fountain of Youth riddles.
 - Friendly wild animals that can be tamed with apples and accompany the player.
-- Keyboard and touch controls, mobile landscape play, sound, inventory, shops, a small map, and a world map.
+- Keyboard and touch controls, mobile landscape play, sound, inventory, shops, a mini map, and a world map.
 
 ## Controls
 
@@ -66,6 +67,7 @@ Then open `http://localhost:8000`.
 | `css/style.css` | How the game and menus look on computers and mobile devices |
 | `js/constants.js` | Names and numbers for worlds, items, enemies, bosses, lore, and riddles |
 | `js/world.js` | Main world, caves, Cloudlands, landmarks, maps, and drawing |
+| `js/map.js` | Fog of war, the drawn map layer, and the shared map frame, markers, and legend |
 | `js/entities.js` | Player, enemies, bosses, arrows and other flying attacks, and the Olympian fight |
 | `js/animals.js` | Wild animals and companions |
 | `js/combat.js` | Close attacks, arrows, elemental effects, damage, and fight events |
@@ -78,6 +80,22 @@ Then open `http://localhost:8000`.
 | `docs/art-direction/` | Art-direction review and visual concepts |
 | `docs/development-binder/` | Development-binder structure and current lore documentation |
 | `output/pdf/` | Print-ready proposal and binder covers |
+
+## Maps and fog of war
+
+Both maps are drawn pictures of the realm rather than coloured boxes. Each land has its own colour and its own small marks — pine trees, dunes, mountain peaks, ruined columns — and roads, rivers and coastlines come straight from the real ground the player walks on. Every map is one window: a title plate at the top, the land in the middle, and the key in its own bar at the bottom, so names and markers never sit on top of each other.
+
+The mini map in the corner now shows the country around the player instead of the whole realm shrunk down. Living things — monsters, companions, a boss — appear only while they are close enough to see, and an arrow on the rim points the way back to Ing Castle when it is off the edge.
+
+Nothing is charted at the start. The map fills in as the player travels, and each place has three looks:
+
+1. **Not found yet** — thick fog. No ground, no names, no markers.
+2. **Found, but not here now** — the land stays on the map, a little darker and cooler, with everything the player discovered still marked.
+3. **Here now** — full colour, plus whatever is moving nearby.
+
+The realm above ground, each of the four caves, and the Cloudlands each remember their own travels. Underground, rock blocks the view, so walking one tunnel never draws the tunnel behind the wall. Two things are never hidden, so a player can always find their way: Ing Castle and the Green Knight's castle are on the map from the first minute, and quest people the story has already named — the Lady of the Lake, Merlin — show as a hollow dashed marker until the player actually reaches them.
+
+The corner where the Worldtree grows has no name on the map until the tree is found. Before that it looks like plain wilderness. Walk close enough to see the tree and the whole region turns its own colour and is named **The Worldtree Reach**.
 
 ## Development documents
 

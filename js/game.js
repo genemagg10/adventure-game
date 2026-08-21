@@ -659,6 +659,12 @@ class Game {
         // Update player (use correct world for collision)
         this.player.update(dt, this.keys, activeWorld);
 
+        // Chart whatever can be seen from where the player now stands. The
+        // sweep only runs when they step onto a new tile.
+        if (activeWorld.fog) {
+            activeWorld.fog.revealAround(this.player.x, this.player.y, (tx, ty) => activeWorld.blocksSight(tx, ty));
+        }
+
         // Player attack
         if (this.keyJustPressed.attack) {
             if (this.player.attack()) {
@@ -1264,7 +1270,10 @@ class Game {
         if (dist(this.player.x, this.player.y, st.x, st.y) > 420) return;
         this.skyTreeApproachSeen = true;
         st.discovered = true;
-        this.ui.showNotification("🌳 An enormous, ancient tree stands ahead...");
+        // Finding the tree also names the country it grows in - the Worldtree
+        // Reach stops reading as blank wilderness on both maps.
+        this.world.invalidateMapCache();
+        this.ui.showNotification("🌳 An enormous, ancient tree stands ahead - the Worldtree Reach is on your map");
     }
 
     checkProximity() {
@@ -2029,6 +2038,7 @@ class Game {
     clearCaveObstacle(entranceId) {
         const cleared = this.world.clearCaveObstacle(entranceId, this.player.x, this.player.y);
         if (cleared > 0) {
+            this.world.invalidateMapCache();
             const ce = CAVE_ENTRANCES.find(e => e.id === entranceId);
             this.sound.gemCollect();
             this.ui.showNotification(`Cleared ${ce.obstacle} near ${ce.label}!`);
@@ -2655,7 +2665,9 @@ class Game {
             const zone = getZoneAt(tile.x, tile.y);
             if (zone !== this.currentZone) {
                 this.currentZone = zone;
-                if (zone !== "wilderness" && ZONES[zone]) {
+                // A secret zone announces itself only once the landmark that
+                // gives it its name has actually been found.
+                if (zone !== "wilderness" && ZONES[zone] && this.world.isZoneRevealed(zone)) {
                     this.zoneDisplayTimer = 3000;
                 }
             }
@@ -2760,7 +2772,8 @@ class Game {
         if (this.zoneDisplayTimer > 0) {
             const zoneName = this.currentZone === "cave" ? "The Caves Below"
                 : this.currentZone === "sky" ? "The Cloudlands"
-                : (ZONES[this.currentZone] ? ZONES[this.currentZone].name : null);
+                : (ZONES[this.currentZone] && this.world.isZoneRevealed(this.currentZone)
+                    ? ZONES[this.currentZone].name : null);
             if (zoneName) {
                 const alpha = Math.min(1, this.zoneDisplayTimer / 500);
                 ctx.save();
@@ -2833,22 +2846,23 @@ class Game {
         }
 
         // Render minimap
+        const mapOpts = { time: this.time, closeLabel: isMobile ? "MAP" : "M" };
         if (this.inCave && this.caveWorlds[this.activeCaveId]) {
-            this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss);
+            this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss, mapOpts);
         } else if (this.inSky) {
-            this.skyWorld.renderMinimap(this.minimapCtx, this.player, this.skyMonsters, this.olympianBoss);
+            this.skyWorld.renderMinimap(this.minimapCtx, this.player, this.skyMonsters, this.olympianBoss, mapOpts);
         } else {
-            this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss, this.greenKnight, this.companions);
+            this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss, this.greenKnight, this.companions, mapOpts);
         }
 
         // Render world map if open
         if (this.ui.isMapOpen()) {
             if (this.inCave && this.caveWorlds[this.activeCaveId]) {
-                this.caveWorlds[this.activeCaveId].renderWorldMap(this.worldmapCtx, this.player);
+                this.caveWorlds[this.activeCaveId].renderWorldMap(this.worldmapCtx, this.player, mapOpts);
             } else if (this.inSky) {
-                this.skyWorld.renderWorldMap(this.worldmapCtx, this.player);
+                this.skyWorld.renderWorldMap(this.worldmapCtx, this.player, mapOpts);
             } else {
-                this.world.renderWorldMap(this.worldmapCtx, this.player);
+                this.world.renderWorldMap(this.worldmapCtx, this.player, mapOpts);
             }
             const mapHint = document.querySelector(".map-hint");
             if (mapHint) {

@@ -36,6 +36,10 @@ body {
     height: 100%;
     background: #2d5a1e;
     image-rendering: pixelated;
+    /* The drawing surface is resized to match this box, but if it is ever a
+       frame behind - a phone rotating, a URL bar collapsing - contain letting
+       it letterbox is far better than stretching it out of square. */
+    object-fit: contain;
 }
 
 .hidden {
@@ -449,85 +453,29 @@ body {
     text-shadow: 0 0 6px rgba(140, 200, 255, 0.8), 1px 1px 3px #000;
 }
 
-/* Carried quest items get their own panel under the HUD row. As chips at the
-   end of the counter row they read as one more tally; here each one names
-   itself and says what it is for. Sits below the INV button so the two never
-   share space on a phone. */
-#quest-tracker {
-    position: absolute;
-    top: 46px;
-    left: 10px;
-    max-width: 232px;
-    padding: 4px 5px 5px;
-    border: 1px solid #8b6914;
-    border-left: 3px solid #ffd700;
-    border-radius: 4px;
-    background: rgba(8, 12, 22, 0.82);
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
-    animation: quest-pulse 2.6s infinite;
-}
-
-/* On touch the INV button owns the corner below the HUD row, so the panel
-   starts under it. */
-body.touch-mode #quest-tracker {
-    top: 84px;
-}
-
-.quest-tracker-title {
-    padding: 0 2px 3px;
-    color: #b08d3c;
-    font-size: 9px;
-    font-weight: bold;
-    letter-spacing: 1.4px;
-    text-transform: uppercase;
-}
-
+/* Carried quest items: a gold-edged chip each at the end of the counter row,
+   so an errand in progress stands apart from the tallies beside it. */
 #quest-items {
     display: flex;
-    flex-direction: column;
     gap: 4px;
-}
-
-.quest-item-card {
-    display: grid;
-    grid-template-columns: 22px minmax(0, 1fr);
     align-items: center;
-    gap: 6px;
-    padding: 3px 4px;
-    border: 1px solid #4a3d1c;
-    border-radius: 3px;
-    background: rgba(255, 215, 0, 0.07);
 }
 
 .quest-item-icon {
-    font-size: 17px;
-    line-height: 1;
-    text-align: center;
-}
-
-.quest-item-copy {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    line-height: 1.25;
-}
-
-.quest-item-copy strong {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #ffd700;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 16px;
     color: #ffd700;
-    font-size: 11px;
-    text-shadow: 1px 1px 2px #000;
-}
-
-.quest-item-copy small {
-    color: #c9bda0;
-    font-size: 9px;
-    font-weight: normal;
-    text-shadow: 1px 1px 2px #000;
+    animation: quest-pulse 2s infinite;
 }
 
 @keyframes quest-pulse {
-    0%, 100% { border-left-color: #ffd700; }
-    50% { border-left-color: #ffaa00; box-shadow: 0 0 10px rgba(255, 215, 0, 0.25), 0 3px 10px rgba(0, 0, 0, 0.5); }
+    0%, 100% { border-color: #ffd700; }
+    50% { border-color: #ffaa00; box-shadow: 0 0 6px rgba(255, 215, 0, 0.4); }
 }
 
 .shop-sell-section {

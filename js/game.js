@@ -11,7 +11,17 @@ class Game {
         this.worldmapCanvas = document.getElementById("worldmap");
         this.worldmapCtx = this.worldmapCanvas.getContext("2d");
 
+        // Keeping the drawing surface the same shape as its box is what stops
+        // the picture stretching, and phone browsers cannot be trusted to
+        // announce a size change in time - on some devices orientationchange
+        // arrives before the new dimensions do. A ResizeObserver fires after
+        // layout, whatever the cause, and the loop re-checks a few times a
+        // second in case even that is missed.
+        this.lastViewportCheck = 0;
         this.resizeViewport();
+        if (typeof ResizeObserver !== "undefined") {
+            new ResizeObserver(() => this.resizeViewport()).observe(this.canvas.parentElement);
+        }
         window.addEventListener("resize", () => this.resizeViewport());
         window.addEventListener("orientationchange", () => this.resizeViewport());
 
@@ -120,6 +130,7 @@ class Game {
 
         // Lady of the Lake quest state
         this.ladyQuestState = "none"; // none, given, sheath_acquired, complete
+        this.ladyQuestAsked = false;  // did she ever set the errand herself?
 
         // Merlin quest state
         this.merlinQuestState = "none"; // none, given, wand_acquired, complete
@@ -275,6 +286,7 @@ class Game {
         // Sheath Guardian Troll
         this.sheathTroll = null;
         this.ladyQuestState = "none";
+        this.ladyQuestAsked = false;
         this.merlinQuestState = "none";
         this.spawnSheathTroll();
 
@@ -355,6 +367,7 @@ class Game {
         this.ui.hideBossHealth();
         this.ui.hideHud();
         this.ladyQuestState = "none";
+        this.ladyQuestAsked = false;
         this.merlinQuestState = "none";
         this.state = "title";
         document.getElementById("title-screen").classList.remove("hidden");
@@ -634,6 +647,11 @@ class Game {
         const dt = Math.min(timestamp - this.lastTime, 50); // Cap delta
         this.lastTime = timestamp;
         this.time = timestamp;
+
+        if (timestamp - this.lastViewportCheck > 250) {
+            this.lastViewportCheck = timestamp;
+            this.resizeViewport();
+        }
 
         if (this.state === "playing" && !this.paused) {
             this.update(dt);
@@ -1245,7 +1263,10 @@ class Game {
         // Check if this was the sheath guardian troll
         if (entity.isSheathGuardian) {
             this.player.hasSheath = true;
-            if (this.ladyQuestState === "given") {
+            // The guardian can be found and beaten before the Lady is ever
+            // met, and it does not come back. Whatever order it happened in,
+            // holding the sheath means the errand is done.
+            if (this.ladyQuestState !== "complete") {
                 this.ladyQuestState = "sheath_acquired";
             }
             this.ui.showNotification("Jewel-encrusted Sheath obtained! (+2 weapon damage)");
@@ -1569,6 +1590,15 @@ class Game {
     }
 
     startLadyQuest() {
+        // What the player is actually carrying outranks the quest bookkeeping.
+        // Beating the guardian first used to leave her blind to the sheath in
+        // his hands while asking him to go and fetch it - and the troll was
+        // already gone, so there was no way out of it.
+        const unaskedFor = !this.ladyQuestAsked;
+        if (this.player.hasSheath && this.ladyQuestState !== "complete") {
+            this.ladyQuestState = "sheath_acquired";
+        }
+
         if (this.ladyQuestState === "none") {
             // First meeting - give the quest
             this.ui.showDialog("\"I am the Lady of the Lake. I hold Excalibur, the mightiest blade ever forged.\"", () => {
@@ -1576,6 +1606,7 @@ class Game {
                     this.ui.showDialog("\"A fearsome troll guards the jewel-encrusted sheath of Excalibur deep in the Dark Forest.\"", () => {
                         this.ui.showDialog("\"Defeat the troll and bring the sheath back to me. Only then shall the sword be yours.\"", () => {
                             this.ladyQuestState = "given";
+                            this.ladyQuestAsked = true;
                             this.ui.showNotification("Quest: Defeat the Sheath Guardian!");
                         });
                     });
@@ -1591,7 +1622,10 @@ class Game {
             this.player.addWeapon("excalibur");
             this.player.equipWeapon("excalibur");
             this.ladyQuestState = "complete";
-            this.ui.showDialog("\"You have defeated the guardian and recovered the sheath! You are truly worthy, Ingoizer.\"", () => {
+            const greeting = unaskedFor
+                ? "\"I am the Lady of the Lake - and you come to me already carrying the sheath of Excalibur. You went and took it from the guardian without being asked.\""
+                : "\"You have defeated the guardian and recovered the sheath! You are truly worthy, Ingoizer.\"";
+            this.ui.showDialog(greeting, () => {
                 this.ui.showDialog("\"Take Excalibur - the legendary sword of kings! Together with its sheath, you shall be unstoppable.\"");
                 this.ui.showNotification("Excalibur obtained!");
             });

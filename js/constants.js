@@ -16,11 +16,12 @@ const TILE_SIZE = 32;
 let TILES_X = Math.ceil(CANVAS_W / TILE_SIZE) + 2;
 const TILES_Y = Math.ceil(CANVAS_H / TILE_SIZE) + 2;
 
-// Backing-store width for a window of this shape, rounded to a whole number of
-// half-tiles so the tile grid never lands on a fractional pixel.
+// Backing-store width for a window of this shape. Rounded only to an even
+// number of pixels: any coarser and the drawing surface stops matching the box
+// it is stretched into closely enough for the tiles to stay square.
 function canvasWidthForAspect(aspect) {
     if (!aspect || !isFinite(aspect) || aspect <= 0) return CANVAS_MIN_W;
-    const raw = Math.round(aspect * CANVAS_H / 16) * 16;
+    const raw = Math.round(aspect * CANVAS_H / 2) * 2;
     return Math.max(CANVAS_MIN_W, Math.min(CANVAS_MAX_W, raw));
 }
 

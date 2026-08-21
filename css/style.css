@@ -1105,17 +1105,6 @@ body {
         0 8px 22px rgba(0, 0, 0, .8);
 }
 
-.armory-window::before,
-.inventory-window::before {
-    content: "";
-    position: absolute;
-    inset: 14px;
-    z-index: 4;
-    pointer-events: none;
-    border: 1px solid rgba(225, 169, 67, .74);
-    clip-path: polygon(0 10px, 10px 10px, 10px 0, calc(100% - 10px) 0, calc(100% - 10px) 10px, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 10px calc(100% - 10px), 0 calc(100% - 10px));
-}
-
 .armory-header {
     position: relative;
     z-index: 5;
@@ -2847,8 +2836,12 @@ button.relic-card:hover { filter: brightness(1.18); }
 }
 
 /* Touch mode specific - body class added by TouchControls */
+/* pan-x pan-y is manipulation minus pinch: it kills double-tap zoom and pinch
+   without costing a single real press, which a JS touchend guard could not do.
+   Unlike `none` it still lets descendants that opt into pan-y scroll. */
 body.touch-mode {
     overscroll-behavior: none;
+    touch-action: pan-x pan-y;
 }
 
 /* The playfield and the on-screen controls swallow drags; overlay panels must
@@ -2857,6 +2850,10 @@ body.touch-mode {
 body.touch-mode #gameCanvas,
 body.touch-mode #touch-controls,
 body.touch-mode #minimap-container {
+    touch-action: none;
+}
+
+.overlay-close {
     touch-action: none;
 }
 

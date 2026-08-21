@@ -75,16 +75,6 @@ class TouchControls {
             e.preventDefault();
         }, { passive: false });
 
-        // Prevent double-tap zoom
-        let lastTap = 0;
-        document.addEventListener("touchend", (e) => {
-            const now = Date.now();
-            if (now - lastTap < 300) {
-                e.preventDefault();
-            }
-            lastTap = now;
-        }, { passive: false });
-
         this.createUI();
         this.bindEvents();
     }
@@ -191,6 +181,31 @@ class TouchControls {
             }
         }, { passive: false });
 
+        // The X is the only way out of an overlay, so it acts on the touch
+        // itself rather than waiting for the click the browser synthesises
+        // afterwards - that click is easy for anything else to swallow.
+        const closers = [
+            ["inv-close", () => { if (this.game.ui.isInventoryOpen()) this.game.ui.closeInventory(); }],
+            ["shop-close", () => { if (this.game.ui.isShopOpen()) this.game.ui.closeShop(); }],
+            ["map-close", () => { if (this.game.ui.isMapOpen()) this.game.ui.toggleMap(); }],
+        ];
+        for (const [id, close] of closers) {
+            const btn = document.getElementById(id);
+            if (!btn) continue;
+            // touchstart is stopped so the map overlay's tap-to-close does not
+            // fire as well; touchend does the work and cancels the click.
+            btn.addEventListener("touchstart", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, { passive: false });
+            btn.addEventListener("touchend", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.game.sound.ensureContext();
+                close();
+            }, { passive: false });
+        }
+
         // The minimap is the map button. Tapping it opens the full world map,
         // which keeps a control off the playfield entirely.
         const minimap = document.getElementById("minimap-container");
@@ -208,20 +223,7 @@ class TouchControls {
             }, { passive: false });
         }
 
-        // Map overlay tap to close. The X sitting on the map has to swallow its
-        // own tap, or the overlay would close it and the synthetic click would
-        // toggle it straight back open.
-        const mapClose = document.getElementById("map-close");
-        if (mapClose) {
-            mapClose.addEventListener("touchstart", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (this.game.ui.isMapOpen()) {
-                    this.game.ui.toggleMap();
-                }
-            }, { passive: false });
-        }
-
+        // Map overlay tap to close
         const mapOverlay = document.getElementById("map-overlay");
         mapOverlay.addEventListener("touchstart", (e) => {
             e.stopPropagation();

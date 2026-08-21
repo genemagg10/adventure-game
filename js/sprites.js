@@ -233,3 +233,144 @@ const IngoizerSprite = {
         );
     },
 };
+
+// ============================================
+// Treasure Chest
+// ============================================
+//
+// Drawn the same way Ingoizer is: hand-authored pixel rows composed once into
+// an offscreen canvas and blitted 1:1, so the chest sits in the same art
+// language as the hero instead of reading as a canvas primitive. Two frames -
+// shut, and thrown open on a hoard of gold.
+
+const CHEST_PALETTE = {
+    k: "#150d07", // outline
+    d: "#4a2c13", // dark wood, box front
+    w: "#6b4220", // wood edge
+    l: "#8a5626", // lit wood, lid
+    g: "#d7a232", // gold strap
+    y: "#f6d97a", // bright gold, lock plate
+    s: "#8a6216", // keyhole
+    i: "#241606", // interior shadow
+    t: "#e8c04a", // the hoard
+    p: "#fff3c2", // glint on the hoard
+};
+
+const CHEST_SPRITE_W = 16;
+const CHEST_SPRITE_H = 14;
+const CHEST_SCALE = 2;
+
+// Shut: domed lid, two gold straps, a lock plate straddling the seam.
+const CHEST_CLOSED = [
+    ".....kkkkkk.....",
+    "...kkllllllkk...",
+    "..kkllllllllkk..",
+    ".kwlgllllllglwk.",
+    ".kwlgllyyllglwk.",
+    ".kdggggggggggdk.",
+    ".kkkkkkkkkkkkkk.",
+    ".kwdgddyyddgdwk.",
+    ".kwdgddssddgdwk.",
+    ".kwdgddddddgdwk.",
+    ".kwdgddddddgdwk.",
+    ".kddgddddddgddk.",
+    ".kkkkkkkkkkkkkk.",
+    "..kkkkkkkkkkkk..",
+];
+
+// Open: the lid tipped back behind the box, gold heaped to the rim.
+const CHEST_OPEN = [
+    "....kkkkkkkk....",
+    "..kkllllllllkk..",
+    "..kdggggggggdk..",
+    ".kkkkkkkkkkkkkk.",
+    ".kiiiiiiiiiiiik.",
+    ".kiitpttttptiik.",
+    ".kittttppttttik.",
+    ".kkkkkkkkkkkkkk.",
+    ".kwdgddddddgdwk.",
+    ".kwdgddddddgdwk.",
+    ".kwdgddddddgdwk.",
+    ".kddgddddddgddk.",
+    ".kkkkkkkkkkkkkk.",
+    "..kkkkkkkkkkkk..",
+];
+
+const TreasureChestSprite = {
+    width: CHEST_SPRITE_W * CHEST_SCALE,   // 32
+    height: CHEST_SPRITE_H * CHEST_SCALE,  // 28
+    // The chest rests on the ground line 12px below its anchor point, so it
+    // depth-sorts against the player the same way every other entity does.
+    footOffset: 12,
+
+    _cache: {},
+
+    _build(state) {
+        const rows = state === "open" ? CHEST_OPEN : CHEST_CLOSED;
+        const canvas = document.createElement("canvas");
+        canvas.width = this.width;
+        canvas.height = this.height;
+        const c = canvas.getContext("2d");
+
+        for (let row = 0; row < rows.length; row++) {
+            const line = rows[row];
+            for (let col = 0; col < line.length; col++) {
+                const color = CHEST_PALETTE[line[col]];
+                if (!color) continue;
+                c.fillStyle = color;
+                c.fillRect(col * CHEST_SCALE, row * CHEST_SCALE, CHEST_SCALE, CHEST_SCALE);
+            }
+        }
+        return canvas;
+    },
+
+    get(state) {
+        if (!this._cache[state]) {
+            this._cache[state] = this._build(state);
+        }
+        return this._cache[state];
+    },
+
+    // Draw centred on cx with the chest sitting at cy + footOffset. A shut
+    // chest breathes a warm glow so it can be spotted down a dark maze
+    // corridor; an open one throws sparks off the hoard instead.
+    draw(ctx, cx, cy, opened, time) {
+        const x = Math.round(cx - this.width / 2);
+        const y = Math.round(cy + this.footOffset - this.height);
+
+        ctx.save();
+
+        // Ground shadow
+        ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + this.footOffset - 2, 14, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const pulse = 0.5 + Math.sin(time * 0.003) * 0.5;
+        const glow = ctx.createRadialGradient(cx, cy - 2, 0, cx, cy - 2, opened ? 40 : 30);
+        const strength = opened ? 0.30 + pulse * 0.18 : 0.16 + pulse * 0.14;
+        glow.addColorStop(0, `rgba(255, 214, 110, ${strength})`);
+        glow.addColorStop(1, "rgba(255, 190, 60, 0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(cx, cy - 2, opened ? 40 : 30, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.drawImage(this.get(opened ? "open" : "closed"), x, y);
+
+        if (opened) {
+            // Motes of gold lifting out of the open lid
+            for (let i = 0; i < 5; i++) {
+                const phase = (time * 0.0016 + i * 0.37) % 1;
+                const mx = cx + Math.sin(time * 0.002 + i * 2.1) * 11;
+                const my = cy - 4 - phase * 26;
+                ctx.globalAlpha = (1 - phase) * 0.85;
+                ctx.fillStyle = i % 2 ? "#fff3c2" : "#ffd24a";
+                ctx.fillRect(Math.round(mx), Math.round(my), 2, 2);
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        ctx.restore();
+    },
+};

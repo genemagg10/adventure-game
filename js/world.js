@@ -2366,7 +2366,6 @@ class World {
 
         MapArt.panel(ctx, L.w, L.h);
         MapArt.cartouche(ctx, L.w / 2, 12, "World Map", 20);
-        if (opts.closeLabel) MapArt.closeHint(ctx, L.w, opts.closeLabel);
         MapArt.viewportFrame(ctx, view);
 
         const s = view.w / (WORLD_W * TILE_SIZE);
@@ -3008,7 +3007,6 @@ class CaveWorld {
 
         MapArt.panel(ctx, L.w, L.h);
         MapArt.cartouche(ctx, L.w / 2, 12, this.caveName(), 20);
-        if (opts.closeLabel) MapArt.closeHint(ctx, L.w, opts.closeLabel);
         MapArt.viewportFrame(ctx, view);
 
         const s = view.w / (CAVE_W * TILE_SIZE);
@@ -3723,7 +3721,6 @@ class SkyWorld {
 
         MapArt.panel(ctx, L.w, L.h);
         MapArt.cartouche(ctx, L.w / 2, 12, "The Cloudlands", 20);
-        if (opts.closeLabel) MapArt.closeHint(ctx, L.w, opts.closeLabel);
         MapArt.viewportFrame(ctx, view);
 
         const s = view.w / (SKY_W * TILE_SIZE);

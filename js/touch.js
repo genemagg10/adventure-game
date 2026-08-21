@@ -66,15 +66,12 @@ class TouchControls {
         this.active = true;
         document.body.classList.add("touch-mode");
 
-        // Lock viewport - prevent any page scrolling, bouncing, or zooming
+        // Lock viewport - prevent any page scrolling, bouncing, or zooming.
+        // Anything that can genuinely scroll keeps its drag: the old hard-coded
+        // allow-list named panels that no longer exist, which left the whole
+        // inventory unscrollable on touch.
         document.addEventListener("touchmove", (e) => {
-            // Allow scrolling inside overlay content (shops, inventory)
-            const target = e.target;
-            if (target.closest("#shop-items") || target.closest("#inventory-weapons") ||
-                target.closest("#inventory-bows") || target.closest("#inventory-gems") ||
-                target.closest("#riddle-overlay")) {
-                return;
-            }
+            if (TouchControls.scrollableAncestor(e.target)) return;
             e.preventDefault();
         }, { passive: false });
 
@@ -112,7 +109,6 @@ class TouchControls {
                 </div>
             </div>
             <div id="touch-buttons-top">
-                <button class="touch-btn-small" data-action="map">MAP</button>
                 <button class="touch-btn-small" data-action="inventory">INV</button>
             </div>
         `;
@@ -195,7 +191,37 @@ class TouchControls {
             }
         }, { passive: false });
 
-        // Map overlay tap to close
+        // The minimap is the map button. Tapping it opens the full world map,
+        // which keeps a control off the playfield entirely.
+        const minimap = document.getElementById("minimap-container");
+        if (minimap) {
+            minimap.addEventListener("touchstart", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (this.game.state !== "playing") return;
+                this.onButtonPress("map");
+            }, { passive: false });
+            minimap.addEventListener("touchend", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.onButtonRelease("map");
+            }, { passive: false });
+        }
+
+        // Map overlay tap to close. The X sitting on the map has to swallow its
+        // own tap, or the overlay would close it and the synthetic click would
+        // toggle it straight back open.
+        const mapClose = document.getElementById("map-close");
+        if (mapClose) {
+            mapClose.addEventListener("touchstart", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (this.game.ui.isMapOpen()) {
+                    this.game.ui.toggleMap();
+                }
+            }, { passive: false });
+        }
+
         const mapOverlay = document.getElementById("map-overlay");
         mapOverlay.addEventListener("touchstart", (e) => {
             e.stopPropagation();
@@ -203,6 +229,22 @@ class TouchControls {
                 this.game.ui.toggleMap();
             }
         }, { passive: false });
+    }
+
+    // Walk up from a touch target looking for a region that both allows and
+    // needs scrolling. Used to decide whether a drag belongs to the page lock
+    // or to a panel of items.
+    static scrollableAncestor(target) {
+        let el = target instanceof Element ? target : null;
+        while (el && el !== document.body) {
+            const style = window.getComputedStyle(el);
+            const overflowY = style.overflowY;
+            if ((overflowY === "auto" || overflowY === "scroll") && el.scrollHeight > el.clientHeight + 1) return el;
+            const overflowX = style.overflowX;
+            if ((overflowX === "auto" || overflowX === "scroll") && el.scrollWidth > el.clientWidth + 1) return el;
+            el = el.parentElement;
+        }
+        return null;
     }
 
     isOnUIOverlay(target) {

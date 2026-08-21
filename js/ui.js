@@ -93,9 +93,6 @@ class UIManager {
         document.getElementById("shop-close").addEventListener("click", () => {
             this.closeShop();
         });
-        document.getElementById("shop-back").addEventListener("click", () => {
-            this.closeShop();
-        });
 
         document.getElementById("enchant-close").addEventListener("click", () => {
             this.closeEnchant();
@@ -122,8 +119,9 @@ class UIManager {
         document.getElementById("inv-close").addEventListener("click", () => {
             this.closeInventory();
         });
-        document.getElementById("inv-back").addEventListener("click", () => {
-            this.closeInventory();
+
+        document.getElementById("map-close").addEventListener("click", () => {
+            if (this.isMapOpen()) this.toggleMap();
         });
 
         document.getElementById("restartBtn").addEventListener("click", () => {

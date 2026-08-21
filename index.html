@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Ingoizer's World</title>
-    <link rel="stylesheet" href="css/style.css?v=20260821-maps">
+    <link rel="stylesheet" href="css/style.css?v=20260821-overlays">
     <script data-goatcounter="https://genemaggio.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
 </head>
@@ -117,14 +117,18 @@
                     <div class="element-slot" id="elem-earth" title="Earth">🪨</div>
                 </div>
             </div>
-            <div id="minimap-container">
+            <div id="minimap-container" role="button" tabindex="0" aria-label="Open the world map" title="Open the world map">
                 <canvas id="minimap" width="160" height="160"></canvas>
+                <span class="minimap-open-hint" aria-hidden="true">MAP</span>
             </div>
         </div>
         <div id="map-overlay" class="hidden">
             <h2 class="visually-hidden">World Map</h2>
-            <canvas id="worldmap" width="700" height="584"></canvas>
-            <p class="map-hint visually-hidden">Press M to close</p>
+            <div id="map-frame">
+                <canvas id="worldmap" width="700" height="584"></canvas>
+                <button id="map-close" class="overlay-close" aria-label="Close map" title="Close map (M)">×</button>
+            </div>
+            <p class="map-hint visually-hidden">Press M, tap the map, or use the close button to leave the map.</p>
         </div>
         <div id="shop-overlay" class="hidden">
             <section class="armory-window" aria-labelledby="shop-title">
@@ -159,7 +163,6 @@
                 </div>
                 <footer class="armory-footer">
                     <span id="shop-hint">Choose an item to compare it with your equipped gear.</span>
-                    <button id="shop-back" class="back-arrow-btn" aria-label="Leave shop"><span aria-hidden="true">←</span> Back</button>
                 </footer>
             </section>
         </div>
@@ -198,7 +201,6 @@
                 </section>
                 <footer class="armory-footer inventory-footer">
                     <span id="inventory-hint">Select owned gear to equip it.</span>
-                    <button id="inv-back" class="back-arrow-btn" aria-label="Close inventory"><span aria-hidden="true">←</span> Back</button>
                 </footer>
                 <div class="legacy-inventory-sections" aria-hidden="true">
                     <div id="inventory-weapons"></div>

@@ -192,18 +192,23 @@ class TouchControls {
         for (const [id, close] of closers) {
             const btn = document.getElementById(id);
             if (!btn) continue;
-            // touchstart is stopped so the map overlay's tap-to-close does not
-            // fire as well; touchend does the work and cancels the click.
-            btn.addEventListener("touchstart", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            }, { passive: false });
-            btn.addEventListener("touchend", (e) => {
+            // Closing happens the moment the finger lands. Waiting for touchend
+            // loses every touch the browser cancels first - a drift past the
+            // slop threshold, a second finger, or one of the phone's own edge
+            // swipes, which is exactly where these buttons sit. preventDefault
+            // also cancels the click the browser would synthesise afterwards,
+            // and stopPropagation keeps the map overlay's tap-to-close out of
+            // it. touchend and touchcancel are harmless second chances: each
+            // closer checks whether its screen is still open.
+            const act = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 this.game.sound.ensureContext();
                 close();
-            }, { passive: false });
+            };
+            btn.addEventListener("touchstart", act, { passive: false });
+            btn.addEventListener("touchend", act, { passive: false });
+            btn.addEventListener("touchcancel", act, { passive: false });
         }
 
         // The minimap is the map button. Tapping it opens the full world map,

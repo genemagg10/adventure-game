@@ -226,23 +226,37 @@ class UIManager {
         const defText = armor.defense > 0 ? `  |  ${armor.icon} DEF: ${armor.defense}` : "";
         this.weaponDisplay.textContent = `${weapon.icon} ${weapon.name}  |  ${bow.icon} ${bow.name}${defText}`;
 
-        // Quest items
+        // Carried quest items sit at the end of the counter row: a small
+        // gold-edged chip each, with the errand in its tooltip.
         const questEl = document.getElementById("quest-items");
         if (questEl) {
-            questEl.innerHTML = "";
+            const touch = this.game.touchControls && this.game.touchControls.active;
+            const carrying = [];
             if (player.hasMerlinWand) {
-                const icon = document.createElement("span");
-                icon.className = "quest-item-icon";
-                icon.textContent = "🪄";
-                icon.title = "Merlin's Wand - Return to Merlin";
-                questEl.appendChild(icon);
+                carrying.push({ icon: "\ud83e\ude84", label: "Merlin's Wand - take it back to Merlin" });
             }
             if (player.hasSheath && this.game.ladyQuestState !== "complete") {
-                const icon = document.createElement("span");
-                icon.className = "quest-item-icon";
-                icon.textContent = "🗡\uFE0F";
-                icon.title = "Jewel Sheath - Return to the Lady";
-                questEl.appendChild(icon);
+                carrying.push({ icon: "\ud83d\udde1\uFE0F", label: "Jewel Sheath - take it back to the Lady of the Lake" });
+            }
+            if (player.hasWorldtreeSeed) {
+                carrying.push({
+                    icon: WORLDTREE_SEED.icon,
+                    label: `${WORLDTREE_SEED.name} - ${touch ? "plant it" : "press P to plant it"} where the Worldtree stood`,
+                });
+            }
+
+            // Rebuilt only when the list actually changes; this runs every frame.
+            const signature = carrying.map(q => q.label).join("~");
+            if (signature !== this._questSignature) {
+                this._questSignature = signature;
+                questEl.innerHTML = "";
+                for (const q of carrying) {
+                    const chip = document.createElement("span");
+                    chip.className = "quest-item-icon";
+                    chip.textContent = q.icon;
+                    chip.title = q.label;
+                    questEl.appendChild(chip);
+                }
             }
         }
 

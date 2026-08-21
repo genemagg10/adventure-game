@@ -83,7 +83,7 @@ Then open `http://localhost:8000`.
 
 ## Screen size
 
-The playfield is always 600 units tall and takes the width of the screen, between 4:3 and 7:3. Nothing changes size when the shape changes — a wider screen simply shows more ground to the left and right, and gives the inventory, the shop and the touch controls more room. A phone held sideways is about 2.2:1, so it now fills the whole display instead of sitting in a 4:3 box with black bars either side. How far the player can see, and therefore how much of the map they chart as they walk, follows the width too.
+The playfield is always 600 units tall and takes the width of the screen, between 4:3 and 7:3. The drawing surface is resized to match its box whenever that box changes, so the picture never stretches out of square — phone browsers do not always announce a size change in time, so the game watches its own box rather than trusting the event. Nothing changes size when the shape changes — a wider screen simply shows more ground to the left and right, and gives the inventory, the shop and the touch controls more room. A phone held sideways is about 2.2:1, so it now fills the whole display instead of sitting in a 4:3 box with black bars either side. How far the player can see, and therefore how much of the map they chart as they walk, follows the width too.
 
 ## Maps and fog of war
 

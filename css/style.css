@@ -36,6 +36,10 @@ body {
     height: 100%;
     background: #2d5a1e;
     image-rendering: pixelated;
+    /* The drawing surface is resized to match this box, but if it is ever a
+       frame behind - a phone rotating, a URL bar collapsing - contain letting
+       it letterbox is far better than stretching it out of square. */
+    object-fit: contain;
 }
 
 .hidden {
@@ -449,6 +453,8 @@ body {
     text-shadow: 0 0 6px rgba(140, 200, 255, 0.8), 1px 1px 3px #000;
 }
 
+/* Carried quest items: a gold-edged chip each at the end of the counter row,
+   so an errand in progress stands apart from the tallies beside it. */
 #quest-items {
     display: flex;
     gap: 4px;
@@ -462,7 +468,7 @@ body {
     border: 1px solid #ffd700;
     border-radius: 4px;
     padding: 1px 5px;
-    font-size: 14px;
+    font-size: 16px;
     color: #ffd700;
     animation: quest-pulse 2s infinite;
 }
@@ -1203,6 +1209,14 @@ body {
     background: linear-gradient(#182236, #0a101c);
     box-shadow: inset 0 0 0 2px #05080e, 0 2px 0 #05070b;
     text-shadow: 0 2px #593209;
+}
+
+/* A thumb that lands just short of the X should still close the screen. The
+   pad is invisible and does not move the button. */
+.overlay-close::after {
+    content: "";
+    position: absolute;
+    inset: -12px;
 }
 
 .overlay-close:hover,
@@ -2905,7 +2919,9 @@ body.touch-mode * {
 
     .armory-header {
         min-height: 50px;
-        padding: 5px 10px 5px 15px;
+        /* Extra right padding keeps the X clear of the screen edge, where a
+           phone's own back/notification swipes claim the touch. */
+        padding: 5px 18px 5px 15px;
     }
 
     .armory-crest {
@@ -3064,7 +3080,8 @@ body.touch-mode * {
 @media (max-height: 560px) {
     .inventory-header {
         min-height: 42px;
-        padding: 3px 8px 3px 12px;
+        /* Right padding matches .armory-header: keep the X off the screen edge. */
+        padding: 3px 18px 3px 12px;
     }
 
     .inventory-header .armory-crest {

@@ -510,7 +510,24 @@ const ANIMAL_CONFIG = {
     hurtCooldown: 1100,     // ms between contact hits a companion can suffer
     skittishRange: 42,      // untamed animals drift away inside this range
     deathFadeTime: 900,
+    // Keeping up. Half the roster is slower on its feet than Ingoizer is, so a
+    // trailing companion borrows its pace from him rather than using its own -
+    // otherwise a toad or a turtle falls behind and never recovers.
+    sprintRange: 104,       // how far behind before a companion starts to hurry
+    sprintSelf: 1.7,        // hurrying pace, as a multiple of its own speed
+    dashSelf: 2.1,          // flat-out pace, as a multiple of its own speed
+    sprintFloor: 1.18,      // ...but never slower than this much of the player's
+    dashFloor: 1.55,        // ...nor this, once it is a long way back
+    // Giving up on the landscape.
+    unstickTime: 900,       // ms of getting nowhere before it scampers to you
+    recallRange: 560,       // this far behind and it scampers regardless
 };
+
+// Headings a walking animal will try when the one it wants is blocked, in
+// radians either side of its intended direction. They stop short of a right
+// angle: past that a step makes no progress towards where the animal was
+// going, and a wedged companion is the scamper's problem, not the steering's.
+const ANIMAL_STEER_ANGLES = [0.45, 0.85, 1.15, 1.4];
 
 // Apples - bought from shops or found in the wild, spent to tame animals
 const APPLE_ITEM = {

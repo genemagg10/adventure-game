@@ -8,17 +8,18 @@ Play the current build: [genemagg10.github.io/adventure-game](https://genemagg10
 
 ## Current game
 
-The player wakes up as Ingoizer in Green Meadow with a rusty sword and bow. The main quest is to find five Blue Gems with elemental powers. Ingoizer can then face the Black Knight at Ing Castle. The adventure also opens the Green Knight's Domain, four caves, the Worldtree, Cloudlands, the Twelve Olympians, and Zeus.
+The player wakes up as Ingoizer in Green Meadow with a rusty sword and bow. Ingoizer is a family name, and the house that carries it cannot agree whether the name is a curse or a promise. The main quest is to find five Blue Gems with elemental powers. Ingoizer can then face the Black Knight at Ing Castle — and once the Black Knight falls, a tapestry in the great hall shows whose family the man in the black armour belonged to. The adventure also opens the Green Knight's Domain, four caves, the Worldtree, Cloudlands, the Twelve Olympians, and Zeus.
 
 Current features include:
 
 - A large main world with named lands, landmarks, shops, quests, and maps.
 - Close-range weapons, bows, armor, usable items, elemental powers, enchanting, monster drops, and treasure.
-- The Lady of the Lake and Excalibur quest.
-- Merlin's wand quest, Enchanter's Mallet, and an eleven-entry Ancient Lore library.
-- Black Knight and Green Knight progression arcs.
-- Four caves with elemental locks, mazes or bosses, Purple Gems, and special rewards.
+- The Lady of the Lake, the Excalibur quest, and the Fountain of Youth she also keeps.
+- Merlin's wand quest, Enchanter's Mallet, and a fifteen-entry Ancient Lore library whose last three entries stay hidden until the player earns them.
+- Black Knight and Green Knight progression arcs, and the family tapestry in Ing Castle that connects them.
+- Four caves with elemental locks, mazes or bosses, treasure chests, Purple Gems, and special rewards.
 - The Worldtree, Cloudlands, Temple of Olympus, twelve-form Olympian encounter, and Zeus reward.
+- The Worldtree Seed: plant it back where the tree stood and Zeus grants his lightning without a fight.
 - Fountain of Youth riddles.
 - Friendly wild animals that can be tamed with apples and accompany the player.
 - Keyboard and touch controls, mobile landscape play, sound, inventory, shops, a small map, and a world map.
@@ -36,6 +37,7 @@ Current features include:
 | Q | Use the selected elemental power |
 | T | Use a health potion |
 | I | Open inventory |
+| P | Plant the Worldtree Seed |
 | Esc | Pause |
 
 Touch controls appear automatically on supported phones and tablets. Hold the device sideways for the best view.
@@ -69,7 +71,7 @@ Then open `http://localhost:8000`.
 | `js/combat.js` | Close attacks, arrows, elemental effects, damage, and fight events |
 | `js/ui.js` | Health display, shops, inventory, lore, riddles, speech, enchanting, and endings |
 | `js/game.js` | Main repeating loop, progress, quests, travel between realms, and story events |
-| `js/sprites.js` | Draws the handmade pixel characters and objects |
+| `js/sprites.js` | Draws the handmade pixel characters and objects, including the treasure chest |
 | `js/monster-sprites.js` | Draws the species-specific hostile creatures and named bosses |
 | `js/sound.js` | Makes sound and music signals |
 | `js/touch.js` | Mobile and touch controls |
@@ -86,7 +88,7 @@ Then open `http://localhost:8000`.
 
 ## Lore access in the game
 
-The main lore library is at Merlin's Hut near Ing Castle. Players also learn the story from the opening, the Lady of the Lake and Merlin quests, boss speeches and endings, Blue Gems, caves, the Worldtree, Cloudlands, special item descriptions, maps, and landmarks.
+The main lore library is at Merlin's Hut near Ing Castle. Three of its entries are hidden at the start and only join the shelf once the player has earned them in the world — by reading the tapestry in Ing Castle, or by taking the seed out of the Worldtree's ashes. Players also learn the story from the opening, the Lady of the Lake and Merlin quests, boss speeches and endings, Blue Gems, caves, the Worldtree, Cloudlands, special item descriptions, maps, and landmarks.
 
 ## Project authority
 

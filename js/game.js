@@ -70,10 +70,25 @@ class Game {
         this.skyTreeHintGiven = false;
         this.skyTreeApproachSeen = false;
 
-        // Fountain of Youth
+        // Fountain of Youth - the Lady of the Lake's second water
         this.nearFountain = false;
         this.fountainCooldownUntil = 0;
         this.fountainRiddleState = null; // { riddles, currentIndex, onComplete }
+        this.fountainIntroShown = false;
+
+        // The tapestry in Ing Castle's great hall - the Black Knight's family
+        // tree, and Ingoizer's. Readable only once the Black Knight has fallen.
+        this.nearTapestry = false;
+        this.tapestryRead = false;
+
+        // The Worldtree Seed and the peace it can buy with Zeus
+        this.nearSapling = null;
+        this.worldtreeRestored = false;
+        this.zeusAppeased = false;
+        this.zeusMetInPeace = false;
+
+        // Lore entries whose spoilers have been earned in the world
+        this.loreUnlocks = {};
 
         // Animal companions
         this.wildAnimals = [];      // untamed critters roaming the surface
@@ -143,6 +158,7 @@ class Game {
             "KeyR": "shoot",
             "KeyI": "inventory",
             "KeyT": "potion",
+            "KeyP": "plant",
             "Digit1": "elem1",
             "Digit2": "elem2",
             "Digit3": "elem3",
@@ -251,6 +267,16 @@ class Game {
         this.nearFountain = false;
         this.fountainCooldownUntil = 0;
         this.fountainRiddleState = null;
+        this.fountainIntroShown = false;
+
+        // Castle tapestry and the Worldtree Seed
+        this.nearTapestry = false;
+        this.tapestryRead = false;
+        this.nearSapling = null;
+        this.worldtreeRestored = false;
+        this.zeusAppeased = false;
+        this.zeusMetInPeace = false;
+        this.loreUnlocks = {};
 
         this.ui.showHud();
         this.running = true;
@@ -708,6 +734,11 @@ class Game {
             }
         }
 
+        // Plant the Worldtree Seed where you stand (P key, or the inventory relic)
+        if (this.keyJustPressed.plant && this.player.hasWorldtreeSeed) {
+            this.plantWorldtreeSeed();
+        }
+
         // Interaction check
         if (this.keyJustPressed.interact) {
             this.handleInteraction();
@@ -952,10 +983,12 @@ class Game {
         // Cloudlands: burn down the Worldtree, summon the Olympian, gather ambrosia
         if (this.onSurface) {
             if (this.world.updateSkyTree(dt)) this.onSkyLadderRevealed();
+            if (this.world.updateSapling(dt)) this.onWorldtreeRegrown();
             if (this.skyTreeHintCooldown > 0) this.skyTreeHintCooldown -= dt;
             this.checkWorldtreeApproach();
         }
         if (this.inSky) {
+            this.checkZeusPeaceMeeting();
             this.checkOlympianTrigger();
             this.checkAmbrosia();
         }
@@ -1065,7 +1098,7 @@ class Game {
                     // NW cave boss drops purple gem of attack
                     this.player.purpleGemAttack = true;
                     this.ui.showNotification(`${PURPLE_GEMS.attack.icon} ${PURPLE_GEMS.attack.name} obtained! (+${PURPLE_GEMS.attack.bonus} DMG)`);
-                    this.ui.showDialog(`The boss crumbles and drops the ${PURPLE_GEMS.attack.name}!`, () => {
+                    this.ui.showDialog(`The warden crumbles, and the chest he had been standing over all this time falls open. Inside is the ${PURPLE_GEMS.attack.name}!`, () => {
                         this.ui.showDialog(`All your weapons deal +${PURPLE_GEMS.attack.bonus} additional damage!`);
                     });
                 } else if (caveWorld.difficulty === 4) {
@@ -1073,7 +1106,7 @@ class Game {
                     this.player.purpleGemArmor = true;
                     this.player.hasGauntlet = true;
                     this.ui.showNotification(`${PURPLE_GEMS.armor.icon} ${PURPLE_GEMS.armor.name} obtained! (+${PURPLE_GEMS.armor.bonus} DEF)`);
-                    this.ui.showDialog(`The boss crumbles and drops the ${PURPLE_GEMS.armor.name}!`, () => {
+                    this.ui.showDialog(`The titan crumbles, and the chest at the back of his lair falls open. Inside is the ${PURPLE_GEMS.armor.name}!`, () => {
                         this.ui.showDialog(`All your armor gains +${PURPLE_GEMS.armor.bonus} additional defense!`, () => {
                             this.ui.showNotification(`${CAVE_GAUNTLET.icon} ${CAVE_GAUNTLET.name} obtained! (+${CAVE_GAUNTLET.damageBonus} DMG)`);
                             this.ui.showDialog(`Among the shards you find the ${CAVE_GAUNTLET.name}! All your weapons deal +${CAVE_GAUNTLET.damageBonus} additional damage.`);
@@ -1097,8 +1130,9 @@ class Game {
                 this.ui.showDialog("The Green Knight crumbles and drops a shimmering Magic Charm!", () => {
                     this.ui.showDialog(`The ${MAGIC_CHARM.name} empowers all your weapons with +${MAGIC_CHARM.damageBonus} attack damage!`, () => {
                         this.ui.showGameOver(true,
-                            "The Green Knight has been vanquished! Ingoizer is the true champion of the realm. " +
-                            "Both the Black Knight and the Green Knight have fallen. The land is forever free! " +
+                            "The Green Knight has been vanquished, and the realm is free of him. It is a strange kind of victory: " +
+                            "the man in the green armour was your cousin, fighting for a father who walked out on the family " +
+                            "long before either of you was born. Two Ingoizers have fallen to a third, and the name outlives all of them. " +
                             `Monsters defeated: ${this.player.monstersKilled}. ` +
                             "You may continue exploring with all your gear!"
                         );
@@ -1127,9 +1161,13 @@ class Game {
                 // Spawn green monster types
                 this.spawnGreenMonsters();
                 this.ui.showDialog(`The Black Knight drops the ${DARK_CREST.name}! Your max HP increases by ${DARK_CREST.maxHpBonus}!`, () => {
-                    this.ui.showDialog("A mysterious green domain has appeared to the south! Legends speak of the Green Knight and powerful Green Gems within.", () => {
-                        this.ui.showDialog("Find the two Green Gems - one grants attack power, the other grants defense. Collect both to challenge the Green Knight!");
-                        this.ui.showNotification("Green Knight's Domain unlocked!");
+                    this.ui.showDialog("The shroud over Ing Castle thins and lifts. Somewhere inside the great hall, something heavy slides off a rail and hits the floor.", () => {
+                        this.ui.showDialog("Go into the castle. There is a tapestry on the north wall of the great hall that he kept covered, and it is yours to read now.", () => {
+                            this.ui.showDialog("A mysterious green domain has appeared to the south! Legends speak of the Green Knight and powerful Green Gems within.", () => {
+                                this.ui.showDialog("Find the two Green Gems - one grants attack power, the other grants defense. Collect both to challenge the Green Knight!");
+                                this.ui.showNotification("Green Knight's Domain unlocked!");
+                            });
+                        });
                     });
                 });
             }, 3000);
@@ -1328,6 +1366,23 @@ class Game {
             }
         }
 
+        // Check a planted sapling that never took root - the seed can be recovered
+        this.nearSapling = null;
+        const sap = this.world.sapling;
+        if (sap && !sap.rooted && dist(this.player.x, this.player.y, sap.x, sap.y) < 44) {
+            this.nearSapling = sap;
+        }
+
+        // Check the great hall tapestry - only once the Black Knight is gone
+        this.nearTapestry = false;
+        const tapestry = this.world.castleTapestry;
+        if (tapestry && this.bossDefeated) {
+            if (!tapestry.uncovered) tapestry.uncovered = true;
+            if (dist(this.player.x, this.player.y, tapestry.x, tapestry.y) < CASTLE_TAPESTRY.interactRange) {
+                this.nearTapestry = true;
+            }
+        }
+
         // Check Merlin's Hut (for lore access)
         this.nearMerlinHut = false;
         if (this.world.merlinHut) {
@@ -1387,6 +1442,18 @@ class Game {
         if (this.nearShop) {
             this.sound.menuSelect();
             this.ui.openShop(this.nearShop, this.player);
+            return;
+        }
+
+        // Dig a rootless sapling back up for its seed
+        if (this.nearSapling) {
+            this.uprootSapling();
+            return;
+        }
+
+        // The family tapestry in Ing Castle's great hall
+        if (this.nearTapestry) {
+            this.readCastleTapestry();
             return;
         }
 
@@ -1831,8 +1898,100 @@ class Game {
             this.caveBoss.spawn();
             this.sound.bossRoar();
             this.ui.showDialog(`The ground shakes as ${bossConfig.name} rises from the cave floor...`);
-            this.ui.showDialog(`"None shall plunder my domain!"`);
+            if (this.tapestryRead) {
+                // The player has read the tapestry and knows exactly who this is.
+                this.ui.showDialog(`"So you found the hall, and you found the weaving, and you came down here anyway."`);
+                this.ui.showDialog(`"Cousin. My brothers and I cut every one of these tunnels with our own hands, because down here there is no sun and no sky and nobody to tell us what our name means. You killed our father. Get out of our dark."`);
+            } else {
+                this.ui.showDialog(`"You brought daylight in with you. We dug all four of these caves to be rid of it."`);
+                this.ui.showDialog(`"None shall plunder my domain!"`);
+            }
         }
+    }
+
+    // Mark a spoiler lore entry earned. It appears on Merlin's shelf from here on.
+    unlockLore(key) {
+        if (this.loreUnlocks[key]) return false;
+        this.loreUnlocks[key] = true;
+        return true;
+    }
+
+    // The great hall, after the Black Knight. The drape he hung over the north
+    // wall comes down and the family tree underneath turns out to be Ingoizer's
+    // own - which makes the man he has just killed his uncle.
+    readCastleTapestry() {
+        this.sound.menuSelect();
+        if (this.tapestryRead) {
+            this.ui.showDialog(
+                "\"Ingoizer\" is stitched across the top of the tapestry in gold thread, once, over all of it. " +
+                "Your uncle's branch is still there beside your father's. Nobody has cut it out."
+            );
+            return;
+        }
+
+        this.tapestryRead = true;
+        GameAnalytics.track("tapestry-read");
+        this.unlockLore("tapestry");
+
+        this.ui.showDialog(
+            "The great hall is quiet now. The black drape over the north wall slides off its rail and lands in a heap, " +
+            "and what it was hiding is a tapestry: a family tree, woven generations ago.",
+            () => {
+                this.ui.showDialog(
+                    "You know it. You have had the same names recited at you since you could walk \u2014 the same branches, " +
+                    "in the same order, ending at the same place. It is the tree of the house of Ingoizer. It is yours.",
+                    () => {
+                        this.ui.showDialog(
+                            "Beside your father there is a brother. Nobody ever spoke of him. He is the man lying in black armour " +
+                            "on the flagstones behind you. The Black Knight was your uncle.",
+                            () => {
+                                this.ui.showDialog(
+                                    "He read the family name as a curse and walked out to find a better fate. You read it as a promise " +
+                                    "and stayed. That is the whole of the difference between you.",
+                                    () => {
+                                        this.ui.showDialog(
+                                            "The tapestry does not end with him. Below his name is a row of sons \u2014 your cousins. " +
+                                            "The Green Knight in the southern woods. The wardens who dug the caves. " +
+                                            "Every one of them is family, and every one of them is still refusing the name.",
+                                            () => {
+                                                this.ui.showNotification("\ud83e\uddf5 The truth of the Black Knight is written in Merlin's lore.");
+                                            }
+                                        );
+                                    }
+                                );
+                            }
+                        );
+                    }
+                );
+            }
+        );
+    }
+
+    // Every chest that should be on screen right now, with the state of its
+    // lid. Maze caves keep theirs in the middle; boss caves keep theirs behind
+    // the guardian, shut until he falls.
+    visibleChests() {
+        if (!this.inCave) return [];
+        const caveWorld = this.caveWorlds[this.activeCaveId];
+        if (!caveWorld) return [];
+        const chests = [];
+        if (caveWorld.treasurePos) {
+            // Nudged a tile clear of the centre exit so the chest and the
+            // ladder out of the maze do not sit on top of one another.
+            chests.push({
+                x: caveWorld.treasurePos.x,
+                y: caveWorld.treasurePos.y - TILE_SIZE,
+                opened: !!this.caveTreasureCollected[this.activeCaveId],
+            });
+        }
+        if (caveWorld.hoardPos) {
+            chests.push({
+                x: caveWorld.hoardPos.x,
+                y: caveWorld.hoardPos.y,
+                opened: !!this.caveBossDefeated[this.activeCaveId],
+            });
+        }
+        return chests;
     }
 
     checkCaveTreasure() {
@@ -1854,7 +2013,7 @@ class Game {
                 this.player.addHealthPotion("regular");
                 this.player.addHealthPotion("regular");
                 this.ui.showNotification(`Found ${coins} gold and 2 Health Potions!`);
-                this.ui.showDialog("You found a treasure chest in the center of the maze!");
+                this.ui.showDialog("A treasure chest sits at the dead centre of the maze. The lid swings up on gold and two stoppered flasks \u2014 somebody hauled this down here on purpose, and meant to come back for it.");
             } else if (ce.difficulty === 2) {
                 // SE cave: purple gem (health) + health potion
                 this.player.purpleGemHealth = true;
@@ -1862,7 +2021,7 @@ class Game {
                 this.player.hp = Math.min(this.player.hp + PURPLE_GEMS.health.bonus, this.player.maxHp);
                 this.player.addHealthPotion("regular");
                 this.ui.showNotification(`${PURPLE_GEMS.health.icon} ${PURPLE_GEMS.health.name} found! +${PURPLE_GEMS.health.bonus} Max HP`);
-                this.ui.showDialog(`The ${PURPLE_GEMS.health.name} pulses with healing energy! Your maximum health has increased!`);
+                this.ui.showDialog(`The chest at the heart of the maze opens on a single stone. The ${PURPLE_GEMS.health.name} pulses with healing energy! Your maximum health has increased!`);
             }
         }
     }
@@ -1925,13 +2084,128 @@ class Game {
     onSkyLadderRevealed() {
         this.sound.excaliburReveal();
         this.ui.showNotification("A ladder into the clouds is revealed!");
+        this.player.hasWorldtreeSeed = true;
+        this.unlockLore("seed");
         this.ui.showDialog(
             "The Worldtree burns away to ash and leaves a ladder standing in empty air, climbing up " +
             "past the clouds until you lose sight of it.",
             () => {
-                this.ui.showDialog("Press E at the ladder to climb into the Cloudlands. Whatever lives up there is far stronger than anything below.");
+                this.ui.showDialog(
+                    "One thing survives the fire. In the middle of the ash there is a seed the size of a thumbnail, " +
+                    "far heavier than it has any right to be, and still warm. It is a Worldtree, entire, waiting.",
+                    () => {
+                        this.ui.showNotification(`${WORLDTREE_SEED.icon} ${WORLDTREE_SEED.name} obtained!`);
+                        this.ui.showDialog(
+                            "You can plant it wherever you like \u2014 open the inventory and use it, or press P where you stand. " +
+                            "But a Worldtree is not an ordinary tree, and it will only take root in the ground it came from.",
+                            () => {
+                                this.ui.showDialog("Press E at the ladder to climb into the Cloudlands. Whatever lives up there is far stronger than anything below.");
+                            }
+                        );
+                    }
+                );
             }
         );
+    }
+
+    // ============================================
+    // The Worldtree Seed
+    // ============================================
+
+    // Push the seed into the ground under Ingoizer's feet. Planted back in the
+    // ash it came from, the Worldtree grows again and Zeus's first complaint
+    // stops being true; planted anywhere else it is just a sapling, and can be
+    // dug up and carried on.
+    plantWorldtreeSeed() {
+        if (!this.onSurface) {
+            this.ui.showNotification("There is no ground to plant in here.");
+            return;
+        }
+        if (!this.player.hasWorldtreeSeed) return;
+
+        const sapling = this.world.plantSeed(this.player.x, this.player.y);
+        if (!sapling) {
+            this.ui.showNotification("Nothing will take root here.");
+            return;
+        }
+
+        this.player.hasWorldtreeSeed = false;
+        this.sound.gemCollect();
+
+        if (!sapling.rooted) {
+            this.ui.showNotification(`${WORLDTREE_SEED.icon} Seed planted.`);
+            this.ui.showDialog(
+                "You press the seed into the soil and a sapling comes up almost at once \u2014 a good one, green and " +
+                "ordinary, and no more than that. This is not the ground it wanted. Press E at the sapling to dig the seed up again."
+            );
+            return;
+        }
+
+        GameAnalytics.track("worldtree-replanted");
+        this.ui.showNotification("\ud83c\udf33 The seed takes root in the ash!");
+        this.ui.showDialog(
+            "You push the seed into the ash on the exact spot the old trunk stood, and the ground answers. " +
+            "A shoot comes up under your hands and does not stop coming up."
+        );
+    }
+
+    // A rooted seed finishing its climb: the Worldtree stands again, and the
+    // quarrel Zeus was going to pick with you is settled before it starts.
+    onWorldtreeRegrown() {
+        this.worldtreeRestored = true;
+        this.sound.divineChime();
+        this.ui.showDialog(
+            "The Worldtree stands again. It is young and thin and it goes up through the hole you tore in the sky, " +
+            "twining round the ladder without closing it, and the boundary between the two countries is whole.",
+            () => {
+                if (this.olympianDefeated) {
+                    this.ui.showDialog("Somewhere far above, in a Cloudlands with no king left in it, the weather turns gentle for a moment.");
+                    return;
+                }
+                if (this.olympianSpawned) {
+                    // Too late to talk: he is already wearing his family as armour.
+                    this.ui.showDialog(
+                        "Far above, the storm over the Temple of Olympus falters for a heartbeat \u2014 and then closes again. " +
+                        "You put the tree back one quarrel too late. Zeus is already out of his temple, and he will have to be fought."
+                    );
+                    return;
+                }
+                this.zeusAppeased = true;
+                this.ui.showDialog(
+                    "\"YOU PUT IT BACK.\" The voice is not sound; it is weather, and it is coming from directly overhead.",
+                    () => {
+                        this.ui.showDialog(
+                            "\"I had two quarrels with you, mortal. That you burned the boundary stone between my country and yours, " +
+                            "and that you had no business standing in mine. You have answered the first. The second dies with it \u2014 " +
+                            "a man who mends a Worldtree has business anywhere it grows.\"",
+                            () => {
+                                if (!this.player.hasZeusBolts) {
+                                    this.player.hasZeusBolts = true;
+                                    this.sound.victoryFanfare();
+                                    this.ui.showNotification(`${ZEUS_BOLT.icon} Zeus grants you his lightning! (+${ZEUS_BOLT.damageBonus} DMG)`);
+                                }
+                                this.ui.showDialog(
+                                    `The arrows in your quiver crackle and change without a blow being struck. Every one of them is a bolt of ` +
+                                    `Zeus now, and every arrow you pick up from here will become one too. +${ZEUS_BOLT.damageBonus} damage on top of your bow.`,
+                                    () => {
+                                        this.ui.showDialog("\"Climb when you like. I will be at the temple, and I will not raise a hand to you.\"");
+                                    }
+                                );
+                            }
+                        );
+                    }
+                );
+            }
+        );
+    }
+
+    // Dig an unrooted sapling back up.
+    uprootSapling() {
+        if (!this.world.uprootSapling()) return;
+        this.player.hasWorldtreeSeed = true;
+        this.sound.applePickup();
+        this.ui.showNotification(`${WORLDTREE_SEED.icon} ${WORLDTREE_SEED.name} recovered.`);
+        this.ui.showDialog("The sapling comes up easily, and the seed at its root is as whole and as heavy as the day the fire left it.");
     }
 
     // Pull world-level events out of the combat system (arrows hitting the Worldtree).
@@ -1987,7 +2261,13 @@ class Game {
         this.zoneDisplayTimer = 3000;
         this.sound.divineChime();
         this.ui.showNotification("You climb into the Cloudlands.");
-        if (!this.olympianSummoned && !this.olympianDefeated) {
+        if (this.zeusAppeased && !this.zeusMetInPeace) {
+            this.ui.showDialog(
+                "You haul yourself over the edge onto ground that should not hold your weight, and nothing challenges you. " +
+                "The keepers of the Cloudlands watch you pass and let you pass."
+            );
+            this.ui.showDialog("The temple of white marble at the centre of the islands has its doors open. Somebody is waiting on the steps.");
+        } else if (!this.olympianSummoned && !this.olympianDefeated) {
             this.ui.showDialog(
                 "You haul yourself over the edge onto ground that should not hold your weight. Islands of " +
                 "hardened cloud drift above a blue abyss, and a temple of white marble waits at the centre of them."
@@ -2078,7 +2358,7 @@ class Game {
     }
 
     onSkyMonsterSlain() {
-        if (this.olympianSummoned || this.olympianDefeated) return;
+        if (this.olympianSummoned || this.olympianDefeated || this.zeusAppeased) return;
         this.skyMonsterKills++;
         if (this.skyMonsterKills < SKY_MONSTERS_TO_SUMMON) {
             this.ui.showNotification(
@@ -2102,7 +2382,47 @@ class Game {
         );
     }
 
+    // With the Worldtree back in the ground Zeus has nothing left to fight
+    // about. He meets you at the temple instead, and the Cloudlands stay quiet.
+    checkZeusPeaceMeeting() {
+        if (!this.zeusAppeased || this.zeusMetInPeace || this.olympianSpawned || this.olympianDefeated) return;
+        const t = this.skyWorld.bossSpawnTile;
+        if (!t) return;
+        const pos = tileToWorld(t.x, t.y);
+        if (dist(this.player.x, this.player.y, pos.x, pos.y) > 240) return;
+
+        this.zeusMetInPeace = true;
+        GameAnalytics.track("olympus-peace");
+        this.sound.divineChime();
+        this.ui.showDialog(
+            "The temple doors stand open and nothing comes out of them at a run. Zeus is sitting on the steps " +
+            "with his chin on his fist, watching a green shoot far below climb the hole in his sky.",
+            () => {
+                this.ui.showDialog(
+                    "\"Every mortal who has ever come up that ladder came up it to take something from me. You came up " +
+                    "having already given it back.\"",
+                    () => {
+                        this.ui.showDialog(
+                            "\"Keep the bolts. Keep the Cloudlands, for as long as you can stand the walk. And when that tree " +
+                            "is tall enough to hold the sky apart on its own, come up and tell me.\"",
+                            () => {
+                                this.ui.showGameOver(true,
+                                    "You have made peace with the King of Olympus without lifting your sword to him. Ingoizer, who woke in the " +
+                                    "Green Meadow with a rusty sword, burned down a Worldtree, carried its last seed across the whole realm, " +
+                                    "and put it back where it belonged. Zeus's lightning rides in your quiver, freely given. " +
+                                    `Monsters defeated: ${this.player.monstersKilled}. ` +
+                                    "The realm below, the caves beneath and the heavens above are all yours to wander."
+                                );
+                            }
+                        );
+                    }
+                );
+            }
+        );
+    }
+
     checkOlympianTrigger() {
+        if (this.zeusAppeased) return;
         if (!this.olympianSummoned || this.olympianSpawned || this.olympianDefeated) return;
         const t = this.skyWorld.bossSpawnTile;
         if (!t) return;
@@ -2115,7 +2435,11 @@ class Game {
         this.sound.zeusRoar();
         this.ui.showDialog("A bolt splits the temple roof and a figure steps out of the light, crowned in lightning.", () => {
             this.ui.showDialog("\"I am Zeus, and you are a long way from your meadow, Ingoizer.\"", () => {
-                this.ui.showDialog("\"Strike me if you can. You will find there is always another of us behind the one you hit.\"");
+                this.ui.showDialog("\"You burned the Worldtree. It was not a door and it was not a staircase \u2014 it was the boundary stone between your country and mine, and it was older than either of us, and you set fire to it to save yourself a walk.\"", () => {
+                    this.ui.showDialog("\"And now you stand in the Cloudlands. Nothing up here was made for mortals. You do not belong in my country, and you burned down the only thing that was holding it apart from yours.\"", () => {
+                        this.ui.showDialog("\"Strike me if you can. You will find there is always another of us behind the one you hit.\"");
+                    });
+                });
             });
         });
     }
@@ -2242,6 +2566,14 @@ class Game {
         const riddles = shuffled.slice(0, FOUNTAIN_OF_YOUTH.riddleCount);
 
         this.fountainRiddleState = { riddles, currentIndex: 0, correct: 0 };
+        if (!this.fountainIntroShown) {
+            this.fountainIntroShown = true;
+            this.ui.showDialog(
+                "The water stills, and the voice that comes out of it is the one from Crystal Lake. " +
+                "\"Both waters are mine, Ingoizer \u2014 the lake and the fountain alike. At the lake I ask you for courage. " +
+                "Here I ask you for wit. Answer me three times.\""
+            );
+        }
         this.askNextFountainRiddle();
     }
 
@@ -2258,7 +2590,7 @@ class Game {
             }
             this.sound.excaliburReveal();
             this.ui.showNotification(`Health restored! +${FOUNTAIN_OF_YOUTH.potionsGiven} Health Potions!`);
-            this.ui.showDialog("The Fountain of Youth glows with radiant light! You feel completely rejuvenated!");
+            this.ui.showDialog("The Fountain of Youth glows with radiant light and you feel completely rejuvenated! \"Well answered,\" says the Lady of the Lake, from the water. \"Go carefully.\"");
             return;
         }
 
@@ -2272,7 +2604,7 @@ class Game {
             // Wrong
             this.fountainRiddleState = null;
             this.fountainCooldownUntil = Date.now() + FOUNTAIN_OF_YOUTH.wrongAnswerCooldown;
-            this.ui.showNotification("The fountain goes quiet. Return in 3 minutes.");
+            this.ui.showNotification("The Lady withdraws from the fountain. Return in 3 minutes.");
         });
     }
 
@@ -2300,7 +2632,9 @@ class Game {
             this.sound.bossRoar();
 
             this.ui.showDialog("The ground trembles as a towering figure in green armor emerges...");
-            this.ui.showDialog("\"I am The Green Knight! You dare enter my domain, Ingoizer? Prepare yourself!\"");
+            this.ui.showDialog("\"I am The Green Knight. I know your name, Ingoizer. I have known it my whole life.\"");
+            this.ui.showDialog("\"The man you cut down at Ing Castle was my father. He gave up a house and a destiny to raise us out of sight of it, and you walked into his hall and took him from us in an afternoon.\"");
+            this.ui.showDialog("\"I do not want the realm. I do not want the gems. I want you. Prepare yourself.\"");
             this.ui.showDialog("The battle for the Green Knight's Domain begins!");
         }
     }
@@ -2392,6 +2726,17 @@ class Game {
             renderables.push({ y: this.caveBoss.y, render: () => this.caveBoss.render(ctx, this.camera, this.time) });
         }
 
+        // Treasure chests: the prize at the heart of a maze cave, and the
+        // guardian's own hoard at the back of a boss lair.
+        for (const chest of this.visibleChests()) {
+            renderables.push({
+                y: chest.y,
+                render: () => TreasureChestSprite.draw(
+                    ctx, chest.x - this.camera.x, chest.y - this.camera.y, chest.opened, this.time
+                ),
+            });
+        }
+
         // Green Knight (surface only)
         if (this.onSurface && this.greenKnight && this.greenKnight.spawned) {
             renderables.push({ y: this.greenKnight.y, render: () => this.greenKnight.render(ctx, this.camera, this.time) });
@@ -2457,6 +2802,14 @@ class Game {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to climb out" : "Press E to climb out");
         } else if (this.nearShop) {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to enter shop" : "Press E to enter shop");
+        } else if (this.onSurface && this.player.hasWorldtreeSeed && this.world.isWorldtreeGround(this.player.x, this.player.y)) {
+            this.ui.renderInteractionPrompt(ctx, isMobile
+                ? "This is the ground it came from - plant the seed from your inventory"
+                : "This is the ground it came from - press P to plant the Worldtree Seed");
+        } else if (this.nearSapling) {
+            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to dig up the seed" : "Press E to dig up the Worldtree Seed");
+        } else if (this.nearTapestry) {
+            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to read the tapestry" : "Press E to read the tapestry");
         } else if (this.nearLady) {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to speak with the Lady" : "Press E to speak with the Lady of the Lake");
         } else if (this.nearMerlin) {

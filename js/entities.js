@@ -89,6 +89,10 @@ class Player {
         // Zeus's lightning bolts - every arrow becomes a bolt (+4 bow damage)
         this.hasZeusBolts = false;
 
+        // The seed left in the Worldtree's ashes. Carried until it is planted,
+        // and recoverable again from any sapling that failed to take root.
+        this.hasWorldtreeSeed = false;
+
         // Health potion inventory
         this.healthPotions = 0;        // regular potions (heal 40)
         this.greaterHealthPotions = 0; // greater potions (heal 80)

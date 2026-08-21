@@ -272,62 +272,88 @@ const COLORS = {
     shopMarker: "#ffaa00",
 };
 
-// Merlin's Hut Lore - Ancient texts and game story
+// Merlin's Hut Lore - Ancient texts and game story.
+// Entries with an `unlock` key stay out of the library until the game marks
+// that key discovered (see Game.unlockLore). They carry story the player is
+// meant to find out in the world first, not read ahead of time.
 const MERLIN_LORE = [
     {
         title: "The Legend of Ingoizer",
-        icon: "⚔️",
-        text: "In an age of shadow and fading hope, a young knight named Ingoizer arose from the humble Green Meadow. Though armed with only a rusty sword and bow, his heart burned with courage that no darkness could extinguish. Destiny chose him to reclaim the stolen Blue Gems and restore peace to a land gripped by evil. His journey would take him through treacherous forests, scorching deserts, and haunted ruins — but Ingoizer would not falter, for the fate of the realm rested upon his shoulders."
+        icon: "\u2694\ufe0f",
+        text: "Ingoizer is not a first name. It is a last one. For as long as the realm has kept records there have been Ingoizers, and every one of them was born to the same strange inheritance: trouble finds them, and they are the only ones who can end it. In an age of shadow and fading hope the newest of that line woke in the humble Green Meadow with a rusty sword, a rusty bow, and no idea what his own surname meant. Destiny chose him to reclaim the stolen Blue Gems and restore peace to a land gripped by evil. His journey would take him through treacherous forests, scorching deserts, and haunted ruins \u2014 but Ingoizer would not falter, for the fate of the realm rested upon his shoulders."
+    },
+    {
+        title: "The House of Ingoizer",
+        icon: "\ud83d\udcdc",
+        text: "The old houses of the realm each carry a word. The house of Ingoizer carries two, and they contradict each other. Some of the family read the line as a curse: an Ingoizer is born into danger, buries more of his kin than any man should, and is never allowed a quiet life. Others read exactly the same line as a promise: only an Ingoizer will be standing when the world needs saving, because only an Ingoizer is made for it. Both readings are true. That is the whole difficulty. Every generation someone in the family must decide which half they believe \u2014 and not everyone has decided the way you would hope."
     },
     {
         title: "The Five Blue Gems",
-        icon: "💎",
-        text: "Long ago, five Blue Gems of immense power were forged in the heart of Crystal Lake by the ancient elemental spirits. Each gem holds the essence of a primal force — Fire, Water, Ice, Lightning, and Earth. Scattered across the land by a great cataclysm, the gems call out to those brave enough to seek them. When united, they grant the bearer mastery over all five elements and the strength to challenge even the darkest of foes. Monsters who have absorbed their energy may carry gem fragments within."
+        icon: "\ud83d\udc8e",
+        text: "Long ago, five Blue Gems of immense power were forged in the heart of Crystal Lake by the ancient elemental spirits. Each gem holds the essence of a primal force \u2014 Fire, Water, Ice, Lightning, and Earth. Scattered across the land by a great cataclysm, the gems call out to those brave enough to seek them. When united, they grant the bearer mastery over all five elements and the strength to challenge even the darkest of foes. Monsters who have absorbed their energy may carry gem fragments within."
     },
     {
         title: "Merlin the Wizard",
-        icon: "🧙",
+        icon: "\ud83e\uddd9",
         text: "I, Merlin, have walked these lands for centuries, watching kingdoms rise and fall. My swamp may seem humble, but it is steeped in ancient magic. I once served as advisor to the great kings of Ing Castle, until the Black Knight drove me into exile. My Enchanter's Mallet, a relic of the old world, can imbue weapons and armor with elemental fury. Though my powers have waned without my wand, my knowledge endures. Seek wisdom, young Ingoizer, for brute strength alone will not save the realm."
     },
     {
         title: "The Black Knight",
-        icon: "🖤",
-        text: "None know the Black Knight's true name — only that he appeared from the shadows when the gems were scattered. Clad in armor darker than midnight, with eyes that glow like embers of hate, he seized Ing Castle and claimed the gems as his own. His power grows with each passing day, feeding on the fear of the land. He commands legions of monsters and dark magic that grows stronger the longer the gems remain apart. Only one who carries all five gems can force him from the shadows to face battle."
+        icon: "\ud83d\udda4",
+        text: "None know the Black Knight's true name \u2014 only that he was somebody's son before he was anybody's terror. He was not born in shadow. He walked into it, on a night he decided that the name he had been given was a curse and nothing more, and that a cursed man owes the world nothing. He left his family, his house and his destiny behind him in one stride, and by morning nobody could say where he had gone. When the gems were scattered he came back clad in armor darker than midnight, with eyes that glow like embers of hate. He seized Ing Castle and claimed the gems as his own. He commands legions of monsters and dark magic that grows stronger the longer the gems remain apart. Only one who carries all five gems can force him from the shadows to face battle."
     },
     {
         title: "Ing Castle",
-        icon: "🏰",
-        text: "Ing Castle once stood as a beacon of hope and justice, home to noble kings who ruled with wisdom and compassion. Its walls were built from enchanted stone, said to be unbreakable by mortal weapons. When the Black Knight conquered the castle, a dark shroud fell over its towers, and the once-golden banners turned to ash. The castle gates remain sealed to all but those who carry the five Blue Gems. Beyond those gates, the Black Knight waits, drawing power from the very stones that once protected the realm."
+        icon: "\ud83c\udff0",
+        text: "Ing Castle once stood as a beacon of hope and justice, home to noble kings who ruled with wisdom and compassion. Its walls were built from enchanted stone, said to be unbreakable by mortal weapons. When the Black Knight conquered the castle, a dark shroud fell over its towers, and the once-golden banners turned to ash. The castle gates remain sealed to all but those who carry the five Blue Gems. Beyond those gates, the Black Knight waits, drawing power from the very stones that once protected the realm. The great hall keeps one thing he never took down: an old woven family tree on the north wall, hung there long before he came, and covered over the day he did."
+    },
+    {
+        title: "The Tapestry in the Great Hall",
+        icon: "\ud83e\uddf5",
+        unlock: "tapestry",
+        text: "The Black Knight is dead and the shroud over Ing Castle has lifted, and the thing he kept covered all these years is only a tapestry. It is a family tree. It is your family tree \u2014 the same names, the same branches, stitched in the same order your own house has recited them for generations \u2014 and the branch beside your father's is a brother nobody ever mentioned to you. The armour you have just left cooling on the flagstones belongs to your uncle. He believed the name Ingoizer was a curse, so he left the family and went looking for a destiny he liked better. You believed it was a promise, so you stayed. That is the only difference there has ever been between the two of you."
+    },
+    {
+        title: "The Sons of the Black Knight",
+        icon: "\ud83c\udf3f",
+        unlock: "tapestry",
+        text: "The tapestry does not stop at your uncle. It goes on, into a row of sons \u2014 your cousins, every one of them, and you have met most of them already with a sword in your hand. Their father raised them underground and out of sight, and they grew up hating the sun that had shone on the family that let him leave. The eldest, the Green Knight, took the southern woods and holds them still; he does not want the realm, he wants the man who killed his father. His brothers went down instead of out. The Stone Warden and the Crystal Titan dug the four caves themselves, hollow by hollow, for no better reason than that a cave has no sky in it, and they have guarded their own dark ever since. They are not monsters that wandered in. They are the family, still refusing the name."
     },
     {
         title: "The Lady of the Lake",
-        icon: "🌊",
-        text: "At the heart of Crystal Lake dwells the Lady of the Lake, an ethereal guardian who has watched over Excalibur since time immemorial. She is neither mortal nor spirit, but something in between — a keeper of ancient promises. The legendary sword Excalibur, forged by gods and tempered in starlight, rests in her care. She will bestow it only upon a warrior who proves their worth by recovering its jewel-encrusted sheath from the fearsome Sheath Guardian Troll that lurks in the Dark Forest."
+        icon: "\ud83c\udf0a",
+        text: "At the heart of Crystal Lake dwells the Lady of the Lake, an ethereal guardian who has watched over Excalibur since time immemorial. She is neither mortal nor spirit, but something in between \u2014 a keeper of ancient promises. The legendary sword Excalibur, forged by gods and tempered in starlight, rests in her care. She will bestow it only upon a warrior who proves their worth by recovering its jewel-encrusted sheath from the fearsome Sheath Guardian Troll that lurks in the Dark Forest. Nor is the lake her only water. The Fountain of Youth answers to her as well \u2014 the same hand keeps both, one to test a warrior's courage and one to test their wit \u2014 and when the fountain asks you a riddle, it is the Lady asking."
     },
     {
         title: "The Elemental Powers",
-        icon: "✨",
-        text: "The five elements — Fire, Water, Ice, Lightning, and Earth — are the fundamental forces that shaped this world. Fire burns with untamed fury, consuming all in its path. Water heals and cleanses, but strikes with the force of crashing waves. Ice freezes foes in their tracks, cold and merciless. Lightning strikes with devastating precision, the wrath of storms made manifest. Earth, the most ancient power, shakes the ground itself, stunning all who stand upon it. As Ingoizer collects the Blue Gems, these powers awaken within him. Master them all, and no enemy shall stand."
+        icon: "\u2728",
+        text: "The five elements \u2014 Fire, Water, Ice, Lightning, and Earth \u2014 are the fundamental forces that shaped this world. Fire burns with untamed fury, consuming all in its path. Water heals and cleanses, but strikes with the force of crashing waves. Ice freezes foes in their tracks, cold and merciless. Lightning strikes with devastating precision, the wrath of storms made manifest. Earth, the most ancient power, shakes the ground itself, stunning all who stand upon it. As Ingoizer collects the Blue Gems, these powers awaken within him. Master them all, and no enemy shall stand."
     },
     {
         title: "The Lands of the Realm",
-        icon: "🗺️",
-        text: "The realm stretches from the peaceful Green Meadow in the west to the dread Darklands in the east. Camelot Village shelters honest folk and merchants. The Dark Forest hides dangers and treasures in equal measure. The Scorched Wastes bake under an unforgiving sun, while the Dragon Mountains pierce the clouds with jagged peaks. Merlin's Swamp bubbles with arcane energy, and the Ancient Ruins hold secrets of civilizations long forgotten. Each land harbors unique monsters and challenges for those who dare explore."
+        icon: "\ud83d\uddfa\ufe0f",
+        text: "The realm stretches from the peaceful Green Meadow in the west to the dread Darklands in the east. Camelot Village shelters honest folk and merchants. The Dark Forest hides dangers and treasures in equal measure. The Scorched Wastes bake under an unforgiving sun, while the Dragon Mountains pierce the clouds with jagged peaks. Merlin's Swamp bubbles with arcane energy, and the Ancient Ruins hold secrets of civilizations long forgotten. Beneath all of it run four caves that no river cut and no earthquake opened \u2014 those were dug, by hands, on purpose. Each land harbors unique monsters and challenges for those who dare explore."
     },
     {
         title: "The Worldtree",
-        icon: "🌳",
-        text: "In the farthest northeast corner of the realm, where no road runs and no monster dares nest, there stands a single ancient tree. It was old when the mountains were young. The elders called it the Worldtree, for its roots drink from this world while its crown drinks from another. No axe has ever marked it and no storm has ever bent it — but the old texts whisper of one key: fire loosed from a bowstring. Set a fire arrow into the Worldtree, and what the trunk conceals will finally be laid bare. A ladder. And it does not go down."
+        icon: "\ud83c\udf33",
+        text: "In the farthest northeast corner of the realm, where no road runs and no monster dares nest, there stands a single ancient tree. It was old when the mountains were young. The elders called it the Worldtree, for its roots drink from this world while its crown drinks from another. No axe has ever marked it and no storm has ever bent it \u2014 but the old texts whisper of one key: fire loosed from a bowstring. Set a fire arrow into the Worldtree, and what the trunk conceals will finally be laid bare. A ladder. And it does not go down. Burn it and you will get your ladder. You will also have burned down the only thing holding two worlds together, and the ash will leave you one seed. Do not lose the seed."
+    },
+    {
+        title: "The Worldtree Seed",
+        icon: "\ud83c\udf30",
+        unlock: "seed",
+        text: "One seed came out of the ash, no bigger than a thumbnail and far heavier than it has any right to be. It is a Worldtree, entire, waiting. You may plant it wherever you like and something will grow, because that is what seeds do \u2014 but a Worldtree is not an ordinary tree and it does not want ordinary ground. It wants the ground it came from. Push it into the ash of the northeast corner, on the very spot where the old trunk stood, and it will take root in a night and climb through the hole you tore in the sky. Plant it anywhere else and you will have a sapling, a nice one, and nothing more; dig it up again and you may carry it on. Whatever else you have burned, this can be put back."
     },
     {
         title: "The Cloudlands",
-        icon: "☁️",
-        text: "Above the sky there is another country. Islands of hardened cloud drift over a blue abyss, joined by bridges of vapour, and at their heart stands a temple of white marble that no mortal mason ever raised. This is the Cloudlands. Its guardians — storm harpies, golden griffins, giants of cloud and men of bronze — make the deepest cave troll look like a village nuisance. Slay five of the Cloudlands' keepers and the temple will wake. Something in it has been waiting a very long time for a mortal rude enough to climb."
+        icon: "\u2601\ufe0f",
+        text: "Above the sky there is another country. Islands of hardened cloud drift over a blue abyss, joined by bridges of vapour, and at their heart stands a temple of white marble that no mortal mason ever raised. This is the Cloudlands. Nothing here was built for you; nothing here expects you; there is no door in the whole country that a mortal was ever meant to walk through. Its guardians \u2014 storm harpies, golden griffins, giants of cloud and men of bronze \u2014 make the deepest cave troll look like a village nuisance. Slay five of the Cloudlands' keepers and the temple will wake. Something in it has been waiting a very long time for a mortal rude enough to climb."
     },
     {
         title: "The Twelve Olympians",
-        icon: "⚡",
-        text: "Zeus does not fight as men fight. When he is roused he wears his family like armour: strike him and he is Hera; strike Hera and he is Poseidon, then Demeter, Athena, Apollo, Artemis, Ares, Aphrodite, Hephaestus, Hermes, Dionysus — twelve faces, twelve furies, and not one of them can be slain, for you cannot kill a god by killing the mask. Endure all twelve and the masks run out. What stands before you then is Zeus himself, and Zeus himself can bleed. Break him, and his bolts become your arrows."
+        icon: "\u26a1",
+        text: "Zeus has two complaints against you and he will make both of them before he makes a fist. The first is the Worldtree: it was his family's boundary stone as much as this realm's, and you burned it down to make yourself a staircase. The second is simpler \u2014 you are standing in his country, and mortals do not belong in the Cloudlands. Then he fights, and he does not fight as men fight. When he is roused he wears his family like armour: strike him and he is Hera; strike Hera and he is Poseidon, then Demeter, Athena, Apollo, Artemis, Ares, Aphrodite, Hephaestus, Hermes, Dionysus \u2014 twelve faces, twelve furies, and not one of them can be slain, for you cannot kill a god by killing the mask. Endure all twelve and the masks run out. What stands before you then is Zeus himself, and Zeus himself can bleed. Break him, and his bolts become your arrows. There is another way, and it is not a sword. Answer the first complaint before you ever climb, and the second one dies with it."
     },
 ];
 
@@ -348,6 +374,14 @@ const GREEN_KNIGHT = {
         { hpThreshold: 0.5, speed: 1.4, attackRate: 900, pattern: "poison" },
         { hpThreshold: 0.25, speed: 1.7, attackRate: 650, pattern: "frenzy" },
     ],
+};
+
+// The woven family tree on the north wall of Ing Castle's great hall. It only
+// becomes readable once the Black Knight has fallen and the shroud lifts.
+const CASTLE_TAPESTRY = {
+    tileX: 183,          // north wall of the great hall, above the gate line
+    tileY: 56,
+    interactRange: 56,
 };
 
 // Black Knight power-up drop
@@ -656,6 +690,17 @@ const SKY_TREE = {
     radius: 1,          // canopy is a (radius*2+1) square of solid tree tiles
     burnTime: 3600,     // ms the tree burns before the ladder is revealed
     ladderRange: 46,    // interaction range for the revealed ladder
+};
+
+// The seed left in the ashes of the Worldtree. Planting it back on the spot
+// the old trunk stood regrows the tree and settles Zeus's grievance without a
+// fight; planting it anywhere else just grows a sapling you can dig up again.
+const WORLDTREE_SEED = {
+    name: "Worldtree Seed",
+    icon: "\ud83c\udf30",
+    description: "All that survived the fire. Plant it \u2014 but a Worldtree wants the ground it came from.",
+    plantRange: 60,      // how close to the ashes counts as the right ground
+    growTime: 2600,      // ms a rightly planted seed takes to become a Worldtree
 };
 
 // Sky world dimensions (in tiles) - a wide, shallow archipelago of clouds

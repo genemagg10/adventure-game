@@ -113,7 +113,7 @@ class UIManager {
         });
 
         document.getElementById("lore-next").addEventListener("click", () => {
-            if (this.lorePage < MERLIN_LORE.length - 1) {
+            if (this.lorePage < this.unlockedLore().length - 1) {
                 this.lorePage++;
                 this.renderLorePage();
             }
@@ -189,7 +189,7 @@ class UIManager {
         // Cloudlands keeper counter (only while up in the sky, before the summon)
         const skyEl = document.getElementById("sky-counter");
         if (skyEl) {
-            if (this.game.inSky && !this.game.olympianSummoned && !this.game.olympianDefeated) {
+            if (this.game.inSky && !this.game.olympianSummoned && !this.game.olympianDefeated && !this.game.zeusAppeased) {
                 skyEl.classList.remove("hidden");
                 document.getElementById("sky-kill-count").textContent = this.game.skyMonsterKills;
             } else {
@@ -862,6 +862,13 @@ class UIManager {
         if (player.purpleGemArmor) relics.push({ icon: PURPLE_GEMS.armor.icon, name: PURPLE_GEMS.armor.name, detail: PURPLE_GEMS.armor.description, tone: "violet" });
         if (player.hasRainbowGem) relics.push({ icon: RAINBOW_GEM.icon, name: RAINBOW_GEM.name, detail: RAINBOW_GEM.description, tone: "rainbow" });
         if (player.hasZeusBolts) relics.push({ icon: ZEUS_BOLT.icon, name: ZEUS_BOLT.name, detail: `+${ZEUS_BOLT.damageBonus} bow damage`, tone: "gold" });
+        if (player.hasWorldtreeSeed) relics.push({
+            icon: WORLDTREE_SEED.icon,
+            name: WORLDTREE_SEED.name,
+            detail: WORLDTREE_SEED.description,
+            tone: "green",
+            action: "plant",
+        });
         return relics;
     }
 
@@ -875,8 +882,14 @@ class UIManager {
         for (const relic of relics) {
             const card = document.createElement(relic.action ? "button" : "article");
             card.className = `relic-card ${relic.tone}`;
-            card.innerHTML = `<span>${relic.icon}</span><div><strong>${relic.name}</strong><small>${relic.detail}</small></div>${relic.action ? "<b>Use ›</b>" : ""}`;
-            if (relic.action) {
+            const actionLabel = relic.action === "plant" ? "Plant ›" : "Use ›";
+            card.innerHTML = `<span>${relic.icon}</span><div><strong>${relic.name}</strong><small>${relic.detail}</small></div>${relic.action ? `<b>${actionLabel}</b>` : ""}`;
+            if (relic.action === "plant") {
+                card.addEventListener("click", () => {
+                    this.closeInventory();
+                    this.game.plantWorldtreeSeed();
+                });
+            } else if (relic.action) {
                 card.addEventListener("click", () => {
                     this.closeInventory();
                     this.openEnchant(player);
@@ -1197,6 +1210,14 @@ class UIManager {
     }
 
     // Lore system (Merlin's Hut)
+    // Entries carrying a spoiler stay out of the library until the game marks
+    // their unlock key discovered, so the shelf only ever holds what Ingoizer
+    // could actually know by now.
+    unlockedLore() {
+        const unlocked = (this.game && this.game.loreUnlocks) || {};
+        return MERLIN_LORE.filter(entry => !entry.unlock || unlocked[entry.unlock]);
+    }
+
     openLore() {
         this.loreOverlay.classList.remove("hidden");
         this.lorePage = 0;
@@ -1204,15 +1225,18 @@ class UIManager {
     }
 
     renderLorePage() {
-        const entry = MERLIN_LORE[this.lorePage];
+        const pages = this.unlockedLore();
+        this.lorePage = clamp(this.lorePage, 0, Math.max(0, pages.length - 1));
+        const entry = pages[this.lorePage];
+        if (!entry) return;
         this.loreContent.innerHTML = `
             <div class="lore-entry-icon">${entry.icon}</div>
             <div class="lore-entry-title">${entry.title}</div>
             <div class="lore-entry-text">${entry.text}</div>
         `;
-        document.getElementById("lore-page-num").textContent = `${this.lorePage + 1} / ${MERLIN_LORE.length}`;
+        document.getElementById("lore-page-num").textContent = `${this.lorePage + 1} / ${pages.length}`;
         document.getElementById("lore-prev").disabled = this.lorePage === 0;
-        document.getElementById("lore-next").disabled = this.lorePage === MERLIN_LORE.length - 1;
+        document.getElementById("lore-next").disabled = this.lorePage === pages.length - 1;
     }
 
     closeLore() {
@@ -1226,12 +1250,14 @@ class UIManager {
     // Interaction prompt
     renderInteractionPrompt(ctx, text) {
         ctx.save();
-        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-        const w = ctx.measureText(text).width + 20;
-        ctx.fillRect(CANVAS_W / 2 - w / 2, CANVAS_H - 80, w, 24);
-        ctx.fillStyle = "#ffd700";
+        // Measure with the font the text is actually drawn in, or the backing
+        // plate comes out narrower than the prompt sitting on it.
         ctx.font = "14px monospace";
         ctx.textAlign = "center";
+        const w = ctx.measureText(text).width + 20;
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(CANVAS_W / 2 - w / 2, CANVAS_H - 80, w, 24);
+        ctx.fillStyle = "#ffd700";
         ctx.fillText(text, CANVAS_W / 2, CANVAS_H - 63);
         ctx.restore();
     }

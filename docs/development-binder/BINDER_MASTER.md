@@ -129,7 +129,7 @@ This section explains the story that players can learn in the game right now. It
 
 **Main files checked:**
 
-- `js/constants.js`: Merlin's 11 lore pages, world names, items, enemies, bosses, Olympians, and riddles.
+- `js/constants.js`: Merlin's 15 lore pages, world names, items, enemies, bosses, Olympians, and riddles.
 - `js/game.js`: the opening story, quests, discoveries, boss speeches, changes, and endings.
 - `js/world.js`: places, maps, landmarks, and names shown in the world.
 - `js/ui.js`: the Ancient Lore screen, item screens, riddles, and endings.
@@ -139,115 +139,159 @@ This section explains the story that players can learn in the game right now. It
 
 ## The current story in one page
 
-The current game shows Ingoizer as one young male knight from Green Meadow. He wakes up with a rusty sword and bow. His quest is to find five Blue Gems. Ancient elemental spirits made the gems in Crystal Lake. A great disaster scattered them. The Black Knight wants the gems. He took over Ing Castle and made the land afraid.
+**Ingoizer is a family name, not a first name.** The current game shows one young knight of that house, from Green Meadow. He wakes up with a rusty sword and bow. His quest is to find five Blue Gems. Ancient elemental spirits made the gems in Crystal Lake. A great disaster scattered them. The Black Knight wants the gems. He took over Ing Castle and made the land afraid.
 
-The five gems awaken Fire, Water, Ice, Lightning, and Earth. Ingoizer needs all five to face the Black Knight. Beating him reveals the Green Knight's Domain, two Green Gems, and another champion. Four caves lie under the realm. They hold mazes, guards, Purple Gems, and powerful objects. At Crystal Lake, the Lady of the Lake tests Ingoizer. He must bring back Excalibur's jeweled sheath. Merlin was forced away from Ing Castle. He asks Ingoizer to find his wand, then gives him the Enchanter's Mallet.
+The house of Ingoizer carries two readings of its own name. One says the line is cursed: an Ingoizer is born into danger and never gets a quiet life. The other says the line is a promise: only an Ingoizer will be standing when the world needs saving. Both are true, and every generation someone has to pick a side.
 
-The Worldtree stands in the far northeast. It is older than the mountains and touches two worlds. A fire arrow reveals a ladder hidden inside it. The ladder leads to the Cloudlands, a land of hard cloud and white marble. Strong keepers guard it. Beating five keepers wakes the Temple of Olympus. Zeus fights as the Twelve Olympians, one after another. When all 12 masks are gone, Ingoizer can fight Zeus himself. Winning turns all of Ingoizer's arrows into lightning bolts.
+The five gems awaken Fire, Water, Ice, Lightning, and Earth. Ingoizer needs all five to face the Black Knight. **The Black Knight was an Ingoizer too.** He read the name as a curse, walked out on his family and his destiny, and came back years later to take Ing Castle. When he falls, the shroud lifts from the castle and the drape he kept over the north wall of the great hall comes down. Underneath it is a tapestry: the family tree of the house of Ingoizer, with a brother beside the hero's father whom nobody ever mentioned. The Black Knight was Ingoizer's uncle.
+
+**The Green Knight and the cave guardians are the Black Knight's sons**, and so Ingoizer's cousins. The Green Knight holds the southern woods and wants Ingoizer dead for killing his father - not the realm, not the gems, just him. His brothers, the Stone Warden and the Crystal Titan, dug the four caves themselves because they wanted somewhere with less sun, and have guarded that dark ever since. Beating the Black Knight reveals the Green Knight's Domain and two Green Gems.
+
+At Crystal Lake, the Lady of the Lake tests Ingoizer; he must bring back Excalibur's jeweled sheath. **She keeps both waters** - the lake and the Fountain of Youth - and it is her voice that asks the fountain's riddles. Merlin was forced away from Ing Castle. He asks Ingoizer to find his wand, then gives him the Enchanter's Mallet.
+
+The Worldtree stands in the far northeast. It is older than the mountains and touches two worlds. A fire arrow burns it down and reveals a ladder that was hidden inside it. The ladder leads to the Cloudlands, a land of hard cloud and white marble. Strong keepers guard it. Beating five keepers wakes the Temple of Olympus, and Zeus comes out with two complaints: that Ingoizer burned down the boundary stone between their two countries, and that a mortal has no business standing in the Cloudlands at all. He then fights as the Twelve Olympians, one after another. When all 12 masks are gone, Ingoizer can fight Zeus himself. Winning turns all of Ingoizer's arrows into lightning bolts.
+
+**There is a second ending.** The fire leaves one Worldtree Seed behind. It can be planted anywhere, but it only takes root in the ash where the old trunk stood. Planted there, the Worldtree grows again around the ladder without closing it, Zeus's first complaint stops being true and his second one goes with it, and he grants the lightning freely. Go up afterwards and he meets Ingoizer on the temple steps instead of fighting him.
 
 ## Where players learn the story
 
 | Story source | Where it is | What the player does | What the player learns |
 |---|---|---|---|
 | Opening words | Green Meadow starting point | Choose Begin Adventure | Ingoizer wakes up, must find five gems, learns about Ing Castle and animals |
-| Ancient Lore library | Merlin's Hut near Ing Castle | Press E at the hut | 11 full lore pages about the main story and Cloudlands |
+| Ancient Lore library | Merlin's Hut near Ing Castle | Press E at the hut | 15 lore pages about the main story and Cloudlands; 3 stay hidden until earned |
 | Lady of the Lake | Island at Crystal Lake | Speak to the Lady | Excalibur, its sheath, the guardian troll and worthiness test |
 | Merlin | Merlin's Swamp | Speak to Merlin | His exile, missing wand and Enchanter's Mallet quest |
 | Blue Gems | Random places and monster drops | Pick up a gem | A new element awakens; five gems are needed at Ing Castle |
 | Black Knight encounter | Outside Ing Castle | Approach with all five Blue Gems | His claim to the gems and the battle for the realm |
+| Family tapestry | North wall of Ing Castle's great hall | Beat the Black Knight, then walk back in and press E | The Black Knight was Ingoizer's uncle; the Green Knight and cave guardians are his sons |
 | Greenlands reveal | South after the Black Knight fight | Beat the Black Knight | The Green Knight, two Green Gems, and a new land |
+| Green Knight's challenge | Green Knight's Domain | Approach with both Green Gems | He is the Black Knight's son and wants revenge for his father |
+| Cave guardian's challenge | NW and NE cave boss lairs | Approach the lair | The guardians dug the caves to be rid of the sun; after the tapestry they name Ingoizer as their cousin |
 | Cave discoveries | Four cave entrances and their rooms | Clear the obstacle, enter, and reach treasure or a boss | Underground guards, Purple Gems, and special items |
 | Hidden base | Northwest wall inside Ing Castle | Use Ice Gem nearby, then climb | Ingozer's Armour, Bow of Arrow Strength and Rainbow Gem cache |
-| Fountain of Youth | A set area near the meadow and village | Answer three random riddles | A magical healing fountain; its history is not explained |
-| Worldtree | Far northeast | Unlock Fire, approach and shoot a fire arrow | Tree between worlds, non-mortal ladder and route to Cloudlands |
+| Fountain of Youth | A set area near the meadow and village | Answer three random riddles | The Lady of the Lake keeps this water too; the lake tests courage, the fountain tests wit |
+| Worldtree | Far northeast | Unlock Fire, approach and shoot a fire arrow | Tree between worlds, non-mortal ladder and route to Cloudlands; the fire leaves one seed |
+| Worldtree Seed | Anywhere on the surface; correctly in the northeast ash | Press P, or use the seed in the inventory | A Worldtree only roots in the ground it came from; a sapling planted elsewhere can be dug up again |
 | Cloudlands | Above the Worldtree | Climb ladder | Sky country, keepers, Temple of Olympus and its challenge |
-| Olympian encounter | Temple of Olympus | Defeat five keepers and approach temple | Twelve masks, Zeus's true form and divine reward |
+| Olympian encounter | Temple of Olympus | Defeat five keepers and approach temple | Zeus's two grievances, twelve masks, his true form and divine reward |
+| Peace with Zeus | Temple of Olympus, after replanting the Worldtree | Plant the seed in the ash, then climb | Mending the Worldtree answers both grievances; Zeus grants the lightning without a fight |
 | Maps and place names | Small map, world map, and area entrances | Explore or press M | Names and locations in the three world layers |
 | Inventory and pickups | Throughout all realms | Obtain or inspect an item | Short histories and powers of relics, gems, weapons and armor |
-| Victory screens | Green Knight and Zeus conclusions | Defeat the boss | Champion status, freedom of the land and mastery of the realms |
+| Victory screens | Green Knight, Zeus, and the peaceful Olympus ending | Defeat the boss, or make peace | Champion status, freedom of the land and mastery of the realms |
 
 # Merlin's Ancient Lore Library
 
-All 11 entries are available at Merlin's Hut near Ing Castle. The player walks to the hut, presses E, and uses Previous and Next. The exact words below come from `js/constants.js`. The screen that shows them is built in `js/ui.js`.
+The library holds 15 entries at Merlin's Hut near Ing Castle. The player walks to the hut, presses E, and uses Previous and Next. 3 of the entries are hidden at the start of the game and only appear on the shelf once the player has earned them in the world; they are marked **Hidden until earned** below. The exact words come from `js/constants.js`. The screen that shows them is built in `js/ui.js`.
 
 > LUCA'S WORDS: The lore passages below are kept exactly as they appear in the current game. Some words may be above sixth-grade level because they are Luca's story words. They should not be simplified unless Luca chooses to edit them.
 
 ## 1. The Legend of Ingoizer
 
 **Learned at:** Merlin's Hut.  
-**Why it matters:** Introduces Ingoizer, where he came from, his courage, and his main quest.
+**Why it matters:** Establishes that Ingoizer is a family name carried by a long line, not a single hero's first name, and states the main quest.
 
-> In an age of shadow and fading hope, a young knight named Ingoizer arose from the humble Green Meadow. Though armed with only a rusty sword and bow, his heart burned with courage that no darkness could extinguish. Destiny chose him to reclaim the stolen Blue Gems and restore peace to a land gripped by evil. His journey would take him through treacherous forests, scorching deserts, and haunted ruins — but Ingoizer would not falter, for the fate of the realm rested upon his shoulders.
+> Ingoizer is not a first name. It is a last one. For as long as the realm has kept records there have been Ingoizers, and every one of them was born to the same strange inheritance: trouble finds them, and they are the only ones who can end it. In an age of shadow and fading hope the newest of that line woke in the humble Green Meadow with a rusty sword, a rusty bow, and no idea what his own surname meant. Destiny chose him to reclaim the stolen Blue Gems and restore peace to a land gripped by evil. His journey would take him through treacherous forests, scorching deserts, and haunted ruins — but Ingoizer would not falter, for the fate of the realm rested upon his shoulders.
 
-## 2. The Five Blue Gems
+## 2. The House of Ingoizer
+
+**Learned at:** Merlin's Hut.  
+**Why it matters:** Explains the two readings of the family name - curse or promise - which is the disagreement the whole Black Knight story rests on.
+
+> The old houses of the realm each carry a word. The house of Ingoizer carries two, and they contradict each other. Some of the family read the line as a curse: an Ingoizer is born into danger, buries more of his kin than any man should, and is never allowed a quiet life. Others read exactly the same line as a promise: only an Ingoizer will be standing when the world needs saving, because only an Ingoizer is made for it. Both readings are true. That is the whole difficulty. Every generation someone in the family must decide which half they believe — and not everyone has decided the way you would hope.
+
+## 3. The Five Blue Gems
 
 **Learned at:** Merlin's Hut; repeated in the message shown when a gem is collected.  
 **Why it matters:** Explains who made the gems, what they do, and why they are spread across the land.
 
 > Long ago, five Blue Gems of immense power were forged in the heart of Crystal Lake by the ancient elemental spirits. Each gem holds the essence of a primal force — Fire, Water, Ice, Lightning, and Earth. Scattered across the land by a great cataclysm, the gems call out to those brave enough to seek them. When united, they grant the bearer mastery over all five elements and the strength to challenge even the darkest of foes. Monsters who have absorbed their energy may carry gem fragments within.
 
-## 3. Merlin the Wizard
+## 4. Merlin the Wizard
 
 **Learned at:** Merlin's Hut; reinforced by Merlin's quest in the swamp.  
 **Why it matters:** Explains Merlin's past, why he lives in the swamp, why his magic is weaker, and what his mallet does.
 
 > I, Merlin, have walked these lands for centuries, watching kingdoms rise and fall. My swamp may seem humble, but it is steeped in ancient magic. I once served as advisor to the great kings of Ing Castle, until the Black Knight drove me into exile. My Enchanter's Mallet, a relic of the old world, can imbue weapons and armor with elemental fury. Though my powers have waned without my wand, my knowledge endures. Seek wisdom, young Ingoizer, for brute strength alone will not save the realm.
 
-## 4. The Black Knight
+## 5. The Black Knight
 
 **Learned at:** Merlin's Hut; reinforced outside Ing Castle.  
-**Why it matters:** Keeps his real name a mystery and explains why he took the castle and why all five gems are needed.
+**Why it matters:** Keeps his real name a mystery but says plainly that he left a family and a destiny behind him. It sets up the tapestry without spoiling it.
 
-> None know the Black Knight's true name — only that he appeared from the shadows when the gems were scattered. Clad in armor darker than midnight, with eyes that glow like embers of hate, he seized Ing Castle and claimed the gems as his own. His power grows with each passing day, feeding on the fear of the land. He commands legions of monsters and dark magic that grows stronger the longer the gems remain apart. Only one who carries all five gems can force him from the shadows to face battle.
+> None know the Black Knight's true name — only that he was somebody's son before he was anybody's terror. He was not born in shadow. He walked into it, on a night he decided that the name he had been given was a curse and nothing more, and that a cursed man owes the world nothing. He left his family, his house and his destiny behind him in one stride, and by morning nobody could say where he had gone. When the gems were scattered he came back clad in armor darker than midnight, with eyes that glow like embers of hate. He seized Ing Castle and claimed the gems as his own. He commands legions of monsters and dark magic that grows stronger the longer the gems remain apart. Only one who carries all five gems can force him from the shadows to face battle.
 
-## 5. Ing Castle
+## 6. Ing Castle
 
 **Learned at:** Merlin's Hut; reinforced by the castle landmark and boss approach.  
-**Why it matters:** Explains what the castle used to be, how the Black Knight changed it, and why its gates are sealed.
+**Why it matters:** Explains what the castle used to be and points at the covered tapestry on the north wall of the great hall.
 
-> Ing Castle once stood as a beacon of hope and justice, home to noble kings who ruled with wisdom and compassion. Its walls were built from enchanted stone, said to be unbreakable by mortal weapons. When the Black Knight conquered the castle, a dark shroud fell over its towers, and the once-golden banners turned to ash. The castle gates remain sealed to all but those who carry the five Blue Gems. Beyond those gates, the Black Knight waits, drawing power from the very stones that once protected the realm.
+> Ing Castle once stood as a beacon of hope and justice, home to noble kings who ruled with wisdom and compassion. Its walls were built from enchanted stone, said to be unbreakable by mortal weapons. When the Black Knight conquered the castle, a dark shroud fell over its towers, and the once-golden banners turned to ash. The castle gates remain sealed to all but those who carry the five Blue Gems. Beyond those gates, the Black Knight waits, drawing power from the very stones that once protected the realm. The great hall keeps one thing he never took down: an old woven family tree on the north wall, hung there long before he came, and covered over the day he did.
 
-## 6. The Lady of the Lake
+## 7. The Tapestry in the Great Hall
 
-**Learned at:** Merlin's Hut; enacted through the Crystal Lake quest.  
-**Why it matters:** Explains who the Lady is, why Excalibur is special, and how Ingoizer must prove himself.
+**Hidden until earned.**  
+**Learned at:** Merlin's Hut, but only after the tapestry has been read inside Ing Castle.  
+**Why it matters:** The reveal: the Black Knight was Ingoizer's uncle. Hidden until the player has seen it in the world.
 
-> At the heart of Crystal Lake dwells the Lady of the Lake, an ethereal guardian who has watched over Excalibur since time immemorial. She is neither mortal nor spirit, but something in between — a keeper of ancient promises. The legendary sword Excalibur, forged by gods and tempered in starlight, rests in her care. She will bestow it only upon a warrior who proves their worth by recovering its jewel-encrusted sheath from the fearsome Sheath Guardian Troll that lurks in the Dark Forest.
+> The Black Knight is dead and the shroud over Ing Castle has lifted, and the thing he kept covered all these years is only a tapestry. It is a family tree. It is your family tree — the same names, the same branches, stitched in the same order your own house has recited them for generations — and the branch beside your father's is a brother nobody ever mentioned to you. The armour you have just left cooling on the flagstones belongs to your uncle. He believed the name Ingoizer was a curse, so he left the family and went looking for a destiny he liked better. You believed it was a promise, so you stayed. That is the only difference there has ever been between the two of you.
 
-## 7. The Elemental Powers
+## 8. The Sons of the Black Knight
+
+**Hidden until earned.**  
+**Learned at:** Merlin's Hut, but only after the tapestry has been read inside Ing Castle.  
+**Why it matters:** The Green Knight and the cave guardians are the Black Knight's sons and Ingoizer's cousins, and the guardians dug the caves themselves.
+
+> The tapestry does not stop at your uncle. It goes on, into a row of sons — your cousins, every one of them, and you have met most of them already with a sword in your hand. Their father raised them underground and out of sight, and they grew up hating the sun that had shone on the family that let him leave. The eldest, the Green Knight, took the southern woods and holds them still; he does not want the realm, he wants the man who killed his father. His brothers went down instead of out. The Stone Warden and the Crystal Titan dug the four caves themselves, hollow by hollow, for no better reason than that a cave has no sky in it, and they have guarded their own dark ever since. They are not monsters that wandered in. They are the family, still refusing the name.
+
+## 9. The Lady of the Lake
+
+**Learned at:** Merlin's Hut; enacted through the Crystal Lake quest and the Fountain of Youth riddles.  
+**Why it matters:** Explains who the Lady is, how Excalibur is earned, and states that she keeps the fountain as well as the lake.
+
+> At the heart of Crystal Lake dwells the Lady of the Lake, an ethereal guardian who has watched over Excalibur since time immemorial. She is neither mortal nor spirit, but something in between — a keeper of ancient promises. The legendary sword Excalibur, forged by gods and tempered in starlight, rests in her care. She will bestow it only upon a warrior who proves their worth by recovering its jewel-encrusted sheath from the fearsome Sheath Guardian Troll that lurks in the Dark Forest. Nor is the lake her only water. The Fountain of Youth answers to her as well — the same hand keeps both, one to test a warrior's courage and one to test their wit — and when the fountain asks you a riddle, it is the Lady asking.
+
+## 10. The Elemental Powers
 
 **Learned at:** Merlin's Hut; reinforced whenever a Blue Gem is collected.  
 **Why it matters:** Explains the five elements and what each one does in a fight.
 
 > The five elements — Fire, Water, Ice, Lightning, and Earth — are the fundamental forces that shaped this world. Fire burns with untamed fury, consuming all in its path. Water heals and cleanses, but strikes with the force of crashing waves. Ice freezes foes in their tracks, cold and merciless. Lightning strikes with devastating precision, the wrath of storms made manifest. Earth, the most ancient power, shakes the ground itself, stunning all who stand upon it. As Ingoizer collects the Blue Gems, these powers awaken within him. Master them all, and no enemy shall stand.
 
-## 8. The Lands of the Realm
+## 11. The Lands of the Realm
 
 **Learned at:** Merlin's Hut; reinforced by map and zone-name displays.  
-**Why it matters:** Names the main lands and explains how each one feels.
+**Why it matters:** Names the main lands, and notes that the four caves were dug on purpose rather than formed by nature.
 
-> The realm stretches from the peaceful Green Meadow in the west to the dread Darklands in the east. Camelot Village shelters honest folk and merchants. The Dark Forest hides dangers and treasures in equal measure. The Scorched Wastes bake under an unforgiving sun, while the Dragon Mountains pierce the clouds with jagged peaks. Merlin's Swamp bubbles with arcane energy, and the Ancient Ruins hold secrets of civilizations long forgotten. Each land harbors unique monsters and challenges for those who dare explore.
+> The realm stretches from the peaceful Green Meadow in the west to the dread Darklands in the east. Camelot Village shelters honest folk and merchants. The Dark Forest hides dangers and treasures in equal measure. The Scorched Wastes bake under an unforgiving sun, while the Dragon Mountains pierce the clouds with jagged peaks. Merlin's Swamp bubbles with arcane energy, and the Ancient Ruins hold secrets of civilizations long forgotten. Beneath all of it run four caves that no river cut and no earthquake opened — those were dug, by hands, on purpose. Each land harbors unique monsters and challenges for those who dare explore.
 
-## 9. The Worldtree
+## 12. The Worldtree
 
 **Learned at:** Merlin's Hut; hinted again when Fire unlocks; discovered in the far northeast.  
-**Why it matters:** Explains how old the tree is, how it joins two worlds, and why a fire arrow is the key.
+**Why it matters:** Explains the tree, the fire-arrow key, and warns that burning it leaves one seed that must not be lost.
 
-> In the farthest northeast corner of the realm, where no road runs and no monster dares nest, there stands a single ancient tree. It was old when the mountains were young. The elders called it the Worldtree, for its roots drink from this world while its crown drinks from another. No axe has ever marked it and no storm has ever bent it — but the old texts whisper of one key: fire loosed from a bowstring. Set a fire arrow into the Worldtree, and what the trunk conceals will finally be laid bare. A ladder. And it does not go down.
+> In the farthest northeast corner of the realm, where no road runs and no monster dares nest, there stands a single ancient tree. It was old when the mountains were young. The elders called it the Worldtree, for its roots drink from this world while its crown drinks from another. No axe has ever marked it and no storm has ever bent it — but the old texts whisper of one key: fire loosed from a bowstring. Set a fire arrow into the Worldtree, and what the trunk conceals will finally be laid bare. A ladder. And it does not go down. Burn it and you will get your ladder. You will also have burned down the only thing holding two worlds together, and the ash will leave you one seed. Do not lose the seed.
 
-## 10. The Cloudlands
+## 13. The Worldtree Seed
+
+**Hidden until earned.**  
+**Learned at:** Merlin's Hut, but only after the Worldtree has burned and the seed is in hand.  
+**Why it matters:** Explains that the seed can be planted anywhere, only takes root in the ash it came from, and can be dug up again.
+
+> One seed came out of the ash, no bigger than a thumbnail and far heavier than it has any right to be. It is a Worldtree, entire, waiting. You may plant it wherever you like and something will grow, because that is what seeds do — but a Worldtree is not an ordinary tree and it does not want ordinary ground. It wants the ground it came from. Push it into the ash of the northeast corner, on the very spot where the old trunk stood, and it will take root in a night and climb through the hole you tore in the sky. Plant it anywhere else and you will have a sapling, a nice one, and nothing more; dig it up again and you may carry it on. Whatever else you have burned, this can be put back.
+
+## 14. The Cloudlands
 
 **Learned at:** Merlin's Hut; confirmed when climbing the Worldtree ladder.  
-**Why it matters:** Introduces the sky world, its guards, its temple, and the rule for waking the temple.
+**Why it matters:** Introduces the sky world and states that mortals do not belong there - Zeus's second grievance.
 
-> Above the sky there is another country. Islands of hardened cloud drift over a blue abyss, joined by bridges of vapour, and at their heart stands a temple of white marble that no mortal mason ever raised. This is the Cloudlands. Its guardians — storm harpies, golden griffins, giants of cloud and men of bronze — make the deepest cave troll look like a village nuisance. Slay five of the Cloudlands' keepers and the temple will wake. Something in it has been waiting a very long time for a mortal rude enough to climb.
+> Above the sky there is another country. Islands of hardened cloud drift over a blue abyss, joined by bridges of vapour, and at their heart stands a temple of white marble that no mortal mason ever raised. This is the Cloudlands. Nothing here was built for you; nothing here expects you; there is no door in the whole country that a mortal was ever meant to walk through. Its guardians — storm harpies, golden griffins, giants of cloud and men of bronze — make the deepest cave troll look like a village nuisance. Slay five of the Cloudlands' keepers and the temple will wake. Something in it has been waiting a very long time for a mortal rude enough to climb.
 
-## 11. The Twelve Olympians
+## 15. The Twelve Olympians
 
 **Learned at:** Merlin's Hut; demonstrated in the Temple of Olympus encounter.  
-**Why it matters:** Explains the 12-part boss fight, when Zeus can be hurt, and what the player wins.
+**Why it matters:** Explains Zeus's two grievances, the 12-part boss fight, and that replanting the Worldtree is the other way through.
 
-> Zeus does not fight as men fight. When he is roused he wears his family like armour: strike him and he is Hera; strike Hera and he is Poseidon, then Demeter, Athena, Apollo, Artemis, Ares, Aphrodite, Hephaestus, Hermes, Dionysus — twelve faces, twelve furies, and not one of them can be slain, for you cannot kill a god by killing the mask. Endure all twelve and the masks run out. What stands before you then is Zeus himself, and Zeus himself can bleed. Break him, and his bolts become your arrows.
+> Zeus has two complaints against you and he will make both of them before he makes a fist. The first is the Worldtree: it was his family's boundary stone as much as this realm's, and you burned it down to make yourself a staircase. The second is simpler — you are standing in his country, and mortals do not belong in the Cloudlands. Then he fights, and he does not fight as men fight. When he is roused he wears his family like armour: strike him and he is Hera; strike Hera and he is Poseidon, then Demeter, Athena, Apollo, Artemis, Ares, Aphrodite, Hephaestus, Hermes, Dionysus — twelve faces, twelve furies, and not one of them can be slain, for you cannot kill a god by killing the mask. Endure all twelve and the masks run out. What stands before you then is Zeus himself, and Zeus himself can bleed. Break him, and his bolts become your arrows. There is another way, and it is not a sword. Answer the first complaint before you ever climb, and the second one dies with it.
 
 # Story Learned by Playing
 
@@ -281,16 +325,23 @@ The opening is the only story part every player must see. Merlin's library can b
 
 **Where and when:** Walk to the outside gate of Ing Castle with all five Blue Gems.  
 **What he says:** The Black Knight says the gems belong to him and threatens Ingoizer.  
-**What winning does:** He drops the Dark Knight's Crest. Ingoizer's maximum health goes up. The Green Knight's Domain appears in the south.
+**What winning does:** He drops the Dark Knight's Crest. Ingoizer's maximum health goes up. The shroud lifts from Ing Castle. The Green Knight's Domain appears in the south. The game now tells the player to walk back into the great hall and read the tapestry.
 
-The current game does not tell us the Black Knight's real name, where he came from, or why he acts this way beyond wanting power and using fear. An older idea calls him Sir Mordain. That idea is not official story.
+The Black Knight's given name is still not said out loud, and Luca has kept it that way on purpose. What the game does say is where he came from: he was an Ingoizer. He decided the family name was a curse, walked out on his house and his destiny, and came back for the castle and the gems. The older "Sir Mordain" idea is still not official story.
+
+## The family tapestry in the great hall
+
+**Where and when:** Walk into Ing Castle after the Black Knight is beaten and press E at the north wall of the great hall.  
+**What players learn:** The black drape the Black Knight hung over the wall falls away. Underneath is a woven family tree - the tree of the house of Ingoizer, the same names the hero has had recited to him since he could walk. Beside his father is a brother nobody ever mentioned. The Black Knight was his uncle. Below that brother is a row of sons: the Green Knight, and the wardens who dug the caves. They are all cousins.
+
+**What it unlocks:** Two lore entries appear on Merlin's shelf - *The Tapestry in the Great Hall* and *The Sons of the Black Knight* - and the cave guardians start speaking to Ingoizer as family instead of as an intruder.
 
 ## Green Knight's Domain
 
 **Where and when:** The southern land appears after the Black Knight is beaten. Find both Green Gems and walk to the Green Castle.  
-**What players learn:** Legends tell of the Green Knight and strong Green Gems. One gem raises attack. The other raises defense. The Green Knight says this is his land and calls Ingoizer an intruder. Winning gives Ingoizer the Magic Charm. The ending calls him the true champion and says the land is free.
+**What players learn:** Legends tell of the Green Knight and strong Green Gems. One gem raises attack. The other raises defense. The Green Knight is the Black Knight's eldest son. He says he has known Ingoizer's name his whole life, that the man cut down at Ing Castle was his father, and that he does not want the realm or the gems - he wants Ingoizer. Winning gives Ingoizer the Magic Charm.
 
-In the current game, the Green Knight fights against Ingoizer. An older idea says he could be giving Ingoizer an honorable test. That idea has not been built.
+The ending is deliberately not a clean triumph any more. The man in the green armour was a cousin, fighting for a father who had walked out on the family before either of them was born. Two Ingoizers have fallen to a third, and the name outlives all of them. The older "honourable test" idea is still not built.
 
 ## The four caves
 
@@ -301,26 +352,41 @@ In the current game, the Green Knight fights against Ingoizer. An older idea say
 - Northwest Cave: blocked by water; Ice clears the entrance; Stone Warden and Purple Gem of Fury.
 - Northeast Cave: blocked by rocks; Earth clears the entrance; Crystal Titan, Purple Gem of Fortification and Titan's Gauntlet.
 
-**What the story says now:** The caves are dark mazes or guarded places with valuable objects. The Stone Warden and Crystal Titan rise from the cave floor. They say no one may steal from their lands. The game does not explain where they came from, who made the Purple Gems, or how the four caves are connected.
+**What the story says now:** The four caves were dug, by hand, on purpose. The Stone Warden and the Crystal Titan are the Black Knight's younger sons. Their father raised them underground and out of sight, and they cut these tunnels themselves because a cave has no sky in it and they wanted somewhere with less sun. That is what connects all four caves: the same two brothers made them.
+
+Their spoken lines change once the player has read the tapestry. Before it, they only complain that Ingoizer has brought daylight in with him. After it, they call him cousin and tell him to get out of their dark.
+
+**Treasure chests:** Both maze caves keep a chest at the centre of the maze, and both boss caves keep the guardian's own chest at the back of his lair - shut while he lives, thrown open when he falls. The chest art is hand-authored pixel art in `js/sprites.js` (`TreasureChestSprite`), drawn the same way Ingoizer is, with a closed frame and an open one. The same chest is used for the hoard in the hidden base above Ing Castle.
 
 ## Fountain of Youth
 
 **Where and when:** The fountain appears in one of several planned spots near the meadow and village. Interact with it and answer three random riddles correctly.  
-**What players learn:** The fountain rewards wisdom. It becomes quiet after a wrong answer. It heals the player after all three right answers. The game does not say who made it or why its exact spot can change.
+**What players learn:** The Lady of the Lake keeps both waters. The first time Ingoizer uses the fountain, the voice that comes out of it is hers: at the lake she asks him for courage, here she asks him for wit. The fountain rewards wisdom, goes quiet after a wrong answer, and heals the player after all three right answers.
 
-The riddle screen says “The Lady of the Lake” even when the player uses the Fountain of Youth. The same screen is probably being reused. The game does not confirm a story link between them.
+The riddle screen has always said “The Lady of the Lake.” That is now official story rather than a reused screen. The game still does not say why the fountain's exact spot can change.
 
 ## Hidden base above Ing Castle
 
 **Where and when:** Use the Ice Gem near the northwest wall inside Ing Castle. A frozen wall opens and shows a ladder to a secret base.  
 **Artifacts:** Ingozer's Armour, Bow of Arrow Strength and Rainbow Gem.
 
-**What the story says now:** The hidden collection is legendary and was placed above the castle on purpose. The Rainbow Gem makes weapons, bows, and armor stronger. The game does not say who built the base, who owned it, or why it exists.
+**What the story says now:** The hidden collection is legendary and was placed above the castle on purpose. The Rainbow Gem makes weapons, bows, and armor stronger. An open treasure chest now stands in the middle of the base with the relics spilled around it.
+
+Because Ingoizer is a family name, “Ingozer's Armour” reads as an ancestor's gear rather than a spelling mistake - the house has been keeping a cache above its own castle for a long time. Luca has not yet decided which ancestor, and the game still does not say.
 
 ## Worldtree discovery
 
 **Where and when:** Far northeast near tile 193,6. Unlock Fire to remember a verse. Walk close for another hint. Shoot the tree with a fire arrow.  
 **What players learn:** The tree is older than the mountains and joins two worlds. Hands that were not human wore down the ladder steps. Fire burns away the tree and leaves the ladder standing in the air.
+
+**What the fire leaves behind:** one Worldtree Seed, and the game says plainly not to lose it.
+
+## The Worldtree Seed
+
+**Where and when:** Given the moment the Worldtree finishes burning. Plant it with P, or from the relic shelf in the inventory - the inventory route is the one that works on a phone.  
+**What players learn:** The seed can be planted on any ground that will take it, and a sapling comes up. But a Worldtree is not an ordinary tree: it only takes root in the ash where the old trunk stood, in the far northeast. A sapling planted anywhere else is a nice ordinary sapling and nothing more, and pressing E at it digs the seed back up, so the peaceful route can never be lost by planting in the wrong place. Planted sites are marked on the small map and the world map.
+
+**What happens when it takes:** The Worldtree grows again in a matter of seconds, twining up around the ladder without closing it, and the way to the Cloudlands stays open. Zeus's first grievance stops being true, and his second one goes with it.
 
 ## Cloudlands and Temple of Olympus
 
@@ -330,9 +396,20 @@ The riddle screen says “The Lady of the Lake” even when the player uses the 
 ## Twelve Olympians and Zeus
 
 **Where and when:** Beat five Cloudlands keepers and walk to the Temple of Olympus.  
-**The fight:** Zeus says Ingoizer is far from his meadow. He warns that another god stands behind each form. Each hit shows the next form: Zeus, Hera, Poseidon, Demeter, Athena, Apollo, Artemis, Ares, Aphrodite, Hephaestus, Hermes, and Dionysus. After the 12th face is gone, Zeus returns as himself and can be hurt.
+**Why Zeus is angry:** He makes both complaints before he makes a fist. The first is the Worldtree: it was the boundary stone between his country and Ingoizer's, older than either of them, and Ingoizer burned it down to save himself a walk. The second is simpler - Ingoizer is standing in the Cloudlands, and mortals do not belong there.
+
+**The fight:** He warns that another god stands behind each form. Each hit shows the next form: Zeus, Hera, Poseidon, Demeter, Athena, Apollo, Artemis, Ares, Aphrodite, Hephaestus, Hermes, and Dionysus. After the 12th face is gone, Zeus returns as himself and can be hurt.
 
 **Ending:** Zeus turns into weather. The ancient storm becomes quiet. Every arrow Ingoizer has now or finds later becomes a lightning bolt. The victory words say Ingoizer now commands the land, the caves below it, and the heavens above. The player may keep exploring.
+
+## Peace with Zeus (the second ending)
+
+**Where and when:** Plant the Worldtree Seed back in the ash where the old trunk stood, before provoking Zeus at the temple.  
+**What happens:** The tree grows, and Zeus speaks from directly overhead. He says he had two quarrels - the burned boundary stone, and a mortal standing in his country - and that mending the tree answers the first, so the second dies with it. He gives the lightning bolts there and then, with no blow struck. The Cloudlands keepers stop counting toward a summon.
+
+**At the temple:** Climb afterwards and the keepers let Ingoizer pass. Zeus is sitting on the temple steps watching the new shoot climb, tells him to keep the bolts and the run of the Cloudlands, and asks him to come back when the tree is tall enough to hold the sky apart on its own. This is a full victory ending, reached without fighting the Twelve Olympians at all.
+
+**If the player is too late:** planting the seed after Zeus has already come out of his temple only makes the storm falter for a heartbeat. The fight has to be finished.
 
 # Special Story Items
 
@@ -351,11 +428,12 @@ The riddle screen says “The Lady of the Lake” even when the player uses the 
 | Purple Gem of Fury | Stone Warden, Northwest Cave | Raises weapon damage for the current run |
 | Purple Gem of Fortification | Crystal Titan, Northeast Cave | Raises armor defense for the current run |
 | Titan's Gauntlet | Crystal Titan, Northeast Cave | A special item found in the titan's pieces that makes weapons and bows stronger |
-| Ingozer's Armour | Hidden base above Ing Castle | “Most defensive armour in the land”; ownership history is unexplained |
+| Ingozer's Armour | Hidden base above Ing Castle | “Most defensive armour in the land”; an ancestor of the house of Ingoizer wore it, though the game does not say which one |
 | Bow of Arrow Strength | Hidden base above Ing Castle | Legendary bow equal to Excalibur in base damage and improved by gems/enchanting |
 | Rainbow Gem | Hidden base above Ing Castle | Adds 4 points to weapons, bows, and armor |
 | Ambrosia of Olympus | Hidden supplies in Cloudlands | A godly item that fully heals and gives gold and a Greater Potion |
-| Zeus's Lightning Bolts | Defeat Zeus | Transforms all current and future arrows into divine bolts |
+| Zeus's Lightning Bolts | Defeat Zeus, **or** replant the Worldtree in its own ash | Transforms all current and future arrows into divine bolts |
+| Worldtree Seed | Left in the ash when the Worldtree burns | The whole Worldtree, waiting. Plantable anywhere; only roots where the old trunk stood, and can be dug back up |
 
 # Places and What They Tell the Player
 
@@ -363,17 +441,17 @@ The riddle screen says “The Lady of the Lake” even when the player uses the 
 |---|---|
 | Green Meadow | Ingoizer's simple home, waking place, and return point after defeat |
 | Camelot Village | Safe home for friendly people and shopkeepers |
-| Crystal Lake | Birthplace of the Blue Gems and home of the Lady of the Lake |
+| Crystal Lake | Birthplace of the Blue Gems and home of the Lady of the Lake, who also keeps the Fountain of Youth |
 | Dark Forest | A dangerous place with hidden treasure and the Sheath Guardian |
 | Scorched Wastes | Harsh desert under an unforgiving sun |
 | Merlin's Swamp | A magical land where Merlin lives after being forced away from the castle |
 | Dragon Mountains | Jagged peaks associated with dragon-kind |
 | Ancient Ruins | Leftover buildings from people who lived long ago |
 | Darklands | A frightening eastern land shaped by shadow |
-| Ing Castle | A castle that once stood for fairness, now taken by the Black Knight |
-| Green Knight's Domain | A southern land and champion's castle that appear after the Black Knight |
-| Four Caves | Underground tests opened with elements; they hold special items |
-| Worldtree | Ancient bridge between the surface realm and sky country |
+| Ing Castle | A castle that once stood for fairness, taken by the Black Knight; its great hall holds the tapestry of the house of Ingoizer |
+| Green Knight's Domain | A southern land held by the Black Knight's eldest son, opened after his father falls |
+| Four Caves | Tunnels the Black Knight's younger sons dug by hand to get away from the sun; opened with elements, and each keeps a treasure chest |
+| Worldtree | The boundary stone between the surface realm and the sky country. Burnable, and — with its own seed — regrowable |
 | Cloudlands | A country above the sky, made from hard cloud and marble built by gods |
 | Temple of Olympus | Center of Cloudlands and entrance to the Olympian fight |
 
@@ -398,41 +476,57 @@ These are not mistakes for someone else to quietly fix. They are story choices f
 
 **Luca needs to choose:** the answer, the words used for the hero, the naming rules, and how pronouns work before the character-selection writing is finished.
 
-## Choice 2: Should the Black Knight's real name stay a mystery?
+## Choice 2: Should the Black Knight's real name stay a mystery? — DECIDED
 
-The current game says no one knows his true name. An older idea calls him “Sir Mordain, fallen First Knight of Ing Castle,” but the game does not say this. Luca should approve, change, or reject that idea before it becomes official story.
+**Luca's decision:** Yes, the given name stays unsaid. His *last* name does not. He was an Ingoizer. He read the family name as a curse rather than a promise, left his house and his destiny behind him, and came back as the Black Knight. The reveal is the tapestry in the great hall, read after he falls. The old "Sir Mordain" idea is rejected.
 
-## Choice 3: Why does the Green Knight fight Ingoizer?
+**Built in the game:** the reworked *The Black Knight* lore page, the new *The House of Ingoizer* page, the tapestry landmark in Ing Castle (`js/world.js`), the reveal dialogue (`Game.readCastleTapestry` in `js/game.js`) and the hidden lore page *The Tapestry in the Great Hall*.
 
-In the current game, the Green Knight calls Ingoizer an intruder and fights him. A new idea says he could be an honorable champion testing Ingoizer. This choice would change what he says, how the ending feels, and why he has the Green Gems.
+## Choice 3: Why does the Green Knight fight Ingoizer? — DECIDED
 
-## Choice 4: Who made the caves and Purple Gems?
+**Luca's decision:** Revenge, not a test. The Green Knight is the Black Knight's eldest son and Ingoizer's cousin. He wants Ingoizer dead for killing his father, and says so plainly when he appears. He has no interest in the realm or the gems. The "honourable champion" idea is rejected.
 
-The caves are important, but the game does not explain their past. Luca could connect the Stone Warden, Crystal Titan, elemental locks, and Purple Gems to the spirits who made the Blue Gems. He could also create a different group that lived underground.
+**Built in the game:** his spawn speech and the reworked victory text in `js/game.js`, and the hidden lore page *The Sons of the Black Knight*.
 
-## Choice 5: Who owned the hidden base?
+## Choice 4: Who made the caves and Purple Gems? — DECIDED
 
-The base holds “Ingozer's Armour,” a bow as strong as Excalibur, and a Rainbow Gem. The game does not explain why. “Ingozer” is also spelled differently from “Ingoizer.” Luca can decide if this is a spelling mistake, an ancestor, a group, an older hero, or another person.
+**Luca's decision:** The Black Knight's younger sons did. The Stone Warden and the Crystal Titan dug all four caves by hand because they wanted somewhere with less sun, and they have guarded that dark ever since. They are not connected to the elemental spirits who made the Blue Gems.
+
+**Built in the game:** the guardians' spawn lines, which change once the tapestry has been read; the reworked *The Lands of the Realm* lore page; and the hidden lore page *The Sons of the Black Knight*.
+
+## Choice 5: Who owned the hidden base? — PARTLY DECIDED
+
+Because Ingoizer is now a family name, "Ingozer's Armour" reads as an ancestor's gear rather than a spelling mistake: the house kept a cache above its own castle. That much is settled. Luca has still not chosen *which* ancestor, and the game does not name one.
 
 ## Choice 6: How do all the myths fit in one world?
 
 The game brings together Camelot, Merlin, Excalibur, the gem story, and the Greek gods. This can be fun and magical. A short explanation would show why they belong together. They might all live in one realm. Different realms might meet at the Worldtree. The world might also bring in legends from many cultures.
 
-## Choice 7: What happens to the Worldtree after it burns?
+The Worldtree now carries part of the answer: it is the boundary stone between the two countries, and Zeus says so himself. That is a start, not the whole explanation.
 
-In the current game, fire burns the ancient tree so Ingoizer can reach Cloudlands. Luca can decide if the tree grows back, changes instead of dying, was always a door meant to open, or causes a later problem. The answer will affect how this moment feels.
+## Choice 7: What happens to the Worldtree after it burns? — DECIDED
 
-## Choice 8: Is the Fountain connected to the Lady?
+**Luca's decision:** It can be put back. The fire leaves one seed. The seed can be planted anywhere, but it only takes root in the ash it came from; planted there, the Worldtree grows again around the ladder without closing it. This also settles Zeus: mending the tree answers both of his grievances and he grants the lightning without a fight.
 
-The riddle screen shows the Lady's name, but the code treats the fountain as a separate object. Luca can decide if the Lady watches over both waters, if the name is only a screen mistake, or if another guardian should speak.
+**Built in the game:** `WORLDTREE_SEED` in `js/constants.js`; `World.plantSeed`, `World.updateSapling`, `World.uprootSapling` and the regrown-tree art in `js/world.js`; `Game.plantWorldtreeSeed`, `Game.onWorldtreeRegrown`, `Game.uprootSapling` and `Game.checkZeusPeaceMeeting` in `js/game.js`; the relic card with its Plant button in `js/ui.js`; the P key; and the hidden lore page *The Worldtree Seed*.
+
+## Choice 8: Is the Fountain connected to the Lady? — DECIDED
+
+**Luca's decision:** Yes. The Lady of the Lake keeps both waters. At the lake she tests courage; at the fountain she tests wit. The riddle screen's wording was right all along.
+
+**Built in the game:** the reworked *The Lady of the Lake* lore page, and her spoken introduction the first time the fountain is used in `js/game.js`.
+
+## Choice 1 is still open
+
+Choice 1 (who Ingoizer is, and how character selection works) is the one story choice above that Luca has not answered. The family-name decision narrows it usefully: whatever the six start-screen figures turn out to be, they can all share the surname Ingoizer without any of the other story needing to change.
 
 ## Helpful story work for Version 3.2
 
-- Decide who Ingoizer is before writing the character-selection screen.
-- Let the lore list mark each page Hidden, Found, or Read.
-- Let players find lore during the adventure instead of showing all 11 Merlin pages at once.
-- Add one cave lore entry and one Green Knight entry.
-- Add one sentence explaining the hidden base and the “Ingozer” spelling.
+- Decide who Ingoizer is before writing the character-selection screen (Choice 1, still open).
+- Decide which ancestor owned the hidden base above Ing Castle (the rest of Choice 5).
+- Let the lore list mark each page Hidden, Found, or Read. Hiding already works: three pages now stay off the shelf until they are earned. Marking Found and Read is the part still to build.
+- Extend that hiding to the rest of the library so players find lore during the adventure instead of seeing most of it at once.
+- Give the Green Knight and the cave guardians a spoken line each *before* the tapestry that hints at the family without giving it away.
 - Save a copy of all current story words before changing them.
 - Keep a list of Luca-approved story changes behind Tab 12.
 
@@ -491,7 +585,26 @@ The riddle screen shows the Lady's name, but the code treats the fountain as a s
 
 # How to Know the New Features Work
 
-These are starter checks for the proposed Version 3.2 features. They describe future ideas, not the current game.
+The first two lists below check features that are **already in the game**. The lists after them are starter checks for proposed Version 3.2 features that describe future ideas, not the current game.
+
+## The Worldtree Seed (built)
+
+- Burning the Worldtree hands the player a Worldtree Seed and adds the *Worldtree Seed* page to Merlin's shelf.
+- The seed can be planted with P on a computer and from the relic shelf in the inventory on a phone.
+- A seed planted on ordinary ground grows a plain sapling, marks itself on both maps, and gives the seed straight back when the player presses E at it.
+- A seed planted in the ash where the old trunk stood grows a Worldtree in a few seconds. The tree twines round the ladder without blocking it, and the ladder still climbs to the Cloudlands.
+- Replanting grants Zeus's lightning bolts with no fight, and the arrow icon in the HUD changes to match.
+- Climbing to the temple afterwards gives the peaceful ending instead of the twelve-form fight; the keeper counter disappears from the HUD.
+- Planting the seed after Zeus has already left his temple does **not** cancel the fight.
+
+## The family tapestry and the treasure chests (built)
+
+- The tapestry is a featureless black drape until the Black Knight is beaten, then shows the woven family tree.
+- Reading it adds two pages to Merlin's shelf and changes what the cave guardians say when they rise.
+- Merlin's shelf shows 12 pages at the start of a game and 15 once every hidden page has been earned; the page counter and the Previous/Next buttons stay correct at every count.
+- Both maze caves show a shut chest at the centre that opens when the treasure is taken.
+- Both boss caves show a shut chest at the back of the lair that opens when the guardian falls.
+- The hidden base above Ing Castle shows an open chest among its relics.
 
 ## Fog of war
 
@@ -755,7 +868,7 @@ The project did not have a README before this binder work. A README now lives at
 **Live build:** `https://genemagg10.github.io/adventure-game/`  
 **How it is built:** Plain HTML, CSS, and JavaScript; no build step  
 **How it is played:** In a web browser; keyboard or a mobile device held sideways  
-**Main path:** Five Blue Gems -> Black Knight -> Greenlands and Green Knight. The caves, Excalibur, Merlin, Worldtree, Cloudlands, and Zeus are also major adventures.
+**Main path:** Five Blue Gems -> Black Knight -> the family tapestry in Ing Castle -> Greenlands and Green Knight. The caves, Excalibur, Merlin, Worldtree, the Worldtree Seed, Cloudlands, and Zeus are also major adventures.
 
 The full README also lists the controls, how to run the game on a computer, current features, what each code file does, where the design pages live, where lore is found, and the current copyright status.
 
@@ -765,8 +878,10 @@ The full README also lists the controls, how to run the game on a computer, curr
 |---|---|
 | Title and subtitle | `index.html` |
 | Realm names and map positions | `js/constants.js`, `js/world.js` |
-| Eleven Ancient Lore entries | `js/constants.js` (`MERLIN_LORE`) |
+| Fifteen Ancient Lore entries | `js/constants.js` (`MERLIN_LORE`) |
+| Which lore entries are hidden until earned | `js/constants.js` (an entry's `unlock` key), `js/game.js` (`Game.unlockLore`), `js/ui.js` (`UIManager.unlockedLore`) |
 | Lore overlay and navigation | `js/ui.js` |
+| Character and treasure-chest pixel art | `js/sprites.js` |
 | Opening, quests, discoveries and endings | `js/game.js` |
 | Item and artifact descriptions | `js/constants.js`, `js/ui.js` |
 | Boss names, titles, and fight rules | `js/constants.js`, `js/entities.js`, `js/game.js` |
@@ -786,3 +901,5 @@ The full README also lists the controls, how to run the game on a computer, curr
 - Replace old concept pictures. Do not mix final art and new ideas without labels.
 - Keep replaced decisions behind Tab 12 so the project history is not lost.
 - Run a print check after changing tables, images or section breaks.
+- Re-export `Ingoizers_World_Development_Binder_Master.docx` and `.pdf` from this file whenever it changes. Both were exported before the story decisions of Choices 2, 3, 4, 7 and 8 were recorded here, so they are currently behind `BINDER_MASTER.md`. This Markdown file is the master; the printed copies follow it.
+- Regenerate the Ancient Lore section with the script that reads `MERLIN_LORE` out of `js/constants.js` rather than retyping the passages, so the binder and the game can never drift apart.

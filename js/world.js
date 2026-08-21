@@ -9,6 +9,9 @@ class World {
         this.shops = [];
         this.decorations = [];
         this.ladyOfLake = null;
+        this.castleTapestry = null;
+        // A planted Worldtree Seed: { tileX, tileY, x, y, rooted, growTimer, grown }
+        this.sapling = null;
         this.generate();
     }
 
@@ -235,6 +238,17 @@ class World {
 
         // Boss spawn point (outside gate)
         this.bossSpawnPoint = tileToWorld(gateX, cy + ch + 3);
+
+        // The woven family tree on the north wall of the great hall. The Black
+        // Knight hung a black drape over it the day he took the castle; it
+        // only becomes readable once he is gone.
+        this.castleTapestry = {
+            tileX: CASTLE_TAPESTRY.tileX,
+            tileY: CASTLE_TAPESTRY.tileY,
+            x: CASTLE_TAPESTRY.tileX * TILE_SIZE + TILE_SIZE / 2,
+            y: CASTLE_TAPESTRY.tileY * TILE_SIZE + TILE_SIZE / 2,
+            uncovered: false,
+        };
 
         // Hidden ladder in the northwest corner of the castle.
         // Concealed in the wall until the Ice Gem is used nearby. When revealed,
@@ -666,7 +680,118 @@ class World {
             state: "intact",   // intact -> burning -> revealed
             burnTimer: 0,
             discovered: false,
+            regrown: false,    // set when a Worldtree Seed is planted back in the ash
         };
+    }
+
+    // ============================================
+    // The Worldtree Seed
+    // ============================================
+
+    // True when this spot is the ash where the old Worldtree stood - the only
+    // ground a Worldtree Seed will actually take root in.
+    isWorldtreeGround(x, y) {
+        const st = this.skyTree;
+        if (!st || st.state !== "revealed") return false;
+        return dist(x, y, st.x, st.y) <= WORLDTREE_SEED.plantRange;
+    }
+
+    // Push the seed into the ground under the player. Returns the new sapling,
+    // or null when there is already one planted or the tile will not take it.
+    plantSeed(x, y) {
+        if (this.sapling) return null;
+        const tile = worldToTile(x, y);
+        if (tile.x < 0 || tile.x >= WORLD_W || tile.y < 0 || tile.y >= WORLD_H) return null;
+        if (this.isSolid(tile.x, tile.y)) return null;
+
+        const rooted = this.isWorldtreeGround(x, y);
+        this.sapling = {
+            tileX: tile.x,
+            tileY: tile.y,
+            x: tile.x * TILE_SIZE + TILE_SIZE / 2,
+            y: tile.y * TILE_SIZE + TILE_SIZE / 2,
+            rooted,
+            growTimer: rooted ? WORLDTREE_SEED.growTime : 0,
+            grown: !rooted,
+        };
+        return this.sapling;
+    }
+
+    // Dig an unrooted sapling back up so the seed can be carried on.
+    uprootSapling() {
+        if (!this.sapling || this.sapling.rooted) return false;
+        this.sapling = null;
+        return true;
+    }
+
+    // Advance a rooted sapling. Returns true on the frame the Worldtree stands again.
+    updateSapling(dt) {
+        const sap = this.sapling;
+        if (!sap || !sap.rooted || sap.grown) return false;
+        sap.growTimer -= dt;
+        if (sap.growTimer > 0) return false;
+        sap.grown = true;
+        if (this.skyTree) this.skyTree.regrown = true;
+        return true;
+    }
+
+    renderSapling(ctx, camera, time) {
+        const sap = this.sapling;
+        if (!sap) return;
+        const sx = sap.x - camera.x;
+        const sy = sap.y - camera.y;
+        if (sx < -60 || sx > CANVAS_W + 60 || sy < -80 || sy > CANVAS_H + 60) return;
+
+        // A rooted seed climbs out of frame; the regrown Worldtree itself is
+        // drawn by renderSkyLadderShaft, so stop drawing the sapling once it
+        // has finished growing.
+        if (sap.rooted && sap.grown) return;
+
+        const growth = sap.rooted
+            ? 1 - Math.max(0, sap.growTimer) / WORLDTREE_SEED.growTime
+            : 0;
+        const height = 14 + growth * 34;
+        const sway = Math.sin(time * 0.003 + sap.x) * 2;
+
+        ctx.save();
+
+        // Turned soil
+        ctx.fillStyle = "rgba(40, 26, 12, 0.55)";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 6, 10, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Stem
+        ctx.fillStyle = "#5a3a1a";
+        ctx.fillRect(sx - 2, sy + 4 - height, 4, height);
+
+        // Leaves
+        ctx.fillStyle = sap.rooted ? "#2f9a2a" : "#2b8a22";
+        ctx.beginPath();
+        ctx.arc(sx + sway, sy + 2 - height, 7 + growth * 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = sap.rooted ? "#57c94a" : "#3fa832";
+        ctx.beginPath();
+        ctx.arc(sx - 3 + sway, sy - 1 - height, 4 + growth * 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (sap.rooted) {
+            // Light pouring down the hole this thing is climbing towards
+            const glow = 0.25 + Math.sin(time * 0.006) * 0.18;
+            ctx.fillStyle = `rgba(210, 255, 190, ${glow})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy - height, 26 + growth * 20, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.fillStyle = "#cfe8a8";
+            ctx.font = "9px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("A young sapling", sx, sy + 20);
+            ctx.fillStyle = "rgba(220, 235, 190, 0.6)";
+            ctx.fillText("It has not taken root here", sx, sy + 30);
+        }
+
+        ctx.restore();
     }
 
     // Set the Worldtree alight. Returns true only on the first ignition.
@@ -930,11 +1055,95 @@ class World {
             }
         }
 
+        // Render a planted Worldtree Seed
+        this.renderSapling(ctx, camera, time);
+
+        // Render the great hall's family tapestry
+        this.renderCastleTapestry(ctx, camera, time);
+
         // Render the hidden ladder / secret base
         this.renderHiddenLadder(ctx, camera, time);
 
         // Render the Worldtree / sky ladder in the top-right corner
         this.renderSkyTree(ctx, camera, time);
+    }
+
+    // The tapestry on the north wall of Ing Castle's great hall. Under the
+    // Black Knight it is a blank black drape; once he falls the drape comes
+    // down and the woven family tree underneath can be read.
+    renderCastleTapestry(ctx, camera, time) {
+        const t = this.castleTapestry;
+        if (!t) return;
+        const sx = t.x - camera.x;
+        const sy = t.y - camera.y;
+        if (sx < -60 || sx > CANVAS_W + 60 || sy < -80 || sy > CANVAS_H + 60) return;
+
+        const w = 26, h = 40;
+        const top = sy - 26;
+
+        ctx.save();
+
+        // Hanging rail
+        ctx.fillStyle = "#6b5a34";
+        ctx.fillRect(sx - w / 2 - 3, top - 4, w + 6, 4);
+
+        if (!t.uncovered) {
+            // The Black Knight's drape - deliberately featureless
+            ctx.fillStyle = "#15151f";
+            ctx.fillRect(sx - w / 2, top, w, h);
+            ctx.fillStyle = "#23232f";
+            ctx.fillRect(sx - w / 2 + 3, top + 3, w - 6, h - 6);
+            const shimmer = 0.18 + Math.sin(time * 0.0022) * 0.1;
+            ctx.fillStyle = `rgba(200, 60, 60, ${shimmer})`;
+            ctx.fillRect(sx - w / 2, top, w, h);
+            ctx.restore();
+            return;
+        }
+
+        // Cloth
+        ctx.fillStyle = "#5a1f2a";
+        ctx.fillRect(sx - w / 2, top, w, h);
+        ctx.fillStyle = "#7a2b38";
+        ctx.fillRect(sx - w / 2 + 2, top + 2, w - 4, h - 4);
+        ctx.fillStyle = "#c8a03c";
+        ctx.fillRect(sx - w / 2 + 2, top + 2, w - 4, 2);
+        ctx.fillRect(sx - w / 2 + 2, top + h - 4, w - 4, 2);
+
+        // The family tree itself: a trunk, a fork, and the row of sons that
+        // fork became.
+        ctx.strokeStyle = "#e8d089";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sx, top + 8);
+        ctx.lineTo(sx, top + 16);
+        ctx.moveTo(sx - 7, top + 16);
+        ctx.lineTo(sx + 7, top + 16);
+        ctx.moveTo(sx - 7, top + 16);
+        ctx.lineTo(sx - 7, top + 22);
+        ctx.moveTo(sx + 7, top + 16);
+        ctx.lineTo(sx + 7, top + 22);
+        ctx.moveTo(sx + 3, top + 28);
+        ctx.lineTo(sx + 11, top + 28);
+        ctx.stroke();
+
+        ctx.fillStyle = "#f2dfa4";
+        for (const node of [[sx, top + 7], [sx - 7, top + 23], [sx + 7, top + 23], [sx + 3, top + 29], [sx + 11, top + 29]]) {
+            ctx.fillRect(node[0] - 1, node[1] - 1, 3, 3);
+        }
+
+        // A quiet gleam so the player notices it from across the hall
+        const glow = 0.16 + Math.sin(time * 0.003) * 0.09;
+        ctx.fillStyle = `rgba(255, 226, 150, ${glow})`;
+        ctx.beginPath();
+        ctx.arc(sx, top + h / 2, 34, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#f0dca0";
+        ctx.font = "9px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("The Family Tapestry", sx, top + h + 14);
+
+        ctx.restore();
     }
 
     renderSkyTree(ctx, camera, time) {
@@ -1051,11 +1260,39 @@ class World {
         ctx.closePath();
         ctx.fill();
 
-        // Ash ring where the tree stood
-        ctx.fillStyle = "rgba(40, 34, 28, 0.5)";
-        ctx.beginPath();
-        ctx.ellipse(sx, sy + 16, 40, 12, 0, 0, Math.PI * 2);
-        ctx.fill();
+        const regrown = this.skyTree && this.skyTree.regrown;
+
+        if (regrown) {
+            // The seed took. A young Worldtree climbs the shaft, twining around
+            // the ladder rather than replacing it - the way up stays open.
+            const sway = Math.sin(time * 0.0012) * 3;
+            ctx.fillStyle = "#4a2e12";
+            ctx.fillRect(sx - 7, sy - 150, 14, 172);
+            ctx.fillStyle = "#5b3a18";
+            ctx.fillRect(sx - 7, sy - 150, 5, 172);
+            for (const crown of [{ x: sx + sway, y: sy - 150, r: 30 },
+                                 { x: sx - 22 + sway, y: sy - 122, r: 20 },
+                                 { x: sx + 22 + sway, y: sy - 128, r: 22 }]) {
+                ctx.fillStyle = "#1f6a18";
+                ctx.beginPath();
+                ctx.arc(crown.x, crown.y, crown.r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#2b8a22";
+                ctx.beginPath();
+                ctx.arc(crown.x - crown.r * 0.25, crown.y - crown.r * 0.25, crown.r * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.fillStyle = "rgba(120, 220, 120, 0.16)";
+            ctx.beginPath();
+            ctx.ellipse(sx, sy + 16, 46, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Ash ring where the tree stood
+            ctx.fillStyle = "rgba(40, 34, 28, 0.5)";
+            ctx.beginPath();
+            ctx.ellipse(sx, sy + 16, 40, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Ladder rails and rungs, fading as they rise
         for (let i = 0; i < 12; i++) {
@@ -1088,7 +1325,7 @@ class World {
 
         ctx.fillStyle = "#dcefff";
         ctx.font = "bold 11px monospace";
-        ctx.fillText("Ladder to the Cloudlands", sx, sy - 196);
+        ctx.fillText(regrown ? "The Worldtree, growing again" : "Ladder to the Cloudlands", sx, sy - 196);
         ctx.fillStyle = `rgba(220, 240, 255, ${0.55 + Math.sin(time * 0.004) * 0.25})`;
         ctx.font = "9px monospace";
         ctx.fillText("[E] Climb", sx, sy + 40);
@@ -1119,6 +1356,12 @@ class World {
             ctx.font = "9px monospace";
             ctx.textAlign = "center";
             ctx.fillText("Hidden Base", bx, (hl.base.y) * TILE_SIZE - camera.y + 22);
+        }
+
+        // The hoard chest the base was built around, standing open between the
+        // relics it spilled.
+        if (bx > -60 && bx < CANVAS_W + 60 && by > -60 && by < CANVAS_H + 60) {
+            TreasureChestSprite.draw(ctx, bx, by + 6, true, time);
         }
 
         // Render remaining treasures as floating icons
@@ -1983,6 +2226,12 @@ class World {
             ctx.fillRect(this.skyTree.x * scale - 1, this.skyTree.y * scale - 1, 3, 3);
         }
 
+        // Planted Worldtree Seed
+        if (this.sapling && !(this.sapling.rooted && this.sapling.grown)) {
+            ctx.fillStyle = "#7fd06a";
+            ctx.fillRect(this.sapling.x * scale - 1, this.sapling.y * scale - 1, 3, 3);
+        }
+
         // Draw player
         ctx.fillStyle = "#00ff00";
         ctx.fillRect(player.x * scale - 2, player.y * scale - 2, 5, 5);
@@ -2134,12 +2383,29 @@ class World {
 
             // Only once the ladder is open does it become a route worth naming.
             if (revealed) {
+                const label = this.skyTree.regrown ? "Worldtree" : "Sky Ladder";
                 ctx.font = "9px monospace";
                 ctx.textAlign = "center";
-                const halfW = ctx.measureText("Sky Ladder").width / 2;
-                ctx.fillStyle = "#dcefff";
-                ctx.fillText("Sky Ladder", clamp(tx, halfW + 4, mapW - halfW - 4), ty - 8);
+                const halfW = ctx.measureText(label).width / 2;
+                ctx.fillStyle = this.skyTree.regrown ? "#a8e88a" : "#dcefff";
+                ctx.fillText(label, clamp(tx, halfW + 4, mapW - halfW - 4), ty - 8);
             }
+        }
+
+        // A planted Worldtree Seed - marked so a sapling put down on the far
+        // side of the realm can still be found again.
+        if (this.sapling && !(this.sapling.rooted && this.sapling.grown)) {
+            const gx = this.sapling.x * scale + offsetX;
+            const gy = this.sapling.y * scale + offsetY;
+            ctx.fillStyle = "#7fd06a";
+            ctx.beginPath();
+            ctx.arc(gx, gy, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.font = "8px monospace";
+            ctx.textAlign = "center";
+            const halfW = ctx.measureText("Sapling").width / 2;
+            ctx.fillStyle = "#cfe8a8";
+            ctx.fillText("Sapling", clamp(gx, halfW + 4, mapW - halfW - 4), gy - 7);
         }
 
         // Player position
@@ -2184,6 +2450,7 @@ class CaveWorld {
         this.centerExit = null; // maze caves have an exit in the middle
         this.bossSpawnTile = null;
         this.treasurePos = null; // location of treasure/gem in center
+        this.hoardPos = null;    // the guardian's chest, in boss caves
         this.generate();
     }
 
@@ -2348,6 +2615,14 @@ class CaveWorld {
         const bossY = Math.floor(CAVE_H / 2);
         this.carveRoom(bossX, bossY, 6);
         this.bossSpawnTile = { x: bossX, y: bossY };
+
+        // The guardian's hoard sits at the back of his own lair. It stays shut
+        // while he lives; the reward he drops is what was inside it.
+        this.hoardPos = {
+            x: bossX * TILE_SIZE + TILE_SIZE / 2,
+            y: (bossY - 4) * TILE_SIZE + TILE_SIZE / 2,
+            tileX: bossX, tileY: bossY - 4,
+        };
 
         // Connect entrance to boss room
         this.carveTunnel(exitX, exitY, bossX, bossY, rng);

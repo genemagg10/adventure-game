@@ -188,6 +188,7 @@ class TouchControls {
             ["inv-close", () => { if (this.game.ui.isInventoryOpen()) this.game.ui.closeInventory(); }],
             ["shop-close", () => { if (this.game.ui.isShopOpen()) this.game.ui.closeShop(); }],
             ["map-close", () => { if (this.game.ui.isMapOpen()) this.game.ui.toggleMap(); }],
+            ["about-close", () => { if (this.game.ui.isAboutOpen()) this.game.ui.closeAbout(); }],
         ];
         for (const [id, close] of closers) {
             const btn = document.getElementById(id);

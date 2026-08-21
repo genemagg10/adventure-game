@@ -66,6 +66,7 @@ class Game {
         this.caveMonsterSpawnTimer = 0;
         this.nearCaveEntrance = null;
         this.nearCaveExit = null;
+        this.nearMakersHollow = false;
         this.savedSurfacePos = null;
 
         // The Cloudlands (sky realm above the world)
@@ -311,6 +312,7 @@ class Game {
         this.caveMonsterSpawnTimer = 0;
         this.nearCaveEntrance = null;
         this.nearCaveExit = null;
+        this.nearMakersHollow = false;
         this.savedSurfacePos = null;
 
         // The Cloudlands
@@ -670,7 +672,7 @@ class Game {
         this.touchControls.applyInput();
 
         // Don't update during dialogs, menus
-        const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive || this.ui.isRiddleOpen() || this.ui.isEnchantOpen() || this.ui.isLoreOpen();
+        const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive || this.ui.isRiddleOpen() || this.ui.isEnchantOpen() || this.ui.isLoreOpen() || this.ui.isAboutOpen();
 
         // Handle menu input
         if (this.keyJustPressed.map) {
@@ -690,6 +692,12 @@ class Game {
         if (this.keyJustPressed.interact && this.ui.dialogActive) {
             this.sound.dialogAdvance();
             this.ui.advanceDialog();
+            return;
+        }
+        // Either key climbs back up out of the hollow.
+        if (this.ui.isAboutOpen() && (this.keyJustPressed.pause || this.keyJustPressed.interact)) {
+            this.ui.closeAbout();
+            this.sound.menuSelect();
             return;
         }
         if (this.keyJustPressed.pause) {
@@ -991,6 +999,7 @@ class Game {
 
         // Check proximity for interactions
         this.checkCaveProximity();
+        this.checkMakersHollow();
         this.checkSkyProximity();
         if (this.onSurface) {
             this.checkProximity();
@@ -1516,6 +1525,12 @@ class Game {
     }
 
     handleInteraction() {
+        // The ladder down to the Maker's Hollow
+        if (this.nearMakersHollow && this.onSurface) {
+            this.enterMakersHollow();
+            return;
+        }
+
         // Cave entrance/exit interaction
         if (this.nearCaveEntrance && !this.inCave) {
             this.enterCave(this.nearCaveEntrance);
@@ -1967,6 +1982,30 @@ class Game {
         this.gatherCompanions();
         this.sound.menuSelect();
         this.ui.showNotification("Returned to the surface.");
+    }
+
+    // The ladder in the southwest corner. Nothing marks it; the only way to
+    // find it is to walk out to the edge of the world and look.
+    checkMakersHollow() {
+        this.nearMakersHollow = false;
+        if (!this.onSurface) return;
+        const hollow = this.world.makersHollow;
+        if (!hollow) return;
+        this.nearMakersHollow = dist(this.player.x, this.player.y, hollow.x, hollow.y) < MAKERS_HOLLOW.range;
+    }
+
+    enterMakersHollow() {
+        const hollow = this.world.makersHollow;
+        if (!hollow) return;
+        const firstTime = !hollow.discovered;
+        hollow.discovered = true;
+        if (firstTime) {
+            this.world.invalidateMapCache();
+            GameAnalytics.track("makers-hollow-found");
+            this.ui.showNotification("\u2728 You found the Maker's Hollow!");
+        }
+        this.sound.secretDiscovery();
+        this.ui.openAbout();
     }
 
     checkCaveProximity() {
@@ -2894,6 +2933,32 @@ class Game {
             }
         }
 
+        // Light spilling up out of the Maker's Hollow. Only visible from close
+        // by - enough to say "something is down there" to a player who has
+        // already wandered to the corner, and nothing at all from a distance.
+        if (this.onSurface && this.world.makersHollow) {
+            const h = this.world.makersHollow;
+            const hx = h.x - this.camera.x;
+            const hy = h.y - this.camera.y;
+            if (hx > -60 && hx < CANVAS_W + 60 && hy > -60 && hy < CANVAS_H + 60) {
+                const flicker = 0.5 + Math.sin(this.time * 0.0024) * 0.22 + Math.sin(this.time * 0.0071) * 0.08;
+                const r = 48;
+                ctx.save();
+                // Added rather than painted over, so it reads as lamplight on
+                // the flagstones instead of a coloured disc lying on them.
+                ctx.globalCompositeOperation = "lighter";
+                const glow = ctx.createRadialGradient(hx, hy, 0, hx, hy, r);
+                glow.addColorStop(0, `rgba(255, 198, 104, ${0.30 * flicker + 0.20})`);
+                glow.addColorStop(0.45, `rgba(255, 158, 58, ${0.15 * flicker + 0.07})`);
+                glow.addColorStop(1, "rgba(255, 140, 30, 0)");
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(hx, hy, r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
         // Render fountain of youth marker when nearby
         if (this.onSurface && this.world.fountainOfYouth) {
             const f = this.world.fountainOfYouth;
@@ -2924,6 +2989,8 @@ class Game {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to climb down" : "Press E to climb back down");
         } else if (this.nearCaveExit && this.inCave) {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to climb out" : "Press E to climb out");
+        } else if (this.nearMakersHollow) {
+            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to climb down the ladder" : "Press E to climb down the ladder");
         } else if (this.nearShop) {
             this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to enter shop" : "Press E to enter shop");
         } else if (this.onSurface && this.player.hasWorldtreeSeed && this.world.isWorldtreeGround(this.player.x, this.player.y)) {

@@ -559,6 +559,22 @@ const CAVE_ENTRANCES = [
     { id: 3, x: 150, y: 10,  label: "NE Cave",  obstacle: "rocks",        element: "earth", difficulty: 4 },
 ];
 
+// ============================================
+// The Maker's Hollow
+// ============================================
+
+// A ladder in the far southwest corner of the realm, past the last named land
+// and off every chart. Climbing down finds the small chamber the game itself
+// was made in. Nothing points at it: it is only ever found by wandering.
+const MAKERS_HOLLOW = {
+    name: "The Maker's Hollow",
+    x: 5, y: 144,        // tile coordinates - the bottom-left corner of the world
+    range: 46,           // how close you must stand to climb down
+    creator: "Luca",
+    year: 2026,
+    website: "luca.maggio.xyz",
+};
+
 // Obstacle tile types used around cave entrances
 const CAVE_OBSTACLE_TILES = {
     trees: TILE.TREE,

@@ -124,6 +124,10 @@ class UIManager {
             if (this.isMapOpen()) this.toggleMap();
         });
 
+        document.getElementById("about-close").addEventListener("click", () => {
+            this.closeAbout();
+        });
+
         document.getElementById("restartBtn").addEventListener("click", () => {
             this.gameOverScreen.classList.add("hidden");
             this.game.restart();
@@ -322,6 +326,22 @@ class UIManager {
         el.textContent = text;
         document.getElementById("game-container").appendChild(el);
         setTimeout(() => el.remove(), 2500);
+    }
+
+    // The Maker's Hollow
+    openAbout() {
+        this.aboutOverlay = this.aboutOverlay || document.getElementById("about-overlay");
+        this.aboutOverlay.classList.remove("hidden");
+    }
+
+    closeAbout() {
+        this.aboutOverlay = this.aboutOverlay || document.getElementById("about-overlay");
+        this.aboutOverlay.classList.add("hidden");
+    }
+
+    isAboutOpen() {
+        this.aboutOverlay = this.aboutOverlay || document.getElementById("about-overlay");
+        return !this.aboutOverlay.classList.contains("hidden");
     }
 
     // Map

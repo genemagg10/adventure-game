@@ -2499,13 +2499,15 @@ button.relic-card:hover { filter: brightness(1.18); }
 }
 
 .touch-btn-small {
-    width: 52px;
-    height: 38px;
+    width: 48px;
+    height: 40px;
     border-radius: 8px;
     background: rgba(40, 40, 60, 0.85);
     border: 2px solid rgba(255, 215, 0, 0.5);
     color: #ffd700;
-    font-size: 13px;
+    /* A pack rather than the word INV, so it wants a glyph's worth of room. */
+    font-size: 22px;
+    line-height: 1;
     font-weight: bold;
     cursor: pointer;
     display: flex;

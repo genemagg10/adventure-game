@@ -99,7 +99,7 @@ class TouchControls {
                 </div>
             </div>
             <div id="touch-buttons-top">
-                <button class="touch-btn-small" data-action="inventory">INV</button>
+                <button class="touch-btn-small" data-action="inventory" aria-label="Open inventory" title="Inventory">🎒</button>
             </div>
         `;
         this.container.appendChild(overlay);

@@ -2477,7 +2477,14 @@ button.relic-card:hover { filter: brightness(1.18); }
     border-color: rgba(80, 220, 80, 0.7);
 }
 
+/* The potion sits at the top of the cluster, nearest the mini map, so it is
+   the one button that has to give ground. A smaller circle - and less air
+   between it and the grid, since the cluster is anchored to the bottom - drops
+   it clear of the map's lower edge. */
 .touch-btn-potion {
+    width: 64px;
+    height: 64px;
+    font-size: 28px;
     background: radial-gradient(circle, rgba(180, 50, 180, 0.75) 0%, rgba(120, 30, 120, 0.55) 100%);
     border-color: rgba(220, 80, 220, 0.7);
 }
@@ -2492,13 +2499,15 @@ button.relic-card:hover { filter: brightness(1.18); }
 }
 
 .touch-btn-small {
-    width: 52px;
-    height: 38px;
+    width: 48px;
+    height: 40px;
     border-radius: 8px;
     background: rgba(40, 40, 60, 0.85);
     border: 2px solid rgba(255, 215, 0, 0.5);
     color: #ffd700;
-    font-size: 13px;
+    /* A pack rather than the word INV, so it wants a glyph's worth of room. */
+    font-size: 22px;
+    line-height: 1;
     font-weight: bold;
     cursor: pointer;
     display: flex;
@@ -2998,7 +3007,7 @@ button.relic-card:hover { filter: brightness(1.18); }
     #touch-buttons-right-wrapper {
         bottom: 8px;
         right: 8px;
-        gap: 6px;
+        gap: 4px;
     }
 
     #touch-buttons-right {
@@ -3009,6 +3018,12 @@ button.relic-card:hover { filter: brightness(1.18); }
         width: 62px;
         height: 62px;
         font-size: 28px;
+    }
+
+    .touch-btn-potion {
+        width: 52px;
+        height: 52px;
+        font-size: 24px;
     }
 
     #touch-buttons-top {
@@ -3044,6 +3059,27 @@ button.relic-card:hover { filter: brightness(1.18); }
 
     #minimap-container {
         transform: scale(0.62);
+    }
+}
+
+/* A phone held sideways can be barely 300px tall. Below about 340px the mini
+   map owns the top of the right-hand edge and the four action buttons own the
+   bottom, and no amount of shrinking leaves the potion a column to sit in -
+   it would just be a smaller circle under the map. On those screens only, it
+   steps down beside the grid instead: same cluster, same thumb, clear of the
+   map. The wrapper only exists while the touch controls are up, so this needs
+   no pointer or width guard of its own. */
+@media (max-height: 340px) {
+    #touch-buttons-right-wrapper {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .touch-btn-potion {
+        width: 46px;
+        height: 46px;
+        font-size: 22px;
     }
 }
 

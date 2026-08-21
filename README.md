@@ -81,6 +81,10 @@ Then open `http://localhost:8000`.
 | `docs/development-binder/` | Development-binder structure and current lore documentation |
 | `output/pdf/` | Print-ready proposal and binder covers |
 
+## Carrying a quest item
+
+When the player is carrying something an errand depends on — Merlin's wand, the jewel sheath, the Worldtree Seed — it appears in a **Carrying** panel below the health bar, naming the item and what to do with it. It used to be a small icon at the end of the row of counters, where it read as one more number and was easy to walk past.
+
 ## Screen size
 
 The playfield is always 600 units tall and takes the width of the screen, between 4:3 and 7:3. Nothing changes size when the shape changes — a wider screen simply shows more ground to the left and right, and gives the inventory, the shop and the touch controls more room. A phone held sideways is about 2.2:1, so it now fills the whole display instead of sitting in a 4:3 box with black bars either side. How far the player can see, and therefore how much of the map they chart as they walk, follows the width too.

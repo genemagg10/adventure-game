@@ -226,24 +226,43 @@ class UIManager {
         const defText = armor.defense > 0 ? `  |  ${armor.icon} DEF: ${armor.defense}` : "";
         this.weaponDisplay.textContent = `${weapon.icon} ${weapon.name}  |  ${bow.icon} ${bow.name}${defText}`;
 
-        // Quest items
+        // Carried quest items. Each one names itself and says what it is for -
+        // an errand the player is in the middle of, not another tally to lose
+        // among the counters.
         const questEl = document.getElementById("quest-items");
-        if (questEl) {
-            questEl.innerHTML = "";
+        const questPanel = document.getElementById("quest-tracker");
+        if (questEl && questPanel) {
+            const touch = this.game.touchControls && this.game.touchControls.active;
+            const carrying = [];
             if (player.hasMerlinWand) {
-                const icon = document.createElement("span");
-                icon.className = "quest-item-icon";
-                icon.textContent = "🪄";
-                icon.title = "Merlin's Wand - Return to Merlin";
-                questEl.appendChild(icon);
+                carrying.push({ icon: "\ud83e\ude84", name: "Merlin's Wand", task: "Take it back to Merlin" });
             }
             if (player.hasSheath && this.game.ladyQuestState !== "complete") {
-                const icon = document.createElement("span");
-                icon.className = "quest-item-icon";
-                icon.textContent = "🗡\uFE0F";
-                icon.title = "Jewel Sheath - Return to the Lady";
-                questEl.appendChild(icon);
+                carrying.push({ icon: "\ud83d\udde1\uFE0F", name: "Jewel Sheath", task: "Take it back to the Lady of the Lake" });
             }
+            if (player.hasWorldtreeSeed) {
+                carrying.push({
+                    icon: WORLDTREE_SEED.icon,
+                    name: WORLDTREE_SEED.name,
+                    task: touch ? "Plant it where the Worldtree stood" : "Press P to plant it where the Worldtree stood",
+                });
+            }
+
+            // Rebuilt only when the list actually changes; this runs every frame.
+            const signature = carrying.map(q => q.name + "|" + q.task).join("~");
+            if (signature !== this._questSignature) {
+                this._questSignature = signature;
+                questEl.innerHTML = "";
+                for (const q of carrying) {
+                    const card = document.createElement("div");
+                    card.className = "quest-item-card";
+                    card.title = `${q.name} - ${q.task}`;
+                    card.innerHTML = `<span class="quest-item-icon">${q.icon}</span>` +
+                        `<span class="quest-item-copy"><strong>${q.name}</strong><small>${q.task}</small></span>`;
+                    questEl.appendChild(card);
+                }
+            }
+            questPanel.classList.toggle("hidden", carrying.length === 0);
         }
 
         // Element slots

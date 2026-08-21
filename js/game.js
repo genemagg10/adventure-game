@@ -354,7 +354,7 @@ class Game {
         this.ui.showDialog("Seek the 5 Blue Gems scattered across the land. Defeat monsters and explore to find them.");
         this.ui.showDialog("Once you have all 5 gems, journey to Ing Castle where a dark foe awaits...");
         if (this.touchControls.active) {
-            this.ui.showDialog("Use the joystick to move. ATK to attack, PWR for elemental powers, ACT to interact.");
+            this.ui.showDialog("Use the joystick to move. The buttons on the right show what they do: your sword attacks, your bow shoots, the power symbol casts, and the last one acts on whatever you are standing next to.");
         } else {
             this.ui.showDialog("Press SPACE to attack, R to shoot arrows. Unlock Fire power to ignite your arrows!");
         }
@@ -658,6 +658,10 @@ class Game {
         if (this.state === "playing" && !this.paused) {
             this.update(dt);
         }
+
+        // The on-screen buttons wear what they will do, so they are repainted
+        // from the same state the frame is drawn from.
+        this.touchControls.syncButtons();
 
         this.render();
 
@@ -1351,11 +1355,11 @@ class Game {
         let howToUse;
         if (autoSelected) {
             howToUse = touch
-                ? "It is selected and ready - tap PWR to use it."
+                ? "It is selected and ready - the power button on the right now shows its symbol; tap it to use."
                 : "It is selected and ready - press Q to use it.";
         } else {
             howToUse = touch
-                ? "Tap its icon in the power bar to select it, then PWR to use it."
+                ? "Tap its icon in the power bar to select it - the power button takes its symbol, and casts it."
                 : `Press ${keyNumber} to select it, Q to use.`;
         }
 
@@ -1522,6 +1526,69 @@ class Game {
         if (this.player.blueGems >= 5) {
             this.ui.showDialog("You have all 5 Blue Gems! Journey to Ing Castle - a dark presence awaits outside its gates...");
         }
+    }
+
+    // What the ACT button would do if it were pressed right now: the symbol it
+    // wears and how to describe it. handleInteraction() decides which context
+    // wins, so this walks the same checks in the same order - the symbol on the
+    // button is always the thing that will actually happen. Returns null when
+    // there is nothing in reach to act on.
+    interactContext() {
+        // A dialog swallows every other interaction until it is finished.
+        if (this.ui.dialogActive) {
+            return { icon: "💬", short: "continue", long: "continue" };
+        }
+        if (this.nearMakersHollow && this.onSurface) {
+            return { icon: "🪜", short: "climb down the ladder", long: "climb down the ladder" };
+        }
+        if (this.nearCaveEntrance && !this.inCave) {
+            return { icon: "🕳️", short: "enter cave", long: "enter cave" };
+        }
+        if (this.nearCaveExit && this.inCave) {
+            return { icon: "⬆️", short: "climb out", long: "climb out" };
+        }
+        if (this.nearSkyLadder && this.onSurface) {
+            return { icon: "☁️", short: "climb to the Cloudlands", long: "climb to the Cloudlands" };
+        }
+        if (this.nearSkyExit && this.inSky) {
+            return { icon: "⬇️", short: "climb down", long: "climb back down" };
+        }
+        if (!this.onSurface) return null;
+
+        if (this.nearFountain) {
+            return { icon: "⛲", short: "use the Fountain", long: "use the Fountain of Youth" };
+        }
+        if (this.nearShop) {
+            return { icon: "🏪", short: "enter shop", long: "enter shop" };
+        }
+        if (this.nearSapling) {
+            return { icon: "🌱", short: "dig up the seed", long: "dig up the Worldtree Seed" };
+        }
+        if (this.nearTapestry) {
+            return { icon: "📜", short: "read the tapestry", long: "read the tapestry" };
+        }
+        if (this.nearLady) {
+            return { icon: "💬", short: "speak with the Lady", long: "speak with the Lady of the Lake" };
+        }
+        if (this.nearMerlin) {
+            return { icon: "💬", short: "speak with Merlin", long: "speak with Merlin" };
+        }
+        if (this.nearMerlinHut) {
+            return { icon: "📖", short: "enter hut", long: "read ancient lore" };
+        }
+        if (this.nearAnimal) {
+            // The apple is the whole interaction, so it is the whole symbol; a
+            // paw stands in when there is no apple left to offer.
+            const fed = this.player.apples > 0;
+            const short = fed
+                ? `feed an apple to the ${this.nearAnimal.name} (${this.player.apples} left)`
+                : `tame the ${this.nearAnimal.name} - you need an apple!`;
+            const long = fed
+                ? `feed an apple to the ${this.nearAnimal.name} (${APPLE_ITEM.icon} ${this.player.apples})`
+                : short;
+            return { icon: fed ? APPLE_ITEM.icon : "🐾", short, long };
+        }
+        return null;
     }
 
     handleInteraction() {
@@ -2979,41 +3046,18 @@ class Game {
             }
         }
 
-        // Interaction prompts
+        // Interaction prompts. On touch the wording names the very symbol the
+        // ACT button is wearing right now, so prompt and button always agree.
         const isMobile = this.touchControls.active;
-        if (this.nearCaveEntrance && this.onSurface) {
-            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to enter cave" : "Press E to enter cave");
-        } else if (this.nearSkyLadder && this.onSurface) {
-            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to climb to the Cloudlands" : "Press E to climb to the Cloudlands");
-        } else if (this.nearSkyExit && this.inSky) {
-            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to climb down" : "Press E to climb back down");
-        } else if (this.nearCaveExit && this.inCave) {
-            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to climb out" : "Press E to climb out");
-        } else if (this.nearMakersHollow) {
-            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to climb down the ladder" : "Press E to climb down the ladder");
-        } else if (this.nearShop) {
-            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to enter shop" : "Press E to enter shop");
+        const act = this.ui.dialogActive ? null : this.interactContext();
+        if (act) {
+            this.ui.renderInteractionPrompt(ctx, isMobile
+                ? `Tap ${act.icon} to ${act.short}`
+                : `Press E to ${act.long}`);
         } else if (this.onSurface && this.player.hasWorldtreeSeed && this.world.isWorldtreeGround(this.player.x, this.player.y)) {
             this.ui.renderInteractionPrompt(ctx, isMobile
                 ? "This is the ground it came from - plant the seed from your inventory"
                 : "This is the ground it came from - press P to plant the Worldtree Seed");
-        } else if (this.nearSapling) {
-            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to dig up the seed" : "Press E to dig up the Worldtree Seed");
-        } else if (this.nearTapestry) {
-            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to read the tapestry" : "Press E to read the tapestry");
-        } else if (this.nearLady) {
-            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to speak with the Lady" : "Press E to speak with the Lady of the Lake");
-        } else if (this.nearMerlin) {
-            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to speak with Merlin" : "Press E to speak with Merlin");
-        } else if (this.nearMerlinHut) {
-            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT to enter hut" : "Press E to read ancient lore");
-        } else if (this.nearFountain) {
-            this.ui.renderInteractionPrompt(ctx, isMobile ? "Tap ACT for Fountain" : "Press E for Fountain of Youth");
-        } else if (this.nearAnimal) {
-            const verb = this.player.apples > 0
-                ? `feed an apple to the ${this.nearAnimal.name} (${APPLE_ITEM.icon} ${this.player.apples})`
-                : `tame the ${this.nearAnimal.name} - you need an apple!`;
-            this.ui.renderInteractionPrompt(ctx, (isMobile ? "Tap ACT to " : "Press E to ") + verb);
         }
 
         // Render cave / sky exit labels

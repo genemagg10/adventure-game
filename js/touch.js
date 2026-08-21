@@ -90,12 +90,12 @@ class TouchControls {
                 </div>
             </div>
             <div id="touch-buttons-right-wrapper">
-                <button class="touch-btn touch-btn-potion" data-action="potion">POT</button>
+                <button class="touch-btn touch-btn-potion" data-action="potion" aria-label="Use health potion">🧪</button>
                 <div id="touch-buttons-right">
-                    <button class="touch-btn touch-btn-attack" data-action="attack">ATK</button>
-                    <button class="touch-btn touch-btn-shoot" data-action="shoot">BOW</button>
-                    <button class="touch-btn touch-btn-element" data-action="element">PWR</button>
-                    <button class="touch-btn touch-btn-interact" data-action="interact">ACT</button>
+                    <button class="touch-btn touch-btn-attack" data-action="attack" aria-label="Attack">⚔️</button>
+                    <button class="touch-btn touch-btn-shoot" data-action="shoot" aria-label="Shoot arrow">🏹</button>
+                    <button class="touch-btn touch-btn-element" data-action="element" aria-label="Use elemental power">✨</button>
+                    <button class="touch-btn touch-btn-interact" data-action="interact" aria-label="Interact">✋</button>
                 </div>
             </div>
             <div id="touch-buttons-top">
@@ -113,6 +113,67 @@ class TouchControls {
 
         this.joystickBase = document.getElementById("touch-joystick-base");
         this.joystickKnob = document.getElementById("touch-joystick-knob");
+
+        // The five faces that change with what you carry and what you stand
+        // next to. Each caches what was last written to it so the per-frame
+        // sync only touches the DOM when something has actually changed.
+        this.faces = {};
+        for (const action of ["potion", "attack", "shoot", "element", "interact"]) {
+            const el = overlay.querySelector(`[data-action="${action}"]`);
+            if (el) this.faces[action] = { el, icon: el.textContent, label: el.getAttribute("aria-label"), idle: null };
+        }
+    }
+
+    // Paint one button: its symbol, its spoken label, and whether it is dimmed
+    // for having nothing to do. Writes only what changed.
+    setFace(action, icon, label, idle) {
+        const face = this.faces[action];
+        if (!face) return;
+        if (face.icon !== icon) {
+            face.icon = icon;
+            face.el.textContent = icon;
+        }
+        if (face.label !== label) {
+            face.label = label;
+            face.el.setAttribute("aria-label", label);
+        }
+        if (face.idle !== idle) {
+            face.idle = idle;
+            face.el.classList.toggle("touch-btn-idle", idle);
+        }
+    }
+
+    // Called once a frame: the buttons wear the sword, bow, power and apple
+    // they will actually use, so nothing has to be read to be understood.
+    syncButtons() {
+        if (!this.active || !this.faces) return;
+        const player = this.game.player;
+        if (!player) return;
+
+        const potions = player.healthPotions + player.greaterHealthPotions;
+        this.setFace("potion", HEALTH_POTION.icon,
+            potions > 0 ? `Use health potion (${potions})` : "No health potions",
+            potions === 0);
+
+        const weapon = WEAPONS[player.currentWeapon];
+        if (weapon) this.setFace("attack", weapon.icon, `Attack with ${weapon.name}`, false);
+
+        const bow = BOWS[player.currentBow];
+        if (bow) {
+            this.setFace("shoot", bow.icon,
+                player.arrows > 0 ? `Shoot ${bow.name} (${player.arrows} arrows)` : "No arrows",
+                player.arrows <= 0);
+        }
+
+        const element = player.activeElement ? ELEMENTS[player.activeElement] : null;
+        this.setFace("element", element ? element.icon : "✨",
+            element ? `Use ${element.name} power` : "No power selected",
+            !element);
+
+        const act = this.game.interactContext();
+        this.setFace("interact", act ? act.icon : "✋",
+            act ? act.short : "Nothing to interact with",
+            !act);
     }
 
     bindEvents() {

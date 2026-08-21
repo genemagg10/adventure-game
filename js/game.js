@@ -185,6 +185,22 @@ class Game {
                 this.keys[action] = false;
             }
         });
+
+        // The minimap is also the way into the world map, on every device.
+        // Touch has its own handler in touch.js so a tap never fires twice.
+        const minimap = this.minimapCanvas.parentElement;
+        if (minimap) {
+            minimap.addEventListener("click", () => {
+                if (this.state !== "playing") return;
+                this.keyJustPressed.map = true;
+            });
+            minimap.addEventListener("keydown", (e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                if (this.state !== "playing") return;
+                this.keyJustPressed.map = true;
+            });
+        }
     }
 
     startGame() {
@@ -1238,10 +1254,7 @@ class Game {
             this.trackGemProgress();
             this.sound.gemCollect();
             this.ui.showNotification(`Blue Gem found! (${this.player.blueGems}/5)`);
-            if (elem) {
-                this.ui.showDialog(`The Blue Gem resonates with ${ELEMENTS[elem].name} energy! You gained the power of ${ELEMENTS[elem].name}! Press ${this.player.nextElementIndex} to select it, Q to use.`);
-                this.onElementUnlocked(elem);
-            }
+            if (elem) this.announceElementUnlock(elem, "resonates");
             if (this.player.blueGems >= 5) {
                 this.ui.showDialog("You have all 5 Blue Gems! Journey to Ing Castle - a dark presence awaits outside its gates...");
             }
@@ -1251,6 +1264,35 @@ class Game {
     trackGemProgress() {
         if (this.player.blueGems >= 1) GameAnalytics.track("first-blue-gem");
         if (this.player.blueGems >= 5) GameAnalytics.track("five-blue-gems");
+    }
+
+    // A Blue Gem has handed over a new power. One place decides what happens
+    // and how it is explained, so keyboard and touch players get instructions
+    // that match the controls actually in front of them.
+    announceElementUnlock(elem, verb) {
+        const name = ELEMENTS[elem].name;
+        const keyNumber = this.player.nextElementIndex;
+
+        // The first power a player earns is the only one they own, so there is
+        // nothing to choose between - select it for them. On touch there is no
+        // number row to press, which made this easy to miss entirely.
+        const autoSelected = !this.player.activeElement;
+        if (autoSelected) this.player.activeElement = elem;
+
+        const touch = this.touchControls && this.touchControls.active;
+        let howToUse;
+        if (autoSelected) {
+            howToUse = touch
+                ? "It is selected and ready - tap PWR to use it."
+                : "It is selected and ready - press Q to use it.";
+        } else {
+            howToUse = touch
+                ? "Tap its icon in the power bar to select it, then PWR to use it."
+                : `Press ${keyNumber} to select it, Q to use.`;
+        }
+
+        this.ui.showDialog(`The Blue Gem ${verb} with ${name} energy! You gained the power of ${name}! ${howToUse}`);
+        this.onElementUnlocked(elem);
     }
 
     // Unlocking Fire gives the player a deliberately vague memory of the tree
@@ -1408,10 +1450,7 @@ class Game {
         this.trackGemProgress();
         this.sound.gemCollect();
         this.ui.showNotification(`Blue Gem found! (${this.player.blueGems}/5)`);
-        if (elem) {
-            this.ui.showDialog(`The Blue Gem pulses with ${ELEMENTS[elem].name} energy! You gained the power of ${ELEMENTS[elem].name}! Press ${this.player.nextElementIndex} to select it, Q to use.`);
-            this.onElementUnlocked(elem);
-        }
+        if (elem) this.announceElementUnlock(elem, "pulses");
         if (this.player.blueGems >= 5) {
             this.ui.showDialog("You have all 5 Blue Gems! Journey to Ing Castle - a dark presence awaits outside its gates...");
         }
@@ -2846,7 +2885,7 @@ class Game {
         }
 
         // Render minimap
-        const mapOpts = { time: this.time, closeLabel: isMobile ? "MAP" : "M" };
+        const mapOpts = { time: this.time, closeLabel: isMobile ? "TAP" : "M" };
         if (this.inCave && this.caveWorlds[this.activeCaveId]) {
             this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss, mapOpts);
         } else if (this.inSky) {

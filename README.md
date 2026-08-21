@@ -33,7 +33,7 @@ Current features include:
 | Space | Melee attack |
 | R | Shoot an arrow |
 | E | Interact, enter, shop, or tame an animal |
-| M | Toggle map |
+| M | Toggle map (or click the mini map) |
 | 1-5 | Select an unlocked elemental power |
 | Q | Use the selected elemental power |
 | T | Use a health potion |
@@ -41,7 +41,7 @@ Current features include:
 | P | Plant the Worldtree Seed |
 | Esc | Pause |
 
-Touch controls appear automatically on supported phones and tablets. Hold the device sideways for the best view.
+Touch controls appear automatically on supported phones and tablets. Hold the device sideways for the best view. The mini map is the map button: tap it to open the world map, and tap anywhere to close it again. The first elemental power a Blue Gem gives is selected automatically, so it is ready to use straight away.
 
 ## Run locally
 
@@ -85,7 +85,7 @@ Then open `http://localhost:8000`.
 
 Both maps are drawn pictures of the realm rather than coloured boxes. Each land has its own colour and its own small marks — pine trees, dunes, mountain peaks, ruined columns — and roads, rivers and coastlines come straight from the real ground the player walks on. Every map is one window: a title plate at the top, the land in the middle, and the key in its own bar at the bottom, so names and markers never sit on top of each other.
 
-The mini map in the corner now shows the country around the player instead of the whole realm shrunk down. Living things — monsters, companions, a boss — appear only while they are close enough to see, and an arrow on the rim points the way back to Ing Castle when it is off the edge.
+The mini map in the corner now shows the country around the player instead of the whole realm shrunk down. Living things — monsters, companions, a boss — appear only while they are close enough to see, and an arrow on the rim points the way back to Ing Castle when it is off the edge. It is also the map button — clicking or tapping it opens the world map — so touch play no longer needs a separate MAP button sitting on the playfield.
 
 Nothing is charted at the start. The map fills in as the player travels, and each place has three looks:
 

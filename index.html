@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Ingoizer's World</title>
-    <link rel="stylesheet" href="css/style.css?v=20260821-maps">
+    <link rel="stylesheet" href="css/style.css?v=20260821-mobile">
     <script data-goatcounter="https://genemaggio.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
 </head>
@@ -117,14 +117,15 @@
                     <div class="element-slot" id="elem-earth" title="Earth">🪨</div>
                 </div>
             </div>
-            <div id="minimap-container">
+            <div id="minimap-container" role="button" tabindex="0" aria-label="Open the world map" title="Open the world map">
                 <canvas id="minimap" width="160" height="160"></canvas>
+                <span class="minimap-open-hint" aria-hidden="true">MAP</span>
             </div>
         </div>
         <div id="map-overlay" class="hidden">
             <h2 class="visually-hidden">World Map</h2>
             <canvas id="worldmap" width="700" height="584"></canvas>
-            <p class="map-hint visually-hidden">Press M to close</p>
+            <p class="map-hint visually-hidden">Press M or tap the map to close</p>
         </div>
         <div id="shop-overlay" class="hidden">
             <section class="armory-window" aria-labelledby="shop-title">

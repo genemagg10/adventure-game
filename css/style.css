@@ -14,13 +14,17 @@ body {
     overflow: hidden;
 }
 
+/* The window is free to be wider than 4:3 - a phone held sideways is about
+   2.2:1, and that width used to be thrown away as letterbox. Height still
+   drives the scale, so the two rules are: never taller than 4:3, and never
+   wider than 7:3 (past which the extra view stops being useful). */
 #game-container {
     position: relative;
     width: 100vw;
     height: 100vh;
     height: 100dvh;
-    max-width: calc(100dvh * 800 / 600);
-    max-height: calc(100vw * 600 / 800);
+    max-width: calc(100dvh * 7 / 3);
+    max-height: calc(100vw * 3 / 4);
     border: none;
     border-radius: 0;
     box-shadow: none;
@@ -1543,7 +1547,7 @@ body {
     min-height: 0;
     padding: 11px 17px 7px;
     display: grid;
-    grid-template-columns: minmax(300px, 42%) minmax(0, 1fr);
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
     gap: 11px;
     flex: 1 1 auto;
 }
@@ -1657,7 +1661,7 @@ body {
 
 .inventory-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(186px, 1fr));
     align-content: start;
     gap: 6px;
     flex: 1 1 auto;
@@ -2988,7 +2992,7 @@ body.touch-mode * {
 
     .inventory-main {
         padding: 7px 10px 4px;
-        grid-template-columns: minmax(255px, 40%) minmax(0, 1fr);
+        grid-template-columns: minmax(255px, 330px) minmax(0, 1fr);
         gap: 7px;
     }
 
@@ -3078,7 +3082,7 @@ body.touch-mode * {
     .inventory-main {
         padding: 5px 8px 3px;
         gap: 6px;
-        grid-template-columns: minmax(210px, 44%) minmax(0, 1fr);
+        grid-template-columns: minmax(210px, 300px) minmax(0, 1fr);
     }
 
     /* Flow layout instead of an absolutely-placed ribbon, so the panel can

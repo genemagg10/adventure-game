@@ -33,12 +33,23 @@ const FOG_SETTINGS = {
     sky: { cellTiles: 1, sight: 11, losBlocked: false },
 };
 
+// Sight follows the window. The playfield widens to the shape of the screen,
+// and a player who can see ground on a wide phone should have it charted -
+// otherwise fog sits over terrain that is plainly visible in front of them.
+// At the original 800x600 these work out to exactly 13, 7 and 11.
+function applyViewSight() {
+    const screen = Math.max(8, Math.round(Math.max(CANVAS_W, CANVAS_H) / TILE_SIZE / 2));
+    FOG_SETTINGS.surface.sight = screen;
+    FOG_SETTINGS.cave.sight = Math.max(4, Math.round(screen * 0.55));
+    FOG_SETTINGS.sky.sight = Math.max(6, Math.round(screen * 0.85));
+}
+
 class FogOfWar {
     constructor(tilesW, tilesH, settings) {
         this.tilesW = tilesW;
         this.tilesH = tilesH;
         this.cell = settings.cellTiles;
-        this.sight = settings.sight;
+        this.settings = settings;
         this.losBlocked = !!settings.losBlocked;
         this.cols = Math.ceil(tilesW / this.cell);
         this.rows = Math.ceil(tilesH / this.cell);
@@ -46,6 +57,11 @@ class FogOfWar {
         this.charted = 0;
         this.lastTile = null;      // skip the sweep until the player changes tile
         if (!FOG_ENABLED) this.revealAll();
+    }
+
+    // Read live, so widening the window immediately widens what gets charted.
+    get sight() {
+        return this.settings.sight;
     }
 
     index(col, row) {

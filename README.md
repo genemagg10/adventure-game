@@ -41,7 +41,7 @@ Current features include:
 | P | Plant the Worldtree Seed |
 | Esc | Pause |
 
-Touch controls appear automatically on supported phones and tablets. Hold the device sideways for the best view. The mini map is the map button: tap it to open the world map, and tap anywhere to close it again. The first elemental power a Blue Gem gives is selected automatically, so it is ready to use straight away.
+Touch controls appear automatically on supported phones and tablets. Hold the device sideways for the best view — the game fills the whole screen, so a wide phone puts the joystick and the action buttons out at the edges where the thumbs already are. The mini map is the map button: tap it to open the world map, and tap anywhere to close it again. The first elemental power a Blue Gem gives is selected automatically, so it is ready to use straight away.
 
 ## Run locally
 
@@ -80,6 +80,10 @@ Then open `http://localhost:8000`.
 | `docs/art-direction/` | Art-direction review and visual concepts |
 | `docs/development-binder/` | Development-binder structure and current lore documentation |
 | `output/pdf/` | Print-ready proposal and binder covers |
+
+## Screen size
+
+The playfield is always 600 units tall and takes the width of the screen, between 4:3 and 7:3. Nothing changes size when the shape changes — a wider screen simply shows more ground to the left and right, and gives the inventory, the shop and the touch controls more room. A phone held sideways is about 2.2:1, so it now fills the whole display instead of sitting in a 4:3 box with black bars either side. How far the player can see, and therefore how much of the map they chart as they walk, follows the width too.
 
 ## Maps and fog of war
 

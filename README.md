@@ -149,7 +149,7 @@ The playfield is always 600 units tall and takes the width of the screen, betwee
 
 Both maps are drawn pictures of the realm rather than coloured boxes. Each land has its own colour and its own small marks — pine trees, dunes, mountain peaks, ruined columns — and roads, rivers and coastlines come straight from the real ground the player walks on. Every map is one window: a title plate at the top, the land in the middle, and the key in its own bar at the bottom, so names and markers never sit on top of each other.
 
-The mini map in the corner now shows the country around the player instead of the whole realm shrunk down. Living things — monsters, companions, a boss — appear only while they are close enough to see, and an arrow on the rim points the way back to Ing Castle when it is off the edge. It is also the map button — clicking or tapping it opens the world map — so touch play no longer needs a separate MAP button sitting on the playfield.
+The mini map in the corner shows the whole realm, drawn the same way the world map draws it, so where the player stands on the map is where they stand in the world. Fog of war is what hides the parts nobody has walked yet, which is why it needs no arrow on the rim pointing anywhere. Living things — monsters, companions, a boss — appear only while they are close enough to see. It is also the map button — clicking or tapping it opens the world map — so touch play no longer needs a separate MAP button sitting on the playfield.
 
 Nothing is charted at the start. The map fills in as the player travels, and each place has three looks:
 

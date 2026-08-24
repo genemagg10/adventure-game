@@ -62,8 +62,10 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: clamp(18px, 3.2vh, 34px);
-    padding: clamp(24px, 5vh, 52px) clamp(20px, 5vw, 56px);
+    gap: clamp(12px, 3.2vh, 34px);
+    /* The bottom is deeper than the top on purpose: .title-version is out of
+       flow down there, and the stack must not be able to reach it. */
+    padding: clamp(24px, 5vh, 52px) clamp(20px, 5vw, 56px) clamp(40px, 6vh, 60px);
     z-index: 100;
 }
 
@@ -102,16 +104,25 @@ body {
         linear-gradient(90deg, rgba(3, 8, 18, 0.34), transparent 28%, transparent 72%, rgba(3, 8, 18, 0.28));
 }
 
+/* The title stack is centred, so whatever does not fit runs off both ends at
+   once - and both ends are where the gilt frame is. Continue and Load Game
+   arriving together add a button row and a line of text, which on a short
+   window is enough to push the crest out through the top of the frame.
+   The lockup is the part with give in it: it gives up height first and the
+   logo scales down inside it, so the menu keeps its size and nothing is ever
+   pushed across the border. */
 .title-lockup {
     display: flex;
     flex-direction: column;
     align-items: center;
     width: min(560px, 86%);
+    min-height: 0;
     filter: drop-shadow(0 8px 7px rgba(0, 0, 0, 0.85));
 }
 
 .title-crest {
     display: flex;
+    flex: none;
     align-items: center;
     justify-content: center;
     gap: 13px;
@@ -140,18 +151,24 @@ body {
     margin: 0;
     display: block;
     width: 100%;
+    min-height: 0;
     line-height: 0;
     filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.92));
 }
 
+/* contain, not the default fill: once the heading is squeezed the logo has to
+   letterbox inside it rather than stretch out of square. */
 .title-logo-image {
     display: block;
     width: 100%;
     height: auto;
+    max-height: 100%;
+    object-fit: contain;
 }
 
 .subtitle-row {
     display: flex;
+    flex: none;
     align-items: center;
     justify-content: center;
     width: min(94%, 620px);
@@ -185,6 +202,7 @@ body {
 
 .title-menu {
     position: relative;
+    flex: none;
     width: min(560px, 86%);
     padding: clamp(24px, 4vh, 34px) clamp(22px, 5vw, 52px) clamp(19px, 3vh, 27px);
     background:
@@ -2969,8 +2987,10 @@ button.relic-card:hover { filter: brightness(1.18); }
 /* Landscape-specific: tighter vertical spacing */
 @media (max-height: 500px) {
     #title-screen {
-        gap: 10px;
-        padding: 16px 28px;
+        gap: 8px;
+        /* 20px is the floor: the frame sits at inset 10px and carries another
+           5px of inner bevel, and the stack has to clear both. */
+        padding: 20px 28px;
     }
 
     .title-crest {

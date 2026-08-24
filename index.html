@@ -43,6 +43,7 @@
                 <div class="title-actions">
                     <button id="continueBtn" class="menu-btn menu-btn-primary hidden">Continue</button>
                     <button id="startBtn" class="menu-btn menu-btn-primary">Begin Adventure</button>
+                    <button id="loadBtn" class="menu-btn hidden">Load Game</button>
                     <button id="controlsBtn" class="menu-btn">Controls</button>
                 </div>
                 <p id="continue-note" class="menu-note hidden"></p>
@@ -254,15 +255,24 @@
             <div id="riddle-choices"></div>
             <p id="riddle-result"></p>
         </div>
+        <div id="slots-overlay" class="hidden" role="dialog" aria-labelledby="slots-title" aria-modal="true">
+            <div class="slots-panel">
+                <h2 id="slots-title">Save Game</h2>
+                <p id="slots-subtitle" class="menu-note"></p>
+                <div id="slots-list" role="list"></div>
+                <button id="slots-close" class="menu-btn">Back</button>
+            </div>
+        </div>
         <div id="pause-overlay" class="hidden" role="dialog" aria-labelledby="pause-title" aria-modal="true">
             <div class="pause-panel">
                 <h2 id="pause-title">Paused</h2>
                 <div class="pause-actions">
                     <button id="pause-resume" class="menu-btn menu-btn-primary">Resume</button>
                     <button id="pause-save" class="menu-btn">Save Game</button>
+                    <button id="pause-load" class="menu-btn">Load Game</button>
+                    <button id="pause-controls" class="menu-btn">Controls</button>
                     <button id="pause-quit" class="menu-btn">Quit to Title</button>
                 </div>
-                <p id="pause-note" class="menu-note"></p>
             </div>
         </div>
         <div id="dialog-box" class="hidden">

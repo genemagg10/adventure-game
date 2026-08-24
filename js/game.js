@@ -402,6 +402,7 @@ class Game {
 
         this.running = false;
         this.ui.hideBossHealth();
+        this.ui.closeMenus();
         GameAnalytics.track("game-load");
         this.sound.menuSelect();
 
@@ -423,6 +424,7 @@ class Game {
 
     restart() {
         this.running = false;
+        this.ui.closeMenus();
         this.ui.hideBossHealth();
         this.ui.hideHud();
         this.ladyQuestState = "none";
@@ -715,8 +717,10 @@ class Game {
 
         // Closing the pause menu has to be handled out here: update() is what
         // reads the key, and update() is exactly what pausing stops.
-        if (this.state === "playing" && this.paused && this.keyJustPressed.pause && this.ui.isPauseOpen()) {
-            this.ui.closePause();
+        if (this.state === "playing" && this.paused && this.keyJustPressed.pause) {
+            if (this.ui.isSlotsOpen()) this.ui.closeSlots();
+            else if (this.ui.isControlsOpen()) this.ui.closeControls();
+            else if (this.ui.isPauseOpen()) this.ui.closePause();
             this.keyJustPressed.pause = false;
         }
 

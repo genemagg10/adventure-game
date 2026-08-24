@@ -95,7 +95,7 @@ class World {
         // The Worldtree in the top-right corner - burn it to reveal the sky ladder
         this.skyTree = null;
         this.skyLadder = null;
-        this.placeSkyTree(rng);
+        this.placeSkyTree();
 
         // Fountain of Youth
         this.fountainOfYouth = null;
@@ -208,6 +208,20 @@ class World {
             } else {
                 if (y < y2) y++;
                 else if (y > y2) y--;
+            }
+        }
+    }
+
+    // Take a region's roads back. Path tiles inside the box return to `natural`,
+    // the ground that region grows on its own, so a zone that is meant to be
+    // roadless stays roadless whatever else was carved across it.
+    clearRoads(zone, natural) {
+        if (!zone) return;
+        const x1 = Math.min(WORLD_W - 1, zone.x + zone.w - 1);
+        const y1 = Math.min(WORLD_H - 1, zone.y + zone.h - 1);
+        for (let y = Math.max(0, zone.y); y <= y1; y++) {
+            for (let x = Math.max(0, zone.x); x <= x1; x++) {
+                if (this.tiles[y][x] === TILE.PATH) this.tiles[y][x] = natural;
             }
         }
     }
@@ -702,12 +716,14 @@ class World {
     // The Worldtree (top-right corner) & the ladder to the Cloudlands
     // ============================================
 
-    placeSkyTree(rng) {
+    placeSkyTree() {
         const t = SKY_TREE;
 
-        // A quiet approach road so the corner can actually be found on foot.
-        this.carvePath(160, 22, 188, 14, rng);
-        this.carvePath(188, 14, t.x, t.y + 4, rng);
+        // No road runs to the Worldtree - that is the first thing the old verse
+        // says about it. The Reach is trackless ground, so anything that laid a
+        // path inside it is taken back by the turf and the corner is only ever
+        // found by leaving the roads behind.
+        this.clearRoads(ZONES.worldtree, TILE.DARK_GRASS);
 
         // Clear a grassy glade around the tree so the canopy reads clearly.
         for (let dy = -4; dy <= 4; dy++) {

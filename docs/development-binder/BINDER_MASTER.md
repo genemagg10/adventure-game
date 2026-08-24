@@ -377,6 +377,7 @@ Because Ingoizer is a family name, “Ingozer's Armour” reads as an ancestor's
 ## Worldtree discovery
 
 **Where and when:** Far northeast near tile 193,6. Unlock Fire to remember a verse. Walk close for another hint. Shoot the tree with a fire arrow.  
+**Getting there:** No road runs into the Worldtree Reach - the verse says so, and the map keeps its word. The corner is trackless ground and nothing is carved across it, so the tree is found by leaving the roads and walking northeast. Nothing nests there either: no monster spawns in the Reach.  
 **What players learn:** The tree is older than the mountains and joins two worlds. Hands that were not human wore down the ladder steps. Fire burns away the tree and leaves the ladder standing in the air.
 
 **What the fire leaves behind:** one Worldtree Seed, and the game says plainly not to lose it.
@@ -596,6 +597,13 @@ The first two lists below check features that are **already in the game**. The l
 - Replanting grants Zeus's lightning bolts with no fight, and the arrow icon in the HUD changes to match.
 - Climbing to the temple afterwards gives the peaceful ending instead of the twelve-form fight; the keeper counter disappears from the HUD.
 - Planting the seed after Zeus has already left his temple does **not** cancel the fight.
+
+## Monsters and the pack (built)
+
+- A monster picks between Ingoizer and the animals walking with him and goes for whichever is the better mark; Ingoizer counts as the nearer one on a tie, so a monster at his elbow never walks past him to reach a fox.
+- An animal that bites a monster holds that monster's attention for a few seconds, whatever the distances say - the pack can pull a fight off Ingoizer.
+- A blow that lands on an animal shows its damage over the animal, and an animal killed by one is announced like any other companion that falls.
+- An animal in the middle of a scrum takes one hit per guard window, not one from every monster touching it: the swing a monster aims at it and the damage it takes for standing toe to toe share the same short cooldown.
 
 ## The family tapestry and the treasure chests (built)
 

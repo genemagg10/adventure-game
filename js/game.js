@@ -905,9 +905,15 @@ class Game {
             this.handleInteraction();
         }
 
-        // Update monsters (surface or cave)
+        // Update monsters (surface or cave). Monsters hunt the pack as well as
+        // Ingoizer, so they need to know who is walking at his heel.
+        const pack = this.companions.filter(c => c.alive);
         for (const monster of activeMonsters) {
-            const result = monster.update(dt, this.player, activeWorld);
+            const result = monster.update(dt, this.player, activeWorld, pack);
+            if (result && result.type === "companionHit") {
+                this.combat.addDamageNumber(result.companion.x, result.companion.y, result.damage, false);
+                this.sound.monsterAttack();
+            }
             if (result && result.type === "playerHit") {
                 this.combat.addDamageNumber(this.player.x, this.player.y, result.damage, false);
                 this.sound.playerHurt();

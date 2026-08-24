@@ -106,6 +106,7 @@ The corner where the Worldtree grows has no name on the map until the tree is fo
 - `docs/art-direction/ART_DIRECTION_REVIEW.md` - review of how the whole game looks, art rules, work order, and concept pictures.
 - `docs/art-direction/MONSTER_ROSTER.md` - complete hostile roster and the production art identity for every monster and boss.
 - `docs/development-binder/BINDER_MASTER.md` - plan for the printed binder and a guide to the current story.
+- `docs/development-binder/MULTIPLAYER_PRESENCE.md` - a study of what it would take to see other players in the world. Proposed, not decided.
 - `RECOMMENDATIONS.md` - an older review with ideas for the game. It is not the official current story.
 
 ## Lore access in the game

@@ -257,6 +257,7 @@ body {
 .title-actions {
     display: flex;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 16px;
 }
 
@@ -3403,4 +3404,51 @@ body.touch-mode * {
     .relic-shelf-title { height: 14px; font-size: 7px; }
     .element-relic > span,
     .special-relic-summary > span { font-size: 14px; }
+}
+
+
+/* ============================================
+   Pause menu
+   ============================================ */
+
+#pause-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(12, 8, 20, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 60;
+}
+
+.pause-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 36px;
+    border: 2px solid #cb8b25;
+    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(38, 26, 14, 0.98) 0%, rgba(20, 13, 8, 0.98) 100%);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+}
+
+.pause-panel h2 {
+    margin: 0 0 18px;
+    color: #f0c641;
+    font-size: 24px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 14px rgba(240, 175, 52, 0.4);
+}
+
+.pause-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#pause-note {
+    min-height: 16px;
 }

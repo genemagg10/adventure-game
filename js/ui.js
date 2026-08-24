@@ -80,6 +80,28 @@ class UIManager {
             this.game.startGame();
         });
 
+        document.getElementById("continueBtn").addEventListener("click", () => {
+            if (this.continueSlot === null || this.continueSlot === undefined) return;
+            this.game.loadFromSlot(this.continueSlot);
+        });
+
+        document.getElementById("pause-resume").addEventListener("click", () => {
+            this.closePause();
+        });
+
+        document.getElementById("pause-save").addEventListener("click", () => {
+            const note = document.getElementById("pause-note");
+            const saved = this.game.saveToSlot(SAVE_SLOT_DEFAULT);
+            note.textContent = saved
+                ? `Saved - ${SaveSystem.describeSlot(SAVE_SLOT_DEFAULT).savedAt}`
+                : "Could not save - this browser is not storing data";
+        });
+
+        document.getElementById("pause-quit").addEventListener("click", () => {
+            this.closePause();
+            this.game.restart();
+        });
+
         document.getElementById("controlsBtn").addEventListener("click", () => {
             this.titleScreen.classList.add("hidden");
             this.controlsScreen.classList.remove("hidden");
@@ -342,6 +364,56 @@ class UIManager {
     isAboutOpen() {
         this.aboutOverlay = this.aboutOverlay || document.getElementById("about-overlay");
         return !this.aboutOverlay.classList.contains("hidden");
+    }
+
+    // Pause menu
+    openPause() {
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        this.pauseNote = this.pauseNote || document.getElementById("pause-note");
+        this.pauseNote.textContent = "";
+        this.pauseOverlay.classList.remove("hidden");
+        this.game.paused = true;
+    }
+
+    closePause() {
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        this.pauseOverlay.classList.add("hidden");
+        this.game.paused = false;
+    }
+
+    isPauseOpen() {
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        return !this.pauseOverlay.classList.contains("hidden");
+    }
+
+    // Continue only means something once there is something to continue, so
+    // the title screen asks storage every time it is shown.
+    refreshContinue() {
+        const button = document.getElementById("continueBtn");
+        const note = document.getElementById("continue-note");
+        if (!button || !note) return;
+
+        const startBtn = document.getElementById("startBtn");
+        const startNote = document.getElementById("start-note");
+
+        const slot = SaveSystem.available() ? SaveSystem.mostRecentSlot() : null;
+        this.continueSlot = slot;
+        if (slot === null) {
+            button.classList.add("hidden");
+            note.classList.add("hidden");
+            startBtn.classList.add("menu-btn-primary");
+            startNote.classList.remove("hidden");
+            return;
+        }
+
+        // Picking the adventure back up is the headline action once there is
+        // one to pick up, so starting over steps down to a plain button.
+        const summary = SaveSystem.describeSlot(slot);
+        button.classList.remove("hidden");
+        note.classList.remove("hidden");
+        note.textContent = `${summary.realm} - ${summary.gems}, ${summary.playtime} played`;
+        startBtn.classList.remove("menu-btn-primary");
+        startNote.classList.add("hidden");
     }
 
     // Map

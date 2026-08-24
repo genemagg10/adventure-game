@@ -41,6 +41,9 @@ class Game {
         // Game state
         this.state = "title"; // title, playing, gameover
         this.world = null;
+        // Seeds the blue gems' hiding places. Written into every save so a
+        // loaded game finds them exactly where it left them.
+        this.gemSeed = null;
         this.player = null;
         this.monsters = [];
         this.boss = null;
@@ -252,14 +255,17 @@ class Game {
         }
     }
 
-    startGame() {
+    // Build a complete, playable game from nothing. Both a new adventure and a
+    // loaded save come through here first - a load is this followed by an
+    // overlay of what the save remembers, which is what lets a save that
+    // predates a feature simply inherit that feature's fresh defaults.
+    resetState(gemSeed) {
         this.state = "playing";
         this.engagedPlayTime = 0;
-        GameAnalytics.track("game-start");
         this.sound.init();
-        this.sound.menuSelect();
         this.resizeViewport();
-        this.world = new World();
+        this.world = new World(gemSeed);
+        this.gemSeed = this.world.gemSeed;
         this.combat = new CombatSystem();
 
         // Spawn player in meadow
@@ -347,7 +353,13 @@ class Game {
         this.loreUnlocks = {};
 
         this.ui.showHud();
-        this.running = true;
+    }
+
+    startGame() {
+        GameAnalytics.track("game-start");
+        this.sound.menuSelect();
+        this.resetState();
+        this.beginLoop();
 
         // Welcome dialog
         this.ui.showDialog("Welcome, Ingoizer! You awaken in the Green Meadow with a rusty sword and bow.");
@@ -359,9 +371,54 @@ class Game {
             this.ui.showDialog("Press SPACE to attack, R to shoot arrows. Unlock Fire power to ignite your arrows!");
         }
         this.ui.showDialog("Harmless animals roam the land. Feed one an apple to tame it and it will fight at your side - up to 5 at a time. You start with 2 apples; find more in the wild or buy them at any shop.");
+    }
 
+    beginLoop() {
+        this.running = true;
         this.lastTime = performance.now();
         requestAnimationFrame((t) => this.gameLoop(t));
+    }
+
+    // ============================================
+    // Saved games
+    // ============================================
+
+    saveToSlot(slot) {
+        if (this.state !== "playing" || !this.player) return false;
+        const snapshot = SaveSystem.capture(this);
+        const ok = SaveSystem.write(slot, snapshot);
+        // Whoever asked for the save says so - the pause menu writes the result
+        // into its own panel, so a notification here would only say it twice.
+        if (ok) this.sound.menuSelect();
+        return ok;
+    }
+
+    loadFromSlot(slot) {
+        const data = SaveSystem.read(slot);
+        if (!data) {
+            this.ui.showNotification("That slot has nothing to load");
+            return false;
+        }
+
+        this.running = false;
+        this.ui.hideBossHealth();
+        GameAnalytics.track("game-load");
+        this.sound.menuSelect();
+
+        // A fresh game on the save's own seed, then the save laid over the top.
+        this.resetState(data.world && data.world.gemSeed);
+        SaveSystem.restore(this, data);
+
+        // The pack follows the player rather than standing where they were
+        // when the game was last written.
+        this.gatherCompanions();
+        this.snapCamera();
+        this.zoneDisplayTimer = 3000;
+        this.ui.updateHud(this.player);
+
+        document.getElementById("title-screen").classList.add("hidden");
+        this.beginLoop();
+        return true;
     }
 
     restart() {
@@ -373,6 +430,7 @@ class Game {
         this.merlinQuestState = "none";
         this.state = "title";
         document.getElementById("title-screen").classList.remove("hidden");
+        this.ui.refreshContinue();
     }
 
     spawnInitialMonsters() {
@@ -655,6 +713,13 @@ class Game {
             this.resizeViewport();
         }
 
+        // Closing the pause menu has to be handled out here: update() is what
+        // reads the key, and update() is exactly what pausing stops.
+        if (this.state === "playing" && this.paused && this.keyJustPressed.pause && this.ui.isPauseOpen()) {
+            this.ui.closePause();
+            this.keyJustPressed.pause = false;
+        }
+
         if (this.state === "playing" && !this.paused) {
             this.update(dt);
         }
@@ -710,6 +775,8 @@ class Game {
             else if (this.ui.isMapOpen()) this.ui.toggleMap();
             else if (this.ui.isEnchantOpen()) this.ui.closeEnchant();
             else if (this.ui.isLoreOpen()) this.ui.closeLore();
+            else if (this.ui.isPauseOpen()) this.ui.closePause();
+            else this.ui.openPause();
         }
 
         if (inMenu) return;
@@ -3159,4 +3226,5 @@ class Game {
 // Initialize game when page loads
 window.addEventListener("load", () => {
     window.game = new Game();
+    window.game.ui.refreshContinue();
 });

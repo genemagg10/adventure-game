@@ -246,7 +246,7 @@ class Animal {
                 this.lastAttackTime = now;
                 this.attacking = true;
                 this.attackTimer = 200;
-                const killed = target.takeDamage(this.damage, this.x, this.y);
+                const killed = target.takeDamage(this.damage, this.x, this.y, this);
                 if (combat) {
                     combat.spawnHitParticles(target.x, target.y, this.accent, 4);
                     combat.addDamageNumber(target.x, target.y, this.damage, false);
@@ -351,6 +351,19 @@ class Animal {
         }
 
         return { x: 0, y: 0 };
+    }
+
+    // A blow from something else - a monster swinging at the pack rather than at
+    // Ingoizer. It honours the same short guard the contact damage uses, so an
+    // animal in a scrum is not billed twice for standing in one place. Returns
+    // true when the blow actually landed.
+    hurtBy(amount, fromX, fromY) {
+        if (!this.alive) return false;
+        const now = Date.now();
+        if (now - this.lastHurtTime < ANIMAL_CONFIG.hurtCooldown) return false;
+        this.lastHurtTime = now;
+        this.takeDamage(amount, fromX, fromY);
+        return true;
     }
 
     takeDamage(amount, fromX, fromY) {

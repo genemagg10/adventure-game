@@ -666,6 +666,9 @@ class Monster {
 
         // AI state
         this.state = "idle"; // idle, patrol, chase, attack
+        this.target = null;        // what it is hunting: the player or a companion
+        this.targetTimer = 0;      // ms until it looks around for a better mark
+        this.grudgeTimer = 0;      // ms it stays fixed on whatever last hurt it
         this.patrolTarget = null;
         this.patrolTimer = 0;
         this.stateTimer = 0;
@@ -688,13 +691,14 @@ class Monster {
         this.slowFactor = 1;
     }
 
-    update(dt, player, world) {
+    update(dt, player, world, companions) {
         if (!this.alive) {
             this.deathTimer -= dt;
             return;
         }
 
-        const distToPlayer = dist(this.x, this.y, player.x, player.y);
+        const target = this.chooseTarget(dt, player, companions);
+        const distToTarget = dist(this.x, this.y, target.x, target.y);
         const distToHome = dist(this.x, this.y, this.homeX, this.homeY);
 
         // Slow effect
@@ -706,7 +710,7 @@ class Monster {
         }
 
         // AI state machine
-        if (distToPlayer < this.aggroRange) {
+        if (distToTarget < this.aggroRange) {
             this.state = "chase";
         } else if (distToHome > this.leashRange) {
             this.state = "return";
@@ -743,18 +747,22 @@ class Monster {
                 break;
 
             case "chase": {
-                const norm = normalize(player.x - this.x, player.y - this.y);
+                const norm = normalize(target.x - this.x, target.y - this.y);
                 moveX = norm.x * spd;
                 moveY = norm.y * spd;
                 this.facing = norm;
 
                 // Attack
-                if (distToPlayer < this.attackRange) {
+                if (distToTarget < this.attackRange + (target === player ? 0 : target.size || 0)) {
                     const now = Date.now();
                     if (now - this.lastAttackTime > this.attackCooldown) {
                         this.lastAttackTime = now;
-                        if (player.takeDamage(this.damage, this.x, this.y)) {
-                            return { type: "playerHit", damage: this.damage };
+                        if (target === player) {
+                            if (player.takeDamage(this.damage, this.x, this.y)) {
+                                return { type: "playerHit", damage: this.damage };
+                            }
+                        } else if (target.hurtBy && target.hurtBy(this.damage, this.x, this.y)) {
+                            return { type: "companionHit", damage: this.damage, companion: target };
                         }
                     }
                 }
@@ -805,9 +813,52 @@ class Monster {
         return null;
     }
 
-    takeDamage(amount, fromX, fromY) {
+    // A mark has to be alive and actually in the world to be worth chasing.
+    canHunt(entity) {
+        return !!entity && entity.alive !== false && entity.hp > 0;
+    }
+
+    // Pick what to hunt. Ingoizer is the default mark; a companion trailing him
+    // is fair game and gets chosen when it is the nearer of the two, and a
+    // companion that has just bitten this monster holds its attention for a
+    // while whatever the distances say. The mark is kept for a moment before
+    // being reconsidered, so a monster caught between the two does not dither.
+    chooseTarget(dt, player, companions) {
+        if (this.grudgeTimer > 0) this.grudgeTimer -= dt;
+        this.targetTimer -= dt;
+
+        const held = this.canHunt(this.target) ? this.target : null;
+        if (held && (this.grudgeTimer > 0 || this.targetTimer > 0)) return held;
+
+        this.targetTimer = MONSTER_TARGETING.switchInterval;
+        let best = player;
+        let bestScore = dist(this.x, this.y, player.x, player.y);
+
+        if (companions) {
+            for (const c of companions) {
+                if (!this.canHunt(c)) continue;
+                const score = dist(this.x, this.y, c.x, c.y) * MONSTER_TARGETING.companionBias;
+                if (score < bestScore) {
+                    bestScore = score;
+                    best = c;
+                }
+            }
+        }
+
+        this.target = best;
+        return best;
+    }
+
+    // `source` is whoever landed the blow, when the attacker is an entity the
+    // monster can hunt back - a companion's bite turns the monster onto it.
+    takeDamage(amount, fromX, fromY, source) {
         this.hp -= amount;
         this.flashTimer = 150;
+
+        if (source && this.canHunt(source)) {
+            this.target = source;
+            this.grudgeTimer = MONSTER_TARGETING.grudgeTime;
+        }
 
         // Knockback
         if (fromX !== undefined) {

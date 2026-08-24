@@ -239,6 +239,15 @@ const MONSTER_SPAWN_RATE = 0.02;
 const MAX_MONSTERS_PER_ZONE = 8;
 const MONSTER_SPAWN_INTERVAL = 5000; // ms
 
+// Who a monster goes for. Ingoizer is the obvious mark, but the animals at his
+// heel are meat too, and a monster will turn on the nearer of the two - or on
+// whichever of them just bit it.
+const MONSTER_TARGETING = {
+    companionBias: 1.3,     // a companion counts as this much further off than it is, so Ingoizer stays the preferred mark
+    switchInterval: 800,    // ms a monster keeps its mark before looking again
+    grudgeTime: 2600,       // ms a monster stays fixed on a companion that has hurt it
+};
+
 // Shop locations (tile coordinates)
 const SHOP_LOCATIONS = [
     { x: 15, y: 60, name: "Camelot Armory", inventory: ["iron_sword", "mace", "spear", "hunters_bow", "leather_armor", "chain_mail", "health_potion", "arrows_bundle", "apple", "apple_basket"] },

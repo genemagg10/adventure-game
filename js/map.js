@@ -964,38 +964,20 @@ const MapArt = {
         ctx.restore();
     },
 
-    // A caption strip along the bottom of the minimap.
-    minimapCaption(ctx, w, h, text) {
+    // A caption strip along the bottom of the minimap, in its own band under
+    // the geography. It used to be laid over the map, which was harmless while
+    // the map was a window that scrolled - but the southern edge of the realm
+    // is ground the player can stand on, and a name plate is no place to lose
+    // your own marker under.
+    minimapCaption(ctx, rect, text) {
         ctx.save();
         ctx.fillStyle = "rgba(8,12,26,0.86)";
-        ctx.fillRect(8, h - 24, w - 16, 16);
+        ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
         ctx.font = "bold 9px 'Courier New', monospace";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillStyle = MAP_UI.goldBright;
-        ctx.fillText(text, w / 2, h - 15);
-        ctx.restore();
-    },
-
-    // Off-window landmarks become an arrow pinned to the minimap edge, so the
-    // local view never costs the player their sense of direction.
-    edgeArrow(ctx, cx, cy, radius, targetX, targetY, colour) {
-        const angle = Math.atan2(targetY - cy, targetX - cx);
-        const x = cx + Math.cos(angle) * radius;
-        const y = cy + Math.sin(angle) * radius;
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.fillStyle = colour;
-        ctx.strokeStyle = "rgba(6,9,20,0.85)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(4, 0);
-        ctx.lineTo(-3, -3);
-        ctx.lineTo(-3, 3);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        ctx.fillText(text, rect.x + rect.w / 2, rect.y + rect.h / 2 + 1);
         ctx.restore();
     },
 };
@@ -1024,12 +1006,19 @@ const WORLD_MAP_LAYOUT = {
     legend: { x: 62, y: 548, w: 520, h: 28 },
 };
 
-// The minimap shows a window around the player rather than the whole realm.
-// At 0.75 pixels per tile the old full-world minimap could not show anything
-// useful; a local window at three pixels per tile can.
+// The minimap shows the whole realm, not a window around the player. Fog of
+// war already hides everything unwalked, so a local window bought nothing the
+// fog was not doing anyway - and it cost the map the one thing a map is for,
+// which is seeing where you stand in the world at a glance.
+//
+// Every realm in the game is four by three - the surface at 200x150 tiles, the
+// caves and the Cloudlands at 80x60 - so the geography view is too, at exactly
+// one minimap pixel per surface tile. The name strip gets its own band below
+// it rather than lying over the map, because the southern edge of the realm is
+// ground the player can stand on.
 const MINIMAP_LAYOUT = {
-    size: 160,
-    inset: 9,
-    tiles: 44,        // width of the window, in world tiles
-    caveTiles: 30,
+    w: 218,
+    h: 187,
+    view: { x: 9, y: 9, w: 200, h: 150 },
+    caption: { x: 8, y: 162, w: 202, h: 16 },
 };

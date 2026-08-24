@@ -2319,25 +2319,18 @@ class World {
 
     renderMinimap(ctx, player, monsters, boss, greenKnight, companions, opts = {}) {
         const M = MINIMAP_LAYOUT;
-        const size = M.size;
         const time = opts.time || 0;
-        const view = { x: M.inset, y: M.inset, w: size - M.inset * 2, h: size - M.inset * 2 };
+        const view = M.view;
 
-        ctx.clearRect(0, 0, size, size);
+        ctx.clearRect(0, 0, M.w, M.h);
         ctx.fillStyle = "#0b1024";
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, M.w, M.h);
 
-        // The window of world the minimap shows, centred on the player and
-        // clamped so the edge of the realm stays put instead of sliding.
-        const tilesAcross = M.tiles;
-        const halfTiles = tilesAcross / 2;
-        const playerTX = player.x / TILE_SIZE;
-        const playerTY = player.y / TILE_SIZE;
-        const viewTX = clamp(playerTX - halfTiles, 0, Math.max(0, WORLD_W - tilesAcross));
-        const viewTY = clamp(playerTY - halfTiles, 0, Math.max(0, WORLD_H - tilesAcross));
-        const pxPerTile = view.w / tilesAcross;
-        const toX = (wx) => view.x + (wx / TILE_SIZE - viewTX) * pxPerTile;
-        const toY = (wy) => view.y + (wy / TILE_SIZE - viewTY) * pxPerTile;
+        // The whole realm, drawn to the same rule as the world map so the two
+        // surfaces put every place in the same relative spot.
+        const s = view.w / (WORLD_W * TILE_SIZE);
+        const toX = (wx) => view.x + wx * s;
+        const toY = (wy) => view.y + wy * s;
 
         ctx.save();
         ctx.beginPath();
@@ -2345,29 +2338,25 @@ class World {
         ctx.clip();
 
         // Terrain, blitted straight out of the shared world-map layer.
-        const terrain = this.getMapTerrain();
-        const srcScale = terrain.width / WORLD_W;
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(
-            terrain,
-            viewTX * srcScale, viewTY * srcScale, tilesAcross * srcScale, tilesAcross * srcScale,
-            view.x, view.y, view.w, view.h
-        );
+        ctx.drawImage(this.getMapTerrain(), view.x, view.y, view.w, view.h);
 
         const landmarks = this.mapLandmarks();
 
         renderFogOfWar(
             ctx, this.fog, view,
-            { tx: viewTX, ty: viewTY, tw: tilesAcross, th: tilesAcross },
-            { tx: playerTX, ty: playerTY, r: this.fog.sight },
+            { tx: 0, ty: 0, tw: WORLD_W, th: WORLD_H },
+            { tx: player.x / TILE_SIZE, ty: player.y / TILE_SIZE, r: this.fog.sight },
             "surface"
         );
 
         // Landmarks the player knows about stay crisp above the fog - a place
-        // you have found should not fade out with the ground around it.
+        // you have found should not fade out with the ground around it. They
+        // are drawn a size down from the world map: at this scale the labelled
+        // chart is what you open for detail, and the HUD only has to say where.
         for (const m of landmarks) {
             if (!m.always && !this.fog.isWorldSeen(m.x, m.y)) continue;
-            MapArt.marker(ctx, toX(m.x), toY(m.y), m.shape, m.colour, { size: Math.max(3, m.size - 1), lineWidth: 1 });
+            MapArt.marker(ctx, toX(m.x), toY(m.y), m.shape, m.colour, { size: Math.max(2.5, m.size - 2), lineWidth: 1 });
         }
 
         // Living things are drawn after the fog: they are what you can see
@@ -2376,36 +2365,26 @@ class World {
         const sight = this.fog.sight;
         for (const c of (companions || [])) {
             if (!c.alive || !inSightOf(player, c, sight)) continue;
-            MapArt.marker(ctx, toX(c.x), toY(c.y), "circle", "#ffdd66", { size: 2.5, lineWidth: 1 });
+            MapArt.marker(ctx, toX(c.x), toY(c.y), "circle", "#ffdd66", { size: 2, lineWidth: 1 });
         }
         for (const m of monsters) {
             if (!m.alive || !inSightOf(player, m, sight)) continue;
-            MapArt.marker(ctx, toX(m.x), toY(m.y), "circle", "#ff5a5a", { size: 2.5, lineWidth: 1 });
+            MapArt.marker(ctx, toX(m.x), toY(m.y), "circle", "#ff5a5a", { size: 2, lineWidth: 1 });
         }
         if (greenKnight && greenKnight.alive && inSightOf(player, greenKnight, sight)) {
-            MapArt.marker(ctx, toX(greenKnight.x), toY(greenKnight.y), "crown", "#3ddc50", { size: 5 });
+            MapArt.marker(ctx, toX(greenKnight.x), toY(greenKnight.y), "crown", "#3ddc50", { size: 4, lineWidth: 1 });
         }
         if (boss && boss.alive && inSightOf(player, boss, sight)) {
-            MapArt.marker(ctx, toX(boss.x), toY(boss.y), "crown", "#ff3b3b", { size: 6 });
+            MapArt.marker(ctx, toX(boss.x), toY(boss.y), "crown", "#ff3b3b", { size: 4.5, lineWidth: 1 });
         }
 
-        MapArt.playerMarker(ctx, toX(player.x), toY(player.y), time, 5);
+        MapArt.playerMarker(ctx, toX(player.x), toY(player.y), time, 4);
         ctx.restore();
 
-        // An arrow to Ing Castle when it has drifted off the window, so a
-        // local view never costs the player their bearings.
-        const castleX = (ZONES.castle.x + ZONES.castle.w / 2) * TILE_SIZE;
-        const castleY = (ZONES.castle.y + ZONES.castle.h / 2) * TILE_SIZE;
-        const cxp = toX(castleX);
-        const cyp = toY(castleY);
-        if (cxp < view.x || cxp > view.x + view.w || cyp < view.y || cyp > view.y + view.h) {
-            MapArt.edgeArrow(ctx, size / 2, size / 2, size / 2 - 16, cxp, cyp, "#ffd700");
-        }
-
-        MapArt.minimapFrame(ctx, size, size);
+        MapArt.minimapFrame(ctx, M.w, M.h);
         const zone = getZoneAt(Math.floor(player.x / TILE_SIZE), Math.floor(player.y / TILE_SIZE));
         const named = ZONES[zone] && this.isZoneRevealed(zone) ? ZONES[zone].name : "Wilderness";
-        MapArt.minimapCaption(ctx, size, size, named.toUpperCase());
+        MapArt.minimapCaption(ctx, M.caption, named.toUpperCase());
     }
 
     // --------------------------------------------
@@ -2981,22 +2960,16 @@ class CaveWorld {
 
     renderMinimap(ctx, player, monsters, caveBoss, opts = {}) {
         const M = MINIMAP_LAYOUT;
-        const size = M.size;
         const time = opts.time || 0;
-        const view = { x: M.inset, y: M.inset, w: size - M.inset * 2, h: size - M.inset * 2 };
+        const view = M.view;
 
-        ctx.clearRect(0, 0, size, size);
+        ctx.clearRect(0, 0, M.w, M.h);
         ctx.fillStyle = "#0b0d16";
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, M.w, M.h);
 
-        const tilesAcross = M.caveTiles;
-        const playerTX = player.x / TILE_SIZE;
-        const playerTY = player.y / TILE_SIZE;
-        const viewTX = clamp(playerTX - tilesAcross / 2, 0, Math.max(0, CAVE_W - tilesAcross));
-        const viewTY = clamp(playerTY - tilesAcross / 2, 0, Math.max(0, CAVE_H - tilesAcross));
-        const pxPerTile = view.w / tilesAcross;
-        const toX = (wx) => view.x + (wx / TILE_SIZE - viewTX) * pxPerTile;
-        const toY = (wy) => view.y + (wy / TILE_SIZE - viewTY) * pxPerTile;
+        const s = view.w / (CAVE_W * TILE_SIZE);
+        const toX = (wx) => view.x + wx * s;
+        const toY = (wy) => view.y + wy * s;
 
         ctx.save();
         ctx.beginPath();
@@ -3005,21 +2978,15 @@ class CaveWorld {
         ctx.fillStyle = "#14121c";
         ctx.fillRect(view.x, view.y, view.w, view.h);
 
-        const terrain = this.getMapTerrain();
-        const srcScale = terrain.width / CAVE_W;
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(
-            terrain,
-            viewTX * srcScale, viewTY * srcScale, tilesAcross * srcScale, tilesAcross * srcScale,
-            view.x, view.y, view.w, view.h
-        );
+        ctx.drawImage(this.getMapTerrain(), view.x, view.y, view.w, view.h);
 
         const landmarks = this.mapLandmarks();
 
         renderFogOfWar(
             ctx, this.fog, view,
-            { tx: viewTX, ty: viewTY, tw: tilesAcross, th: tilesAcross },
-            { tx: playerTX, ty: playerTY, r: this.fog.sight },
+            { tx: 0, ty: 0, tw: CAVE_W, th: CAVE_H },
+            { tx: player.x / TILE_SIZE, ty: player.y / TILE_SIZE, r: this.fog.sight },
             "cave"
         );
 
@@ -3027,30 +2994,21 @@ class CaveWorld {
         // you have found should not fade out with the ground around it.
         for (const m of landmarks) {
             if (!m.always && !this.fog.isWorldSeen(m.x, m.y)) continue;
-            MapArt.marker(ctx, toX(m.x), toY(m.y), m.shape, m.colour, { size: Math.max(3, m.size - 1), lineWidth: 1 });
+            MapArt.marker(ctx, toX(m.x), toY(m.y), m.shape, m.colour, { size: Math.max(2.5, m.size - 2), lineWidth: 1 });
         }
 
         for (const m of monsters) {
             if (!m.alive || !inSightOf(player, m, this.fog.sight)) continue;
-            MapArt.marker(ctx, toX(m.x), toY(m.y), "circle", "#ff5a5a", { size: 2.5, lineWidth: 1 });
+            MapArt.marker(ctx, toX(m.x), toY(m.y), "circle", "#ff5a5a", { size: 2, lineWidth: 1 });
         }
         if (caveBoss && caveBoss.alive && inSightOf(player, caveBoss, this.fog.sight)) {
-            MapArt.marker(ctx, toX(caveBoss.x), toY(caveBoss.y), "crown", "#ff3b3b", { size: 6 });
+            MapArt.marker(ctx, toX(caveBoss.x), toY(caveBoss.y), "crown", "#ff3b3b", { size: 4.5, lineWidth: 1 });
         }
-        MapArt.playerMarker(ctx, toX(player.x), toY(player.y), time, 5);
+        MapArt.playerMarker(ctx, toX(player.x), toY(player.y), time, 4);
         ctx.restore();
 
-        // The way back up, pinned to the edge when it is off the window.
-        if (this.exit) {
-            const ex = toX(this.exit.worldX);
-            const ey = toY(this.exit.worldY);
-            if (ex < view.x || ex > view.x + view.w || ey < view.y || ey > view.y + view.h) {
-                MapArt.edgeArrow(ctx, size / 2, size / 2, size / 2 - 16, ex, ey, "#d8a95a");
-            }
-        }
-
-        MapArt.minimapFrame(ctx, size, size);
-        MapArt.minimapCaption(ctx, size, size, this.caveName().toUpperCase());
+        MapArt.minimapFrame(ctx, M.w, M.h);
+        MapArt.minimapCaption(ctx, M.caption, this.caveName().toUpperCase());
     }
 
     renderWorldMap(ctx, player, opts = {}) {
@@ -3693,22 +3651,16 @@ class SkyWorld {
 
     renderMinimap(ctx, player, monsters, boss, opts = {}) {
         const M = MINIMAP_LAYOUT;
-        const size = M.size;
         const time = opts.time || 0;
-        const view = { x: M.inset, y: M.inset, w: size - M.inset * 2, h: size - M.inset * 2 };
+        const view = M.view;
 
-        ctx.clearRect(0, 0, size, size);
+        ctx.clearRect(0, 0, M.w, M.h);
         ctx.fillStyle = "#16264a";
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, M.w, M.h);
 
-        const tilesAcross = M.caveTiles;
-        const playerTX = player.x / TILE_SIZE;
-        const playerTY = player.y / TILE_SIZE;
-        const viewTX = clamp(playerTX - tilesAcross / 2, 0, Math.max(0, SKY_W - tilesAcross));
-        const viewTY = clamp(playerTY - tilesAcross / 2, 0, Math.max(0, SKY_H - tilesAcross));
-        const pxPerTile = view.w / tilesAcross;
-        const toX = (wx) => view.x + (wx / TILE_SIZE - viewTX) * pxPerTile;
-        const toY = (wy) => view.y + (wy / TILE_SIZE - viewTY) * pxPerTile;
+        const s = view.w / (SKY_W * TILE_SIZE);
+        const toX = (wx) => view.x + wx * s;
+        const toY = (wy) => view.y + wy * s;
 
         ctx.save();
         ctx.beginPath();
@@ -3720,21 +3672,15 @@ class SkyWorld {
         ctx.fillStyle = sky;
         ctx.fillRect(view.x, view.y, view.w, view.h);
 
-        const terrain = this.getMapTerrain();
-        const srcScale = terrain.width / SKY_W;
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(
-            terrain,
-            viewTX * srcScale, viewTY * srcScale, tilesAcross * srcScale, tilesAcross * srcScale,
-            view.x, view.y, view.w, view.h
-        );
+        ctx.drawImage(this.getMapTerrain(), view.x, view.y, view.w, view.h);
 
         const landmarks = this.mapLandmarks();
 
         renderFogOfWar(
             ctx, this.fog, view,
-            { tx: viewTX, ty: viewTY, tw: tilesAcross, th: tilesAcross },
-            { tx: playerTX, ty: playerTY, r: this.fog.sight },
+            { tx: 0, ty: 0, tw: SKY_W, th: SKY_H },
+            { tx: player.x / TILE_SIZE, ty: player.y / TILE_SIZE, r: this.fog.sight },
             "sky"
         );
 
@@ -3742,29 +3688,21 @@ class SkyWorld {
         // you have found should not fade out with the ground around it.
         for (const m of landmarks) {
             if (!m.always && !this.fog.isWorldSeen(m.x, m.y)) continue;
-            MapArt.marker(ctx, toX(m.x), toY(m.y), m.shape, m.colour, { size: Math.max(3, m.size - 1), lineWidth: 1 });
+            MapArt.marker(ctx, toX(m.x), toY(m.y), m.shape, m.colour, { size: Math.max(2.5, m.size - 2), lineWidth: 1 });
         }
 
         for (const m of monsters) {
             if (!m.alive || !inSightOf(player, m, this.fog.sight)) continue;
-            MapArt.marker(ctx, toX(m.x), toY(m.y), "circle", "#ff5a5a", { size: 2.5, lineWidth: 1 });
+            MapArt.marker(ctx, toX(m.x), toY(m.y), "circle", "#ff5a5a", { size: 2, lineWidth: 1 });
         }
         if (boss && boss.alive && boss.spawned && inSightOf(player, boss, this.fog.sight)) {
-            MapArt.marker(ctx, toX(boss.x), toY(boss.y), "crown", "#ffee44", { size: 6 });
+            MapArt.marker(ctx, toX(boss.x), toY(boss.y), "crown", "#ffee44", { size: 4.5, lineWidth: 1 });
         }
-        MapArt.playerMarker(ctx, toX(player.x), toY(player.y), time, 5);
+        MapArt.playerMarker(ctx, toX(player.x), toY(player.y), time, 4);
         ctx.restore();
 
-        if (this.exit) {
-            const ex = toX(this.exit.worldX);
-            const ey = toY(this.exit.worldY);
-            if (ex < view.x || ex > view.x + view.w || ey < view.y || ey > view.y + view.h) {
-                MapArt.edgeArrow(ctx, size / 2, size / 2, size / 2 - 16, ex, ey, "#e8c98a");
-            }
-        }
-
-        MapArt.minimapFrame(ctx, size, size);
-        MapArt.minimapCaption(ctx, size, size, "THE CLOUDLANDS");
+        MapArt.minimapFrame(ctx, M.w, M.h);
+        MapArt.minimapCaption(ctx, M.caption, "THE CLOUDLANDS");
     }
 
     renderWorldMap(ctx, player, opts = {}) {

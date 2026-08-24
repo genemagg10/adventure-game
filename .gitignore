@@ -3,3 +3,8 @@ tmp/
 
 # macOS metadata
 .DS_Store
+
+# Node and browser-test output
+node_modules/
+test-results/
+playwright-report/

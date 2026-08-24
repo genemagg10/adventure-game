@@ -100,6 +100,7 @@ class TouchControls {
             </div>
             <div id="touch-buttons-top">
                 <button class="touch-btn-small" data-action="inventory" aria-label="Open inventory" title="Inventory">🎒</button>
+                <button class="touch-btn-small" data-action="pause" aria-label="Open menu" title="Menu">☰</button>
             </div>
         `;
         this.container.appendChild(overlay);
@@ -320,7 +321,8 @@ class TouchControls {
         // Check if the touch target is within a UI overlay that should handle its own events
         const overlayIds = ["shop-overlay", "inventory-overlay", "riddle-overlay",
                            "map-overlay", "title-screen", "controls-screen",
-                           "game-over-screen", "lore-overlay", "enchant-overlay"];
+                           "game-over-screen", "lore-overlay", "enchant-overlay",
+                           "pause-overlay", "slots-overlay"];
         for (const id of overlayIds) {
             const el = document.getElementById(id);
             if (el && !el.classList.contains("hidden") && el.contains(target)) {
@@ -330,7 +332,7 @@ class TouchControls {
         // Also allow menu buttons through
         if (target.classList.contains("menu-btn") || target.classList.contains("shop-item") ||
             target.classList.contains("riddle-choice") || target.classList.contains("inv-item") ||
-            target.classList.contains("lore-nav-btn")) {
+            target.classList.contains("lore-nav-btn") || target.closest(".save-slot")) {
             return true;
         }
         return false;

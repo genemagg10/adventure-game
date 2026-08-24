@@ -257,6 +257,7 @@ body {
 .title-actions {
     display: flex;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 16px;
 }
 
@@ -3403,4 +3404,235 @@ body.touch-mode * {
     .relic-shelf-title { height: 14px; font-size: 7px; }
     .element-relic > span,
     .special-relic-summary > span { font-size: 14px; }
+}
+
+
+/* ============================================
+   Pause menu
+   ============================================ */
+
+#pause-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(12, 8, 20, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 60;
+}
+
+.pause-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 36px;
+    border: 2px solid #cb8b25;
+    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(38, 26, 14, 0.98) 0%, rgba(20, 13, 8, 0.98) 100%);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+}
+
+.pause-panel h2 {
+    margin: 0 0 18px;
+    color: #f0c641;
+    font-size: 24px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 14px rgba(240, 175, 52, 0.4);
+}
+
+.pause-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#pause-note {
+    min-height: 16px;
+}
+
+
+/* ============================================
+   Save slots
+   ============================================ */
+
+#slots-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(12, 8, 20, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 65;
+    overflow-y: auto;
+}
+
+.slots-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: min(520px, 92%);
+    margin: auto;
+    padding: 24px 28px;
+    border: 2px solid #cb8b25;
+    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(38, 26, 14, 0.98) 0%, rgba(20, 13, 8, 0.98) 100%);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+}
+
+.slots-panel h2 {
+    margin: 0 0 4px;
+    color: #f0c641;
+    font-size: 22px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 14px rgba(240, 175, 52, 0.4);
+}
+
+/* Short screens hide .menu-note to buy room on the title screen. These two
+   carry the only word the player gets that a save happened, and what the
+   waiting adventure is, so they stay - .hidden still overrides both. */
+#slots-subtitle,
+#continue-note {
+    display: block;
+}
+
+#slots-subtitle {
+    margin: 0 0 16px;
+    min-height: 16px;
+}
+
+#slots-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.save-slot {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    padding: 4px;
+    border: 1px solid rgba(203, 139, 37, 0.45);
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.save-slot-confirm {
+    align-items: center;
+    padding: 12px;
+    border-color: #d8674a;
+    background: rgba(70, 24, 16, 0.5);
+}
+
+.save-slot-question {
+    flex: 1;
+    color: #f2d6b8;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 13px;
+}
+
+.save-slot-choose {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+        "head date"
+        "stats stats";
+    align-items: baseline;
+    gap: 3px 12px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 2px;
+    background: transparent;
+    color: #e8d9b8;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.save-slot-choose:hover:not(:disabled),
+.save-slot-choose:focus-visible:not(:disabled) {
+    background: rgba(203, 139, 37, 0.16);
+    outline: none;
+}
+
+.save-slot-choose:disabled {
+    cursor: default;
+    opacity: 0.45;
+}
+
+.save-slot-head {
+    grid-area: head;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.save-slot-name {
+    color: #f0c641;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.save-slot-realm {
+    color: #e8d9b8;
+    font-size: 14px;
+}
+
+.save-slot-empty .save-slot-realm {
+    color: #8493ad;
+    font-style: italic;
+}
+
+.save-slot-stats {
+    grid-area: stats;
+    color: #8493ad;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.save-slot-date {
+    grid-area: date;
+    color: #8493ad;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.save-slot-btn {
+    padding: 8px 14px;
+    border: 1px solid rgba(203, 139, 37, 0.5);
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.35);
+    color: #c7b393;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+
+.save-slot-btn:hover,
+.save-slot-btn:focus-visible {
+    color: #fff8e7;
+    border-color: #f0b641;
+    outline: none;
+}
+
+.save-slot-btn-danger {
+    border-color: #d8674a;
+    color: #ffb9a3;
+}
+
+.save-slot-btn-danger:hover,
+.save-slot-btn-danger:focus-visible {
+    background: rgba(150, 45, 30, 0.55);
+    border-color: #ff8a68;
+    color: #fff2ec;
 }

@@ -80,14 +80,46 @@ class UIManager {
             this.game.startGame();
         });
 
+        document.getElementById("continueBtn").addEventListener("click", () => {
+            if (this.continueSlot === null || this.continueSlot === undefined) return;
+            this.game.loadFromSlot(this.continueSlot);
+        });
+
+        document.getElementById("pause-resume").addEventListener("click", () => {
+            this.closePause();
+        });
+
+        document.getElementById("pause-save").addEventListener("click", () => {
+            this.openSlots("save", "pause");
+        });
+
+        document.getElementById("pause-load").addEventListener("click", () => {
+            this.openSlots("load", "pause");
+        });
+
+        document.getElementById("pause-controls").addEventListener("click", () => {
+            this.openControls("pause");
+        });
+
+        document.getElementById("loadBtn").addEventListener("click", () => {
+            this.openSlots("load", "title");
+        });
+
+        document.getElementById("slots-close").addEventListener("click", () => {
+            this.closeSlots();
+        });
+
+        document.getElementById("pause-quit").addEventListener("click", () => {
+            this.closePause();
+            this.game.restart();
+        });
+
         document.getElementById("controlsBtn").addEventListener("click", () => {
-            this.titleScreen.classList.add("hidden");
-            this.controlsScreen.classList.remove("hidden");
+            this.openControls("title");
         });
 
         document.getElementById("backBtn").addEventListener("click", () => {
-            this.controlsScreen.classList.add("hidden");
-            this.titleScreen.classList.remove("hidden");
+            this.closeControls();
         });
 
         document.getElementById("shop-close").addEventListener("click", () => {
@@ -342,6 +374,257 @@ class UIManager {
     isAboutOpen() {
         this.aboutOverlay = this.aboutOverlay || document.getElementById("about-overlay");
         return !this.aboutOverlay.classList.contains("hidden");
+    }
+
+    // Controls
+    openControls(returnTo) {
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        this.controlsReturnTo = returnTo;
+        if (returnTo === "pause") this.pauseOverlay.classList.add("hidden");
+        else this.titleScreen.classList.add("hidden");
+        this.controlsScreen.classList.remove("hidden");
+    }
+
+    closeControls() {
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        this.controlsScreen.classList.add("hidden");
+        if (this.controlsReturnTo === "pause") this.pauseOverlay.classList.remove("hidden");
+        else this.titleScreen.classList.remove("hidden");
+    }
+
+    isControlsOpen() {
+        return !this.controlsScreen.classList.contains("hidden");
+    }
+
+    // Pause menu
+    openPause() {
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        this.pauseOverlay.classList.remove("hidden");
+        this.game.paused = true;
+    }
+
+    closePause() {
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        this.pauseOverlay.classList.add("hidden");
+        this.game.paused = false;
+    }
+
+    // Everything the pause menu can put on screen, torn down at once - used
+    // when the game underneath is being replaced or abandoned.
+    closeMenus() {
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        document.getElementById("slots-overlay").classList.add("hidden");
+        this.controlsScreen.classList.add("hidden");
+        this.pauseOverlay.classList.add("hidden");
+        this.slotsPending = null;
+        this.game.paused = false;
+    }
+
+    isPauseOpen() {
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        return !this.pauseOverlay.classList.contains("hidden");
+    }
+
+    // ============================================
+    // Save slots
+    // ============================================
+    //
+    // One panel serves both saving and loading. `mode` decides what a row
+    // does when it is chosen and which rows are choosable at all - an empty
+    // slot is somewhere to save but nothing to load.
+
+    openSlots(mode, returnTo) {
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        this.slotsMode = mode;
+        this.slotsReturnTo = returnTo;
+        this.slotsPending = null;
+        this.slotsMessage = "";
+
+        const overlay = document.getElementById("slots-overlay");
+        document.getElementById("slots-title").textContent =
+            mode === "save" ? "Save Game" : "Load Game";
+
+        // The panel takes over whichever screen asked for it, the same way the
+        // Controls screen does - the title art sits at the same layer, so
+        // leaving it up would put it in front.
+        if (returnTo === "pause") this.pauseOverlay.classList.add("hidden");
+        else this.titleScreen.classList.add("hidden");
+        overlay.classList.remove("hidden");
+        this.renderSlots();
+    }
+
+    closeSlots() {
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        document.getElementById("slots-overlay").classList.add("hidden");
+        this.slotsPending = null;
+        if (this.slotsReturnTo === "pause") {
+            this.pauseOverlay.classList.remove("hidden");
+        } else {
+            this.titleScreen.classList.remove("hidden");
+            this.refreshContinue();
+        }
+    }
+
+    isSlotsOpen() {
+        const overlay = document.getElementById("slots-overlay");
+        return overlay && !overlay.classList.contains("hidden");
+    }
+
+    renderSlots() {
+        const list = document.getElementById("slots-list");
+        const subtitle = document.getElementById("slots-subtitle");
+        list.innerHTML = "";
+
+        if (!SaveSystem.available()) {
+            subtitle.textContent = "This browser is not storing data, so games cannot be saved here.";
+            return;
+        }
+        subtitle.textContent = this.slotsMessage || (this.slotsMode === "save"
+            ? "Choose where to keep this adventure."
+            : "Choose an adventure to return to.");
+
+        for (let slot = 1; slot <= SaveSystem.SLOTS; slot++) {
+            list.appendChild(this.buildSlotRow(slot));
+        }
+    }
+
+    buildSlotRow(slot) {
+        const summary = SaveSystem.describeSlot(slot);
+        const pending = this.slotsPending && this.slotsPending.slot === slot ? this.slotsPending.type : null;
+
+        const row = document.createElement("div");
+        row.className = "save-slot" + (summary ? "" : " save-slot-empty");
+        row.setAttribute("role", "listitem");
+
+        // Overwriting a slot and deleting one both throw a run away, so both
+        // ask first, in place, rather than acting on the first tap.
+        if (pending) {
+            row.classList.add("save-slot-confirm");
+            // Name the run being thrown away, not just the slot number - the
+            // whole point of asking is that the player can still change course.
+            const losing = summary
+                ? `${summary.realm}, ${summary.gems}, ${summary.playtime} played`
+                : "";
+            const question = document.createElement("span");
+            question.className = "save-slot-question";
+            question.textContent = pending === "delete"
+                ? `Delete slot ${slot} - ${losing}? This cannot be undone.`
+                : `Overwrite slot ${slot} - ${losing}?`;
+            row.appendChild(question);
+
+            const confirm = document.createElement("button");
+            confirm.className = "save-slot-btn save-slot-btn-danger";
+            confirm.textContent = pending === "delete" ? "Delete" : "Overwrite";
+            confirm.addEventListener("click", () => {
+                if (pending === "delete") this.deleteSlot(slot);
+                else this.saveToSlot(slot);
+            });
+            row.appendChild(confirm);
+
+            const cancel = document.createElement("button");
+            cancel.className = "save-slot-btn";
+            cancel.textContent = "Cancel";
+            cancel.addEventListener("click", () => {
+                this.slotsPending = null;
+                this.renderSlots();
+            });
+            row.appendChild(cancel);
+            return row;
+        }
+
+        const choose = document.createElement("button");
+        choose.className = "save-slot-choose";
+        choose.innerHTML = summary
+            ? `<span class="save-slot-head">
+                   <span class="save-slot-name">Slot ${slot}</span>
+                   <span class="save-slot-realm">${summary.realm}</span>
+               </span>
+               <span class="save-slot-date">${summary.savedAt}</span>
+               <span class="save-slot-stats">${summary.gems} &middot; ${summary.gold} &middot; ${summary.playtime} played</span>`
+            : `<span class="save-slot-head">
+                   <span class="save-slot-name">Slot ${slot}</span>
+                   <span class="save-slot-realm">Empty</span>
+               </span>`;
+
+        if (this.slotsMode === "load" && !summary) {
+            choose.disabled = true;
+        } else {
+            choose.addEventListener("click", () => {
+                if (this.slotsMode === "load") {
+                    this.game.loadFromSlot(slot);
+                    return;
+                }
+                if (summary) {
+                    this.slotsPending = { slot, type: "overwrite" };
+                    this.renderSlots();
+                } else {
+                    this.saveToSlot(slot);
+                }
+            });
+        }
+        row.appendChild(choose);
+
+        if (summary) {
+            const del = document.createElement("button");
+            del.className = "save-slot-btn";
+            del.textContent = "Delete";
+            del.setAttribute("aria-label", `Delete slot ${slot}`);
+            del.addEventListener("click", () => {
+                this.slotsPending = { slot, type: "delete" };
+                this.renderSlots();
+            });
+            row.appendChild(del);
+        }
+        return row;
+    }
+
+    saveToSlot(slot) {
+        const ok = this.game.saveToSlot(slot);
+        this.slotsPending = null;
+        this.slotsMessage = ok
+            ? `Saved to slot ${slot}.`
+            : "Could not save - this browser is not storing data.";
+        this.renderSlots();
+    }
+
+    deleteSlot(slot) {
+        SaveSystem.clear(slot);
+        this.slotsPending = null;
+        this.slotsMessage = `Slot ${slot} deleted.`;
+        this.renderSlots();
+    }
+
+    // Continue only means something once there is something to continue, so
+    // the title screen asks storage every time it is shown.
+    refreshContinue() {
+        const button = document.getElementById("continueBtn");
+        const note = document.getElementById("continue-note");
+        if (!button || !note) return;
+
+        const startBtn = document.getElementById("startBtn");
+        const startNote = document.getElementById("start-note");
+        const loadButton = document.getElementById("loadBtn");
+
+        const slot = SaveSystem.available() ? SaveSystem.mostRecentSlot() : null;
+        this.continueSlot = slot;
+        if (slot === null) {
+            button.classList.add("hidden");
+            note.classList.add("hidden");
+            loadButton.classList.add("hidden");
+            startBtn.classList.add("menu-btn-primary");
+            startNote.classList.remove("hidden");
+            return;
+        }
+        loadButton.classList.remove("hidden");
+
+        // Picking the adventure back up is the headline action once there is
+        // one to pick up, so starting over steps down to a plain button.
+        const summary = SaveSystem.describeSlot(slot);
+        button.classList.remove("hidden");
+        note.classList.remove("hidden");
+        note.textContent = `${summary.realm} - ${summary.gems}, ${summary.playtime} played`;
+        startBtn.classList.remove("menu-btn-primary");
+        startNote.classList.add("hidden");
     }
 
     // Map

@@ -3,7 +3,11 @@
 // ============================================
 
 class World {
-    constructor() {
+    constructor(gemSeed) {
+        // Where the five blue gems lie is the one part of the surface that is
+        // not fixed. It gets its own seed so a new game hides them somewhere
+        // fresh, while a loaded game always finds them where it left them.
+        this.gemSeed = gemSeed || randInt(1, 2147483646);
         this.tiles = [];
         this.gems = [];
         this.shops = [];
@@ -348,10 +352,11 @@ class World {
 
     placeGems() {
         // Randomly place 3 gems in different biomes, evenly spread
+        const rng = seededRandom(this.gemSeed);
         const gemZones = ["meadow", "forest", "desert", "swamp", "mountains", "ruins", "darklands"];
         // Shuffle
         for (let i = gemZones.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
+            const j = Math.floor(rng() * (i + 1));
             [gemZones[i], gemZones[j]] = [gemZones[j], gemZones[i]];
         }
         const selectedZones = gemZones.slice(0, 3);
@@ -360,8 +365,8 @@ class World {
         for (const zoneName of selectedZones) {
             const zone = ZONES[zoneName];
             for (let attempt = 0; attempt < 50; attempt++) {
-                const tx = zone.x + Math.floor(Math.random() * (zone.w - 4)) + 2;
-                const ty = zone.y + Math.floor(Math.random() * (zone.h - 4)) + 2;
+                const tx = zone.x + Math.floor(rng() * (zone.w - 4)) + 2;
+                const ty = zone.y + Math.floor(rng() * (zone.h - 4)) + 2;
                 if (!this.isSolid(tx, ty)) {
                     this.gems.push({
                         x: tx * TILE_SIZE + TILE_SIZE / 2,

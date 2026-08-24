@@ -39,9 +39,9 @@ Current features include:
 | T | Use a health potion |
 | I | Open inventory |
 | P | Plant the Worldtree Seed |
-| Esc | Pause |
+| Esc | Pause menu — save, load, controls, quit |
 
-Touch controls appear automatically on supported phones and tablets. Hold the device sideways for the best view — the game fills the whole screen, so a wide phone puts the joystick and the action buttons out at the edges where the thumbs already are. The action buttons wear symbols rather than labels, and the symbols are the things themselves: the sword or axe you have equipped, your bow, the elemental power you have selected, and — on the last button — whatever is in reach, an apple for an animal waiting to be tamed, a shop front, a speech bubble for someone with something to say. A button with nothing to do — no potions left, no arrows, no power chosen, nothing within reach — fades until it does. The mini map is the map button: tap it to open the world map, and tap anywhere to close it again. The first elemental power a Blue Gem gives is selected automatically, so it is ready to use straight away.
+Touch controls appear automatically on supported phones and tablets. Hold the device sideways for the best view — the game fills the whole screen, so a wide phone puts the joystick and the action buttons out at the edges where the thumbs already are. The action buttons wear symbols rather than labels, and the symbols are the things themselves: the sword or axe you have equipped, your bow, the elemental power you have selected, and — on the last button — whatever is in reach, an apple for an animal waiting to be tamed, a shop front, a speech bubble for someone with something to say. A button with nothing to do — no potions left, no arrows, no power chosen, nothing within reach — fades until it does. The mini map is the map button: tap it to open the world map, and tap anywhere to close it again. The menu button beside the pack opens the pause menu, which is where saving and loading live. The first elemental power a Blue Gem gives is selected automatically, so it is ready to use straight away.
 
 ## Run locally
 
@@ -73,13 +73,73 @@ Then open `http://localhost:8000`.
 | `js/combat.js` | Close attacks, arrows, elemental effects, damage, and fight events |
 | `js/ui.js` | Health display, shops, inventory, lore, riddles, speech, enchanting, and endings |
 | `js/game.js` | Main repeating loop, progress, quests, travel between realms, and story events |
+| `js/save.js` | Saved games: what a save keeps, how it is written, and how it is read back |
 | `js/sprites.js` | Draws the handmade pixel characters and objects, including the treasure chest |
 | `js/monster-sprites.js` | Draws the species-specific hostile creatures and named bosses |
 | `js/sound.js` | Makes sound and music signals |
 | `js/touch.js` | Mobile and touch controls |
+| `tests/` | Browser tests for saving and loading, and the small server that runs them |
 | `docs/art-direction/` | Art-direction review and visual concepts |
 | `docs/development-binder/` | Development-binder structure and current lore documentation |
 | `output/pdf/` | Print-ready proposal and binder covers |
+
+## Saved games
+
+Progress is saved by hand, never automatically. There are three slots, kept in
+the browser's own storage on the device that made them — they do not follow a
+player to another browser or another machine.
+
+Saving and loading are reached from the pause menu (Escape on a keyboard, the
+menu button beside the pack on a touch screen). The title screen offers
+**Continue** for the most recently saved game and **Load Game** for the rest,
+once at least one save exists.
+
+A save keeps progress, not the living world. The player, their gear and quest
+flags, what has been charted, what has been picked up, and any tamed animal
+companions all come back. Monsters and wild animals are not saved; they
+repopulate on load, as they do constantly during play anyway. Terrain is not
+written down either — every world is generated from a fixed seed, so loading
+regenerates the same ground and only records the tiles the player has since
+changed, such as burnt forest.
+
+### Adding something that should survive a save
+
+`js/save.js` works from explicit lists of field names, `PLAYER_FIELDS` and
+`GAME_FIELDS`. **A new field that is not added to the right list will not
+persist, and nothing will report it** — the player simply loses it on load. If
+you add progress to `Player` or `Game` that should outlive a session, add its
+name to the matching list, and add it to `readState()` in `tests/helpers.js` so
+the tests hold you to it.
+
+Saves carry a version number. A save written by an older build loads normally
+and inherits new-game defaults for anything it predates, so old saves keep
+working as the game grows. A save from a *newer* build is refused rather than
+half-loaded.
+
+## Testing
+
+The save system is the one part of the game where a bug is both invisible and
+destructive, so it has browser tests. They drive the real game in a real
+browser: start a run, save it, throw the page away, load it back, and check
+that what returned matches what was there.
+
+```bash
+npm install                     # once
+npx playwright install chromium # once, downloads the test browser
+npm test
+```
+
+`npm test` starts its own web server and takes about half a minute. Other
+useful forms:
+
+```bash
+npm run test:headed   # watch it happen in a visible browser
+npm test -- --ui      # step through tests interactively
+npm run test:report   # open the report from the last run
+```
+
+If a machine already has a Chromium that Playwright can use, point at it with
+`CHROMIUM_PATH=/path/to/chrome npm test` and skip the browser download.
 
 ## Screen size
 

@@ -1,0 +1,26 @@
+{
+  "name": "ingoizers-world",
+  "version": "1.0.0",
+  "description": "Ingoizer's World - a browser adventure game",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:report": "playwright show-report",
+    "serve": "node tests/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/genemagg10/adventure-game.git"
+  },
+  "bugs": {
+    "url": "https://github.com/genemagg10/adventure-game/issues"
+  },
+  "homepage": "https://github.com/genemagg10/adventure-game#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  },
+  "private": true
+}

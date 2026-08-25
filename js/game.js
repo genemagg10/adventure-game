@@ -88,6 +88,9 @@ class Game {
         this.skyTreeHintGiven = false;
         this.skyTreeApproachSeen = false;
 
+        // Charting the whole surface is an achievement, and it is announced once.
+        this.surfaceCharted = false;
+
         // Fountain of Youth - the Lady of the Lake's second water
         this.nearFountain = false;
         this.fountainCooldownUntil = 0;
@@ -336,6 +339,9 @@ class Game {
         this.skyTreeHintCooldown = 0;
         this.skyTreeHintGiven = false;
         this.skyTreeApproachSeen = false;
+
+        // Charting the whole surface is an achievement, and it is announced once.
+        this.surfaceCharted = false;
 
         // Fountain of Youth
         this.nearFountain = false;
@@ -818,6 +824,7 @@ class Game {
         // sweep only runs when they step onto a new tile.
         if (activeWorld.fog) {
             activeWorld.fog.revealAround(this.player.x, this.player.y, (tx, ty) => activeWorld.blocksSight(tx, ty));
+            if (this.onSurface) this.checkSurfaceCharted();
         }
 
         // Player attack
@@ -2501,6 +2508,22 @@ class Game {
                 );
             }
         );
+    }
+
+    // The last corner of the realm charted. Every cell of surface fog can be
+    // reached on foot, so this is a thing a player finishes rather than a thing
+    // that happens to them - it gets its own tune and its own announcement, and
+    // like every other one-shot it is remembered in the save.
+    checkSurfaceCharted() {
+        if (this.surfaceCharted || !FOG_ENABLED) return;
+        const fog = this.world.fog;
+        if (!fog || fog.charted < fog.cols * fog.rows) return;
+
+        this.surfaceCharted = true;
+        GameAnalytics.track("surface-fully-charted");
+        this.sound.explorerFanfare();
+        this.ui.showNotification("\ud83d\uddfa\ufe0f The realm is charted!");
+        this.ui.showDialog("Congratulations, you've explored 100% of the surface level! The fog has been cleared.");
     }
 
     // Dig an unrooted sapling back up.

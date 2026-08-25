@@ -24,6 +24,7 @@ Current features include:
 - Fountain of Youth riddles.
 - Friendly wild animals that can be tamed with apples and accompany the player. A companion fights what threatens Ingoizer, and monsters fight back: they hunt the pack as readily as the hero, and an animal that bites one has its attention until the grudge wears off.
 - Keyboard and touch controls, mobile landscape play, sound, inventory, shops, a mini map, and a world map.
+- An announcement, with a tune of its own, for charting every last cell of the surface map.
 
 ## Controls
 
@@ -158,6 +159,8 @@ Nothing is charted at the start. The map fills in as the player travels, and eac
 3. **Here now** — full colour, plus whatever is moving nearby.
 
 The realm above ground, each of the four caves, and the Cloudlands each remember their own travels. Underground, rock blocks the view, so walking one tunnel never draws the tunnel behind the wall. Two things are never hidden, so a player can always find their way: Ing Castle and the Green Knight's castle are on the map from the first minute, and quest people the story has already named — the Lady of the Lake, Merlin — show as a hollow dashed marker until the player actually reaches them.
+
+Charting the whole surface is possible, and the game says so when it happens: the last cell of fog plays a short tune of its own and announces that 100% of the surface has been explored. It is announced once and remembered in the save.
 
 The corner where the Worldtree grows has no name on the map until the tree is found. Before that it looks like plain wilderness. Walk close enough to see the tree and the whole region turns its own colour and is named **The Worldtree Reach**. No road runs into it, as the old verse says: the Reach is trackless ground, and the only way to the tree is to leave the roads and walk.
 

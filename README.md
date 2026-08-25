@@ -16,11 +16,11 @@ Current features include:
 - Drawn maps with fog of war: the mini map and the world map start blank and fill in as the player travels.
 - Close-range weapons, bows, armor, usable items, elemental powers, enchanting, monster drops, and treasure.
 - The Lady of the Lake, the Excalibur quest, and the Fountain of Youth she also keeps.
-- Merlin's wand quest, Enchanter's Mallet, and a fifteen-entry Ancient Lore library whose last three entries stay hidden until the player earns them.
+- Merlin's wand quest, Enchanter's Mallet, and a sixteen-entry Ancient Lore library whose hidden entries stay hidden until the player earns them.
 - Black Knight and Green Knight progression arcs, and the family tapestry in Ing Castle that connects them.
 - Four caves with elemental locks, mazes or bosses, treasure chests, Purple Gems, and special rewards.
 - The Worldtree, Cloudlands, Temple of Olympus, twelve-form Olympian encounter, and Zeus reward.
-- The Worldtree Seed: plant it back where the tree stood and Zeus grants his lightning without a fight.
+- The Worldtree Seed: carry it to the Waiting Ground in the far southeast and Zeus grants his lightning without a fight.
 - Fountain of Youth riddles.
 - Friendly wild animals that can be tamed with apples and accompany the player. A companion fights what threatens Ingoizer, and monsters fight back: they hunt the pack as readily as the hero, and an animal that bites one has its attention until the grudge wears off.
 - Keyboard and touch controls, mobile landscape play, sound, inventory, shops, a mini map, and a world map.
@@ -164,6 +164,16 @@ Charting the whole surface is possible, and the game says so when it happens: th
 
 The corner where the Worldtree grows has no name on the map until the tree is found. Before that it looks like plain wilderness. Walk close enough to see the tree and the whole region turns its own colour and is named **The Worldtree Reach**. No road runs into it, as the old verse says: the Reach is trackless ground, and the only way to the tree is to leave the roads and walk.
 
+**The Fallow**, in the opposite corner, is on the chart from the first minute — and it is the emptiest thing on it. Thirty tiles of plain grass, flecked all over with the brown of bare earth, with no road laid to it or through it, not one tree standing in it, and nothing hostile nesting in it. Somewhere in the middle of that grass is a small square of turned brown earth with a clean margin all round: **the Waiting Ground**. Walk into it and it names itself and goes on the map for good. That is where the Worldtree Seed goes.
+
+## The Worldtree Seed
+
+Burning the Worldtree leaves one seed, and the obvious thing to do with it is the wrong thing. A Worldtree cannot begin in its own ash — burnt ground is dead ground. It needs bare living earth that has never held a tree, never been paved and never been sown, and there is exactly one plot of that left in the realm: the Waiting Ground, in the heart of the Fallow, in the far southeast corner.
+
+The seed can be pushed into any ground that will take it, and a perfectly nice ordinary sapling comes up. Pressing E at a rootless sapling always digs the seed back up, so the peaceful ending can never be lost by planting in the wrong place. It can only be delayed — and each wrong planting buys a plainer clue: a feeling, then a direction, then the name of the country, then a description of the plot itself. After three misses the game gives up being coy and marks the Waiting Ground on the chart. Standing in the plot with the seed in hand is unmistakable on its own: the earth lights, the plot names itself, and the seed goes warm.
+
+Planted there, the new Worldtree comes up in seconds and does not stop at the clouds. It is nowhere near where the old one stood and it does not matter — a Worldtree is a knot, and a knot holds wherever it is tied. The ladder you tore in the northeast stays open, the boundary between the two countries is whole again, and Zeus's first grievance stops being true before he can make it.
+
 ## Development documents
 
 - `docs/art-direction/ART_DIRECTION_REVIEW.md` - review of how the whole game looks, art rules, work order, and concept pictures.
@@ -173,7 +183,7 @@ The corner where the Worldtree grows has no name on the map until the tree is fo
 
 ## Lore access in the game
 
-The main lore library is at Merlin's Hut near Ing Castle. Three of its entries are hidden at the start and only join the shelf once the player has earned them in the world — by reading the tapestry in Ing Castle, or by taking the seed out of the Worldtree's ashes. Players also learn the story from the opening, the Lady of the Lake and Merlin quests, boss speeches and endings, Blue Gems, caves, the Worldtree, Cloudlands, special item descriptions, maps, and landmarks.
+The main lore library is at Merlin's Hut near Ing Castle. Three of its entries are hidden at the start and only join the shelf once the player has earned them in the world — by reading the tapestry in Ing Castle, or by taking the seed out of the Worldtree's ashes. *The Fallow* is on the shelf from the first minute, and it says what that empty corner of the map is for. Players also learn the story from the opening, the Lady of the Lake and Merlin quests, boss speeches and endings, Blue Gems, caves, the Worldtree, Cloudlands, special item descriptions, maps, and landmarks.
 
 ## Project authority
 

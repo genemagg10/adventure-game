@@ -151,14 +151,14 @@ At Crystal Lake, the Lady of the Lake tests Ingoizer; he must bring back Excalib
 
 The Worldtree stands in the far northeast. It is older than the mountains and touches two worlds. A fire arrow burns it down and reveals a ladder that was hidden inside it. The ladder leads to the Cloudlands, a land of hard cloud and white marble. Strong keepers guard it. Beating five keepers wakes the Temple of Olympus, and Zeus comes out with two complaints: that Ingoizer burned down the boundary stone between their two countries, and that a mortal has no business standing in the Cloudlands at all. He then fights as the Twelve Olympians, one after another. When all 12 masks are gone, Ingoizer can fight Zeus himself. Winning turns all of Ingoizer's arrows into lightning bolts.
 
-**There is a second ending.** The fire leaves one Worldtree Seed behind. It can be planted anywhere, but it only takes root in the ash where the old trunk stood. Planted there, the Worldtree grows again around the ladder without closing it, Zeus's first complaint stops being true and his second one goes with it, and he grants the lightning freely. Go up afterwards and he meets Ingoizer on the temple steps instead of fighting him.
+**There is a second ending.** The fire leaves one Worldtree Seed behind. It can be planted anywhere, and the ash it came out of is the one place it will not take - a Worldtree cannot begin in the end of itself. What it needs is bare living earth that has never held a tree, and there is one plot of that left: the Waiting Ground, a square of turned brown earth in the middle of the Fallow, in the far southeast corner of the realm. Planted there, the Worldtree comes up in seconds and goes straight through the clouds. It is nowhere near where the old one stood and it does not matter - a Worldtree is a knot, and a knot holds wherever it is tied. The ladder in the northeast stays open, Zeus's first complaint stops being true and his second one goes with it, and he grants the lightning freely. Go up afterwards and he meets Ingoizer on the temple steps instead of fighting him.
 
 ## Where players learn the story
 
 | Story source | Where it is | What the player does | What the player learns |
 |---|---|---|---|
 | Opening words | Green Meadow starting point | Choose Begin Adventure | Ingoizer wakes up, must find five gems, learns about Ing Castle and animals |
-| Ancient Lore library | Merlin's Hut near Ing Castle | Press E at the hut | 15 lore pages about the main story and Cloudlands; 3 stay hidden until earned |
+| Ancient Lore library | Merlin's Hut near Ing Castle | Press E at the hut | 16 lore pages about the main story and Cloudlands; 3 stay hidden until earned |
 | Lady of the Lake | Island at Crystal Lake | Speak to the Lady | Excalibur, its sheath, the guardian troll and worthiness test |
 | Merlin | Merlin's Swamp | Speak to Merlin | His exile, missing wand and Enchanter's Mallet quest |
 | Blue Gems | Random places and monster drops | Pick up a gem | A new element awakens; five gems are needed at Ing Castle |
@@ -171,17 +171,18 @@ The Worldtree stands in the far northeast. It is older than the mountains and to
 | Hidden base | Northwest wall inside Ing Castle | Use Ice Gem nearby, then climb | Ingozer's Armour, Bow of Arrow Strength and Rainbow Gem cache |
 | Fountain of Youth | A set area near the meadow and village | Answer three random riddles | The Lady of the Lake keeps this water too; the lake tests courage, the fountain tests wit |
 | Worldtree | Far northeast | Unlock Fire, approach and shoot a fire arrow | Tree between worlds, non-mortal ladder and route to Cloudlands; the fire leaves one seed |
-| Worldtree Seed | Anywhere on the surface; correctly in the northeast ash | Press P, or use the seed in the inventory | A Worldtree only roots in the ground it came from; a sapling planted elsewhere can be dug up again |
+| The Waiting Ground | Middle of the Fallow, far southeast | Walk into it | A plot of bare earth somebody has kept clear of trees, stone and road for longer than anyone remembers, and the reason why |
+| Worldtree Seed | Anywhere on the surface; correctly in the Waiting Ground, far southeast | Press P, or use the seed in the inventory | A Worldtree will not begin in ash; it roots only in the bare earth of the Waiting Ground. A sapling planted elsewhere can be dug up again, and every miss buys a plainer clue |
 | Cloudlands | Above the Worldtree | Climb ladder | Sky country, keepers, Temple of Olympus and its challenge |
 | Olympian encounter | Temple of Olympus | Defeat five keepers and approach temple | Zeus's two grievances, twelve masks, his true form and divine reward |
-| Peace with Zeus | Temple of Olympus, after replanting the Worldtree | Plant the seed in the ash, then climb | Mending the Worldtree answers both grievances; Zeus grants the lightning without a fight |
+| Peace with Zeus | Temple of Olympus, after replanting the Worldtree | Plant the seed in the Waiting Ground, then climb | Mending the Worldtree answers both grievances, wherever it is mended; Zeus grants the lightning without a fight |
 | Maps and place names | Small map, world map, and area entrances | Explore or press M | Names and locations in the three world layers |
 | Inventory and pickups | Throughout all realms | Obtain or inspect an item | Short histories and powers of relics, gems, weapons and armor |
 | Victory screens | Green Knight, Zeus, and the peaceful Olympus ending | Defeat the boss, or make peace | Champion status, freedom of the land and mastery of the realms |
 
 # Merlin's Ancient Lore Library
 
-The library holds 15 entries at Merlin's Hut near Ing Castle. The player walks to the hut, presses E, and uses Previous and Next. 3 of the entries are hidden at the start of the game and only appear on the shelf once the player has earned them in the world; they are marked **Hidden until earned** below. The exact words come from `js/constants.js`. The screen that shows them is built in `js/ui.js`.
+The library holds 16 entries at Merlin's Hut near Ing Castle. The player walks to the hut, presses E, and uses Previous and Next. 3 of the entries are hidden at the start of the game and only appear on the shelf once the player has earned them in the world; they are marked **Hidden until earned** below. The exact words come from `js/constants.js`. The screen that shows them is built in `js/ui.js`.
 
 > LUCA'S WORDS: The lore passages below are kept exactly as they appear in the current game. Some words may be above sixth-grade level because they are Luca's story words. They should not be simplified unless Luca chooses to edit them.
 
@@ -260,33 +261,40 @@ The library holds 15 entries at Merlin's Hut near Ing Castle. The player walks t
 ## 11. The Lands of the Realm
 
 **Learned at:** Merlin's Hut; reinforced by map and zone-name displays.  
-**Why it matters:** Names the main lands, and notes that the four caves were dug on purpose rather than formed by nature.
+**Why it matters:** Names the main lands, notes that the four caves were dug on purpose rather than formed by nature, and points at the Fallow as the one country nothing has ever happened to.
 
-> The realm stretches from the peaceful Green Meadow in the west to the dread Darklands in the east. Camelot Village shelters honest folk and merchants. The Dark Forest hides dangers and treasures in equal measure. The Scorched Wastes bake under an unforgiving sun, while the Dragon Mountains pierce the clouds with jagged peaks. Merlin's Swamp bubbles with arcane energy, and the Ancient Ruins hold secrets of civilizations long forgotten. Beneath all of it run four caves that no river cut and no earthquake opened — those were dug, by hands, on purpose. Each land harbors unique monsters and challenges for those who dare explore.
+> The realm stretches from the peaceful Green Meadow in the west to the dread Darklands in the east. Camelot Village shelters honest folk and merchants. The Dark Forest hides dangers and treasures in equal measure. The Scorched Wastes bake under an unforgiving sun, while the Dragon Mountains pierce the clouds with jagged peaks. Merlin's Swamp bubbles with arcane energy, and the Ancient Ruins hold secrets of civilizations long forgotten. Beneath all of it run four caves that no river cut and no earthquake opened — those were dug, by hands, on purpose. In the far southeast, past the last of the Darklands, lies the emptiest country of the lot: the Fallow, an acre of plain grass and bare brown earth where nothing has ever been built, felled or sown. Nobody remembers deciding to leave it alone. Everybody has. Each land harbors unique monsters and challenges for those who dare explore.
 
 ## 12. The Worldtree
 
 **Learned at:** Merlin's Hut; hinted again when Fire unlocks; discovered in the far northeast.  
-**Why it matters:** Explains the tree, the fire-arrow key, and warns that burning it leaves one seed that must not be lost.
+**Why it matters:** Explains the tree, the fire-arrow key, and warns that burning it leaves one seed that must not be lost - or wasted on the ash it came out of.
 
-> In the farthest northeast corner of the realm, where no road runs and no monster dares nest, there stands a single ancient tree. It was old when the mountains were young. The elders called it the Worldtree, for its roots drink from this world while its crown drinks from another. No axe has ever marked it and no storm has ever bent it — but the old texts whisper of one key: fire loosed from a bowstring. Set a fire arrow into the Worldtree, and what the trunk conceals will finally be laid bare. A ladder. And it does not go down. Burn it and you will get your ladder. You will also have burned down the only thing holding two worlds together, and the ash will leave you one seed. Do not lose the seed.
+> In the farthest northeast corner of the realm, where no road runs and no monster dares nest, there stands a single ancient tree. It was old when the mountains were young. The elders called it the Worldtree, for its roots drink from this world while its crown drinks from another. No axe has ever marked it and no storm has ever bent it — but the old texts whisper of one key: fire loosed from a bowstring. Set a fire arrow into the Worldtree, and what the trunk conceals will finally be laid bare. A ladder. And it does not go down. Burn it and you will get your ladder. You will also have burned down the only thing holding two worlds together, and the ash will leave you one seed. Do not lose the seed — and do not waste it on the ash it came out of. A Worldtree does not grow back where it died. It has to be started again somewhere living.
 
 ## 13. The Worldtree Seed
 
 **Hidden until earned.**  
 **Learned at:** Merlin's Hut, but only after the Worldtree has burned and the seed is in hand.  
-**Why it matters:** Explains that the seed can be planted anywhere, only takes root in the ash it came from, and can be dug up again.
+**Why it matters:** Explains that the seed can be planted anywhere, that the ash it came from is the one place it will not take, and that the ground it wants is the Waiting Ground in the Fallow. A sapling in the wrong soil can always be dug up again.
 
-> One seed came out of the ash, no bigger than a thumbnail and far heavier than it has any right to be. It is a Worldtree, entire, waiting. You may plant it wherever you like and something will grow, because that is what seeds do — but a Worldtree is not an ordinary tree and it does not want ordinary ground. It wants the ground it came from. Push it into the ash of the northeast corner, on the very spot where the old trunk stood, and it will take root in a night and climb through the hole you tore in the sky. Plant it anywhere else and you will have a sapling, a nice one, and nothing more; dig it up again and you may carry it on. Whatever else you have burned, this can be put back.
+> One seed came out of the ash, no bigger than a thumbnail and far heavier than it has any right to be. It is a Worldtree, entire, waiting. You may plant it wherever you like and something will grow, because that is what seeds do — but a Worldtree is not an ordinary tree and it does not want ordinary ground. Do not put it back in the ash. That was the mistake the first keepers made and they made it for a hundred years: a Worldtree cannot begin in the end of itself, and burnt ground is dead ground. What it wants is the opposite — bare living earth that has never carried a tree, never been paved, never been built on, never been sown. There is exactly one acre of it left, in the far southeast corner of the realm, and the maps have called it the Fallow since before there were maps. Somewhere in the middle of it, in plain grass with no tree near it and no road within a long walk, there is a small square of turned brown earth. That is the Waiting Ground. Plant the seed anywhere else and you will have a sapling, a nice one, and nothing more; dig it up again and you may carry it on. Whatever else you have burned, this can be put back.
 
-## 14. The Cloudlands
+## 14. The Fallow
+
+**Learned at:** Merlin's Hut, from the first minute; the Fallow itself is named on the map from the start.  
+**Why it matters:** Says what the empty southeast corner of the map is for, and describes the plot of bare earth in the middle of it - the clue a player can find before they ever need it.
+
+> Every other country in the realm is the shape of what happened to it. The meadow was grazed, the forest grew, the Wastes burned, the Ruins fell down. The Fallow is the shape of what did not happen to it. It is thirty miles of plain grass in the far southeast corner, scraped here and there with bare brown earth, and in all the years anybody has kept records nothing has ever been raised there, cut down there, or driven across it. No road was ever laid to it and no road was ever laid through it. Ask a farmer why and you will be told that ground is fallow, which only means it is resting; ask what it is resting for, and the answer stops. The truth is older than the asking. A Worldtree was going to be needed one day, and a Worldtree cannot be started in ash or stone or another tree's shadow. So a plot was left bare and it has been kept bare ever since, and in the middle of the Fallow you can still see it — a small square of turned earth with clean grass all round it, waiting for the one thing it was turned for.
+
+## 15. The Cloudlands
 
 **Learned at:** Merlin's Hut; confirmed when climbing the Worldtree ladder.  
 **Why it matters:** Introduces the sky world and states that mortals do not belong there - Zeus's second grievance.
 
 > Above the sky there is another country. Islands of hardened cloud drift over a blue abyss, joined by bridges of vapour, and at their heart stands a temple of white marble that no mortal mason ever raised. This is the Cloudlands. Nothing here was built for you; nothing here expects you; there is no door in the whole country that a mortal was ever meant to walk through. Its guardians — storm harpies, golden griffins, giants of cloud and men of bronze — make the deepest cave troll look like a village nuisance. Slay five of the Cloudlands' keepers and the temple will wake. Something in it has been waiting a very long time for a mortal rude enough to climb.
 
-## 15. The Twelve Olympians
+## 16. The Twelve Olympians
 
 **Learned at:** Merlin's Hut; demonstrated in the Temple of Olympus encounter.  
 **Why it matters:** Explains Zeus's two grievances, the 12-part boss fight, and that replanting the Worldtree is the other way through.
@@ -385,9 +393,9 @@ Because Ingoizer is a family name, “Ingozer's Armour” reads as an ancestor's
 ## The Worldtree Seed
 
 **Where and when:** Given the moment the Worldtree finishes burning. Plant it with P, or from the relic shelf in the inventory - the inventory route is the one that works on a phone.  
-**What players learn:** The seed can be planted on any ground that will take it, and a sapling comes up. But a Worldtree is not an ordinary tree: it only takes root in the ash where the old trunk stood, in the far northeast. A sapling planted anywhere else is a nice ordinary sapling and nothing more, and pressing E at it digs the seed back up, so the peaceful route can never be lost by planting in the wrong place. Planted sites are marked on the small map and the world map.
+**What players learn:** The seed can be planted on any ground that will take it, and a sapling comes up. But a Worldtree is not an ordinary tree, and the ash it came out of is exactly the wrong answer - burnt ground is dead ground. It roots only in the Waiting Ground: a square of bare turned earth in the middle of the Fallow, in the far southeast, with no tree, no stone and no road anywhere near it. A sapling planted anywhere else is a nice ordinary sapling and nothing more, and pressing E at it digs the seed back up, so the peaceful route can never be lost by planting in the wrong place. Every wrong planting also buys the next clue down a ladder of four - a feeling, a direction, the name of the country, a description of the plot - and after three misses the Waiting Ground is marked on the chart outright. Planted sites are marked on the small map and the world map.
 
-**What happens when it takes:** The Worldtree grows again in a matter of seconds, twining up around the ladder without closing it, and the way to the Cloudlands stays open. Zeus's first grievance stops being true, and his second one goes with it.
+**What happens when it takes:** The Worldtree grows again in a matter of seconds, standing in the Fallow and going up through the clouds. The ladder half a realm to the north is untouched, so the way to the Cloudlands stays open. Zeus notices at once that it is not where he put it, and says out loud why that does not matter: a Worldtree is a knot, not a fencepost. His first grievance stops being true, and his second one goes with it.
 
 ## Cloudlands and Temple of Olympus
 
@@ -405,7 +413,7 @@ Because Ingoizer is a family name, “Ingozer's Armour” reads as an ancestor's
 
 ## Peace with Zeus (the second ending)
 
-**Where and when:** Plant the Worldtree Seed back in the ash where the old trunk stood, before provoking Zeus at the temple.  
+**Where and when:** Plant the Worldtree Seed in the Waiting Ground, in the far southeast, before provoking Zeus at the temple.  
 **What happens:** The tree grows, and Zeus speaks from directly overhead. He says he had two quarrels - the burned boundary stone, and a mortal standing in his country - and that mending the tree answers the first, so the second dies with it. He gives the lightning bolts there and then, with no blow struck. The Cloudlands keepers stop counting toward a summon.
 
 **At the temple:** Climb afterwards and the keepers let Ingoizer pass. Zeus is sitting on the temple steps watching the new shoot climb, tells him to keep the bolts and the run of the Cloudlands, and asks him to come back when the tree is tall enough to hold the sky apart on its own. This is a full victory ending, reached without fighting the Twelve Olympians at all.
@@ -433,8 +441,8 @@ Because Ingoizer is a family name, “Ingozer's Armour” reads as an ancestor's
 | Bow of Arrow Strength | Hidden base above Ing Castle | Legendary bow equal to Excalibur in base damage and improved by gems/enchanting |
 | Rainbow Gem | Hidden base above Ing Castle | Adds 4 points to weapons, bows, and armor |
 | Ambrosia of Olympus | Hidden supplies in Cloudlands | A godly item that fully heals and gives gold and a Greater Potion |
-| Zeus's Lightning Bolts | Defeat Zeus, **or** replant the Worldtree in its own ash | Transforms all current and future arrows into divine bolts |
-| Worldtree Seed | Left in the ash when the Worldtree burns | The whole Worldtree, waiting. Plantable anywhere; only roots where the old trunk stood, and can be dug back up |
+| Zeus's Lightning Bolts | Defeat Zeus, **or** replant the Worldtree in the Waiting Ground | Transforms all current and future arrows into divine bolts |
+| Worldtree Seed | Left in the ash when the Worldtree burns | The whole Worldtree, waiting. Plantable anywhere; roots only in the Waiting Ground in the far southeast, and can be dug back up |
 
 # Places and What They Tell the Player
 
@@ -452,7 +460,9 @@ Because Ingoizer is a family name, “Ingozer's Armour” reads as an ancestor's
 | Ing Castle | A castle that once stood for fairness, taken by the Black Knight; its great hall holds the tapestry of the house of Ingoizer |
 | Green Knight's Domain | A southern land held by the Black Knight's eldest son, opened after his father falls |
 | Four Caves | Tunnels the Black Knight's younger sons dug by hand to get away from the sun; opened with elements, and each keeps a treasure chest |
-| Worldtree | The boundary stone between the surface realm and the sky country. Burnable, and — with its own seed — regrowable |
+| The Fallow | The rested acre in the far southeast: plain grass flecked with bare brown earth, no road laid to it or through it, and not one tree standing in it |
+| The Waiting Ground | The plot in the middle of the Fallow, kept bare on purpose since before anyone was writing things down. The one ground a Worldtree Seed will take |
+| Worldtree | The boundary stone between the surface realm and the sky country. Burnable, and — in the Waiting Ground, not in its own ash — regrowable |
 | Cloudlands | A country above the sky, made from hard cloud and marble built by gods |
 | Temple of Olympus | Center of Cloudlands and entrance to the Olympian fight |
 
@@ -507,9 +517,9 @@ The Worldtree now carries part of the answer: it is the boundary stone between t
 
 ## Choice 7: What happens to the Worldtree after it burns? — DECIDED
 
-**Luca's decision:** It can be put back. The fire leaves one seed. The seed can be planted anywhere, but it only takes root in the ash it came from; planted there, the Worldtree grows again around the ladder without closing it. This also settles Zeus: mending the tree answers both of his grievances and he grants the lightning without a fight.
+**Luca's decision:** It can be put back, but not where it stood. The fire leaves one seed. The seed can be planted anywhere, and the ash is the one ground it refuses - a Worldtree cannot begin in the end of itself. It roots in the Waiting Ground, a plot of bare earth in the Fallow in the far southeast that has been kept clear for exactly this. Planted there, the Worldtree grows again and reaches the Cloudlands on its own, while the ladder in the northeast stays open. This also settles Zeus: mending the tree answers both of his grievances, wherever it is mended, and he grants the lightning without a fight.
 
-**Built in the game:** `WORLDTREE_SEED` in `js/constants.js`; `World.plantSeed`, `World.updateSapling`, `World.uprootSapling` and the regrown-tree art in `js/world.js`; `Game.plantWorldtreeSeed`, `Game.onWorldtreeRegrown`, `Game.uprootSapling` and `Game.checkZeusPeaceMeeting` in `js/game.js`; the relic card with its Plant button in `js/ui.js`; the P key; and the hidden lore page *The Worldtree Seed*.
+**Built in the game:** `WORLDTREE_SEED`, `WORLDTREE_PLOT`, `WORLDTREE_SEED_CLUES` and the `fallow` zone in `js/constants.js`; `World.placeWorldtreePlot`, `World.isWorldtreeGround`, `World.isWorldtreeAsh`, `World.plantSeed`, `World.updateSapling`, `World.uprootSapling` and `World.renderRegrownWorldtree` in `js/world.js`; `Game.plantWorldtreeSeed`, `Game.onSeedPlantedWrong`, `Game.chartWaitingGroundIfLost`, `Game.checkWaitingGroundApproach`, `Game.onWorldtreeRegrown`, `Game.uprootSapling` and `Game.checkZeusPeaceMeeting` in `js/game.js`; the relic card with its Plant button in `js/ui.js`; the P key; the lore pages *The Worldtree Seed* and *The Fallow*; and the browser tests in `tests/waiting-ground.spec.js`.
 
 ## Choice 8: Is the Fountain connected to the Lady? — DECIDED
 
@@ -593,7 +603,11 @@ The first two lists below check features that are **already in the game**. The l
 - Burning the Worldtree hands the player a Worldtree Seed and adds the *Worldtree Seed* page to Merlin's shelf.
 - The seed can be planted with P on a computer and from the relic shelf in the inventory on a phone.
 - A seed planted on ordinary ground grows a plain sapling, marks itself on both maps, and gives the seed straight back when the player presses E at it.
-- A seed planted in the ash where the old trunk stood grows a Worldtree in a few seconds. The tree twines round the ladder without blocking it, and the ladder still climbs to the Cloudlands.
+- A seed planted in the ash where the old trunk stood grows a plain sapling too, and the game says why in as many words: burnt ground is dead ground.
+- Every wrong planting tells the player one thing more about where the right ground is, in order; after three misses the Waiting Ground is marked on the chart whether the player has been there or not.
+- Walking into the Waiting Ground names it, plays the discovery tune and marks it on the map for good, seed in hand or not.
+- Standing on the plot carrying the seed lights the turned earth, names it on screen and offers the plant prompt.
+- A seed planted in the Waiting Ground grows a Worldtree in a few seconds, standing in the Fallow and climbing through the clouds. The ladder in the northeast is untouched and still climbs to the Cloudlands.
 - Replanting grants Zeus's lightning bolts with no fight, and the arrow icon in the HUD changes to match.
 - Climbing to the temple afterwards gives the peaceful ending instead of the twelve-form fight; the keeper counter disappears from the HUD.
 - Planting the seed after Zeus has already left his temple does **not** cancel the fight.
@@ -609,7 +623,7 @@ The first two lists below check features that are **already in the game**. The l
 
 - The tapestry is a featureless black drape until the Black Knight is beaten, then shows the woven family tree.
 - Reading it adds two pages to Merlin's shelf and changes what the cave guardians say when they rise.
-- Merlin's shelf shows 12 pages at the start of a game and 15 once every hidden page has been earned; the page counter and the Previous/Next buttons stay correct at every count.
+- Merlin's shelf shows 13 pages at the start of a game and 16 once every hidden page has been earned; the page counter and the Previous/Next buttons stay correct at every count.
 - Both maze caves show a shut chest at the centre that opens when the treasure is taken.
 - Both boss caves show a shut chest at the back of the lair that opens when the guardian falls.
 - The hidden base above Ing Castle shows an open chest among its relics.

@@ -408,6 +408,9 @@ const MAP_BIOME_ART = {
     greenlands: { base: "#164220", alt: "#1d4f27", ink: "#0a2c0f", mark: "banner" },
     // The corner the Worldtree stands in. Hidden until the tree is found.
     worldtree: { base: "#1c3d4e", alt: "#23495c", ink: "#112733", mark: "star" },
+    // The rested acre in the southeast. Green, and flecked all over with the
+    // brown of bare earth - which is the whole reason anyone looks twice.
+    fallow: { base: "#54843f", alt: "#61944b", ink: "#3a6029", mark: "furrow" },
     wilderness: { base: "#40543f", alt: "#4a6049", ink: "#2b3a2c", mark: "scrub" },
 };
 
@@ -418,6 +421,7 @@ function mapTileColour(tile, art, shade) {
         case TILE.WATER: return shade ? "#3a72c4" : "#2a5fae";
         case TILE.BRIDGE: return "#8a6a3a";
         case TILE.PATH: return shade ? "#b39a63" : "#a68d59";
+        case TILE.BARE_EARTH: return shade ? "#8a6134" : "#77522b";
         case TILE.TREE: return art.ink;
         case TILE.BURNING_TREE: return "#7a3a18";
         case TILE.LAVA: return shade ? "#e05a1a" : "#cc3300";
@@ -513,6 +517,14 @@ const MapTerrain = {
             case "scrub":
                 ctx.fillStyle = art.ink;
                 ctx.fillRect(x, y, u * 2, u);
+                break;
+            case "furrow":
+                // A short scrape of bare earth. Sown thickly enough that the
+                // Fallow reads brown-flecked from across the whole chart.
+                ctx.fillStyle = "#77522b";
+                ctx.fillRect(x, y, u * 3, u);
+                ctx.fillStyle = "rgba(150, 108, 60, 0.55)";
+                ctx.fillRect(x + u, y + u, u * 2, u);
                 break;
             case "cottage":
                 ctx.fillStyle = "#7a5030";

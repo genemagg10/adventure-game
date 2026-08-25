@@ -51,7 +51,7 @@ const SaveSystem = {
         "inSky", "skyMonsterKills", "olympianSummoned", "olympianDefeated",
         "skyTreeHintGiven", "skyTreeApproachSeen",
         "fountainIntroShown", "tapestryRead",
-        "worldtreeRestored", "zeusAppeased", "zeusMetInPeace",
+        "worldtreeRestored", "zeusAppeased", "zeusMetInPeace", "seedPlantAttempts",
         "loreUnlocks", "firstTameShown", "surfaceCharted",
         "ladyQuestState", "ladyQuestAsked", "merlinQuestState",
         "monsterGemDrops", "currentZone",
@@ -329,6 +329,10 @@ const SaveSystem = {
             apples: this.captureFlags(world.apples, ["collected", "respawnTimer"]),
             greenGems: this.captureFlags(world.greenGems, ["collected"]),
             sapling: world.sapling ? { ...world.sapling } : null,
+            worldtreePlot: world.worldtreePlot ? {
+                discovered: world.worldtreePlot.discovered,
+                charted: world.worldtreePlot.charted,
+            } : null,
             skyTree: world.skyTree ? {
                 state: world.skyTree.state,
                 burnTimer: world.skyTree.burnTimer,
@@ -418,6 +422,7 @@ const SaveSystem = {
         this.restoreFlags(world.greenGems, saved.greenGems, ["collected"]);
 
         if (saved.sapling) world.sapling = { ...saved.sapling };
+        this.overlay(world.worldtreePlot, saved.worldtreePlot, ["discovered", "charted"]);
         this.overlay(world.skyTree, saved.skyTree, ["state", "burnTimer", "discovered", "regrown"]);
         this.overlay(world.hiddenLadder, saved.hiddenLadder, ["revealed", "looted"]);
         this.overlay(world.ladyOfLake, saved.ladyOfLake, ["excaliburGiven"]);

@@ -292,7 +292,7 @@ class UIManager {
             if (player.hasWorldtreeSeed) {
                 carrying.push({
                     icon: WORLDTREE_SEED.icon,
-                    label: `${WORLDTREE_SEED.name} - ${touch ? "plant it" : "press P to plant it"} in the bare earth of the Fallow, far to the southeast`,
+                    label: `${WORLDTREE_SEED.name} - ${touch ? "plant it" : "press P to plant it"} to open the way to the Cloudlands. In the bare earth of the Fallow, far to the southeast, it also buys peace`,
                 });
             }
 
@@ -1200,6 +1200,18 @@ class UIManager {
             tone: "green",
             action: "plant",
         });
+        // A Worldtree that never took is still the seed, only standing up. The
+        // shelf offers it back, which is the only way to lift one on a phone.
+        const planted = this.game.nearUprootable;
+        if (planted) relics.push({
+            icon: "\ud83c\udf33",
+            name: planted.grown ? "Worldtree (not taken)" : "Worldtree Sapling",
+            detail: planted.grown
+                ? "Standing where you left it, holding the only ladder there is. Lift it out and the way up closes until you plant it again."
+                : "Coming up where you left it. Lift it out and carry the seed on.",
+            tone: "green",
+            action: "uproot",
+        });
         return relics;
     }
 
@@ -1213,12 +1225,18 @@ class UIManager {
         for (const relic of relics) {
             const card = document.createElement(relic.action ? "button" : "article");
             card.className = `relic-card ${relic.tone}`;
-            const actionLabel = relic.action === "plant" ? "Plant ›" : "Use ›";
+            const actionLabel = relic.action === "plant" ? "Plant ›"
+                : relic.action === "uproot" ? "Lift it out ›" : "Use ›";
             card.innerHTML = `<span>${relic.icon}</span><div><strong>${relic.name}</strong><small>${relic.detail}</small></div>${relic.action ? `<b>${actionLabel}</b>` : ""}`;
             if (relic.action === "plant") {
                 card.addEventListener("click", () => {
                     this.closeInventory();
                     this.game.plantWorldtreeSeed();
+                });
+            } else if (relic.action === "uproot") {
+                card.addEventListener("click", () => {
+                    this.closeInventory();
+                    this.game.uprootSapling();
                 });
             } else if (relic.action) {
                 card.addEventListener("click", () => {

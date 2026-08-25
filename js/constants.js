@@ -384,13 +384,13 @@ const MERLIN_LORE = [
     {
         title: "The Worldtree",
         icon: "\ud83c\udf33",
-        text: "In the farthest northeast corner of the realm, where no road runs and no monster dares nest, there stands a single ancient tree. It was old when the mountains were young. The elders called it the Worldtree, for its roots drink from this world while its crown drinks from another. No axe has ever marked it and no storm has ever bent it \u2014 but the old texts whisper of one key: fire loosed from a bowstring. Set a fire arrow into the Worldtree, and what the trunk conceals will finally be laid bare. A ladder. And it does not go down. Burn it and you will get your ladder. You will also have burned down the only thing holding two worlds together, and the ash will leave you one seed. Do not lose the seed \u2014 and do not waste it on the ash it came out of. A Worldtree does not grow back where it died. It has to be started again somewhere living."
+        text: "In the farthest northeast corner of the realm, where no road runs and no monster dares nest, there stands a single ancient tree. It was old when the mountains were young. The elders called it the Worldtree, for its roots drink from this world while its crown drinks from another. No axe has ever marked it and no storm has ever bent it \u2014 but the old texts whisper of one key: fire loosed from a bowstring. Set a fire arrow into the Worldtree, and what the trunk conceals will finally be laid bare. A ladder. And it does not go down. What the texts do not say, because the people who wrote them never got that far, is that the ladder is not hidden in the tree. It is part of the tree. Burn the tree and you burn the ladder with it, and for the first time in the history of either country there will be no road between them at all. All the fire leaves is ash and one seed. That seed is now the only way up, and where it goes decides who is waiting at the top. Do not lose it \u2014 and do not waste it on the ash it came out of. A Worldtree does not begin where one ended."
     },
     {
         title: "The Worldtree Seed",
         icon: "\ud83c\udf30",
         unlock: "seed",
-        text: "One seed came out of the ash, no bigger than a thumbnail and far heavier than it has any right to be. It is a Worldtree, entire, waiting. You may plant it wherever you like and something will grow, because that is what seeds do \u2014 but a Worldtree is not an ordinary tree and it does not want ordinary ground. Do not put it back in the ash. That was the mistake the first keepers made and they made it for a hundred years: a Worldtree cannot begin in the end of itself, and burnt ground is dead ground. What it wants is the opposite \u2014 bare living earth that has never carried a tree, never been paved, never been built on, never been sown. There is exactly one acre of it left, in the far southeast corner of the realm, and the maps have called it the Fallow since before there were maps. Somewhere in the middle of it, in plain grass with no tree near it and no road within a long walk, there is a small square of turned brown earth. That is the Waiting Ground. Plant the seed anywhere else and you will have a sapling, a nice one, and nothing more; dig it up again and you may carry it on. Whatever else you have burned, this can be put back."
+        text: "One seed came out of the ash, no bigger than a thumbnail and far heavier than it has any right to be. It is a Worldtree, entire, waiting \u2014 and with the old tree burned it is the only road left between this country and the one above it. Push it into any ground that will take it and a Worldtree comes up in seconds with a ladder running up the inside of the trunk, and the Cloudlands are open again. That much the seed will do anywhere. What it will not do anywhere is take. A Worldtree cannot begin in the end of itself, so the ash is the one place it is certain to fail; nor will it hold in stone, or under another tree's shadow, or beside a road that people have worn. It wants the opposite of all of that \u2014 bare living earth that has never carried a tree, never been paved, never been built on, never been sown. There is exactly one acre of it left, in the far southeast corner of the realm, and the maps have called it the Fallow since before there were maps. Somewhere in the middle of it, in plain grass with no tree near it and no road within a long walk, there is a small square of turned brown earth. That is the Waiting Ground. A tree planted anywhere else stands, and climbs, and never quite settles \u2014 take hold of the trunk and the whole thing comes up in your hands, ladder and all, and folds back down into the seed for you to carry on. A tree planted in the Waiting Ground stays. And when it stays, the boundary you burned is mended, and the gods above have nothing left to quarrel with you about. Choose knowing this: a king with no quarrel is a king you will never get to fight."
     },
     {
         title: "The Fallow",
@@ -405,7 +405,7 @@ const MERLIN_LORE = [
     {
         title: "The Twelve Olympians",
         icon: "\u26a1",
-        text: "Zeus has two complaints against you and he will make both of them before he makes a fist. The first is the Worldtree: it was his family's boundary stone as much as this realm's, and you burned it down to make yourself a staircase. The second is simpler \u2014 you are standing in his country, and mortals do not belong in the Cloudlands. Then he fights, and he does not fight as men fight. When he is roused he wears his family like armour: strike him and he is Hera; strike Hera and he is Poseidon, then Demeter, Athena, Apollo, Artemis, Ares, Aphrodite, Hephaestus, Hermes, Dionysus \u2014 twelve faces, twelve furies, and not one of them can be slain, for you cannot kill a god by killing the mask. Endure all twelve and the masks run out. What stands before you then is Zeus himself, and Zeus himself can bleed. Break him, and his bolts become your arrows. There is another way, and it is not a sword. Answer the first complaint before you ever climb, and the second one dies with it."
+        text: "Zeus has two complaints against you and he will make both of them before he makes a fist. The first is the Worldtree: it was his family's boundary stone as much as this realm's, and you burned it down to make yourself a staircase. The second is simpler \u2014 you are standing in his country, and mortals do not belong in the Cloudlands. Then he fights, and he does not fight as men fight. When he is roused he wears his family like armour: strike him and he is Hera; strike Hera and he is Poseidon, then Demeter, Athena, Apollo, Artemis, Ares, Aphrodite, Hephaestus, Hermes, Dionysus \u2014 twelve faces, twelve furies, and not one of them can be slain, for you cannot kill a god by killing the mask. Endure all twelve and the masks run out. What stands before you then is Zeus himself, and Zeus himself can bleed. Break him, and his bolts become your arrows. There is another way, and it is not a sword. Answer the first complaint before you ever climb \u2014 put the Worldtree back in ground that holds it \u2014 and the second one dies with it. But understand what you are choosing. A Zeus with no quarrel does not rise, and a Zeus who does not rise cannot be thrown down. Take the peace and the twelve masks stay in the temple, and no run of yours will ever have beaten the King of Olympus. Take the fight and you must beat all twelve to reach him. The realm keeps count of one or the other. It has never had to keep count of both."
     },
 ];
 
@@ -767,23 +767,26 @@ const FOUNTAIN_RIDDLES = [
 // The Cloudlands - Sky Realm Constants
 // ============================================
 
-// The Worldtree stands in the far top-right corner of the realm. Burning it
-// with a fire arrow reveals a ladder climbing into the clouds.
+// The Worldtree stands in the far top-right corner of the realm, with the only
+// road to the Cloudlands running up the inside of its trunk. A fire arrow burns
+// it down - and takes that road with it, leaving ash and one seed.
 const SKY_TREE = {
     name: "The Worldtree",
     x: 193, y: 6,       // tile coordinates (top-right corner of the world)
     radius: 1,          // canopy is a (radius*2+1) square of solid tree tiles
-    burnTime: 3600,     // ms the tree burns before the ladder is revealed
-    ladderRange: 46,    // interaction range for the revealed ladder
+    burnTime: 3600,     // ms the tree burns before it goes out
+    ladderRange: 46,    // how close you stand to climb a Worldtree, or lift it
 };
 
-// The seed left in the ashes of the Worldtree. Planted in the Waiting Ground
-// it regrows the tree and settles Zeus's grievance without a fight; planted
-// anywhere else it just grows a sapling you can dig up and carry on.
+// The seed left in the ashes of the Worldtree, and the only way back into the
+// Cloudlands once the fire has taken the old ladder with the old tree. Planted
+// anywhere it grows a Worldtree with a ladder in it; planted in the Waiting
+// Ground it also settles Zeus's grievance and there is no fight at the top. A
+// tree that has not taken can be lifted out again and carried on.
 const WORLDTREE_SEED = {
     name: "Worldtree Seed",
     icon: "\ud83c\udf30",
-    description: "All that survived the fire. A Worldtree will not begin in its own ashes \u2014 it wants bare, living earth.",
+    description: "All that survived the fire, and the only way back up. Plant it anywhere for a ladder \u2014 in bare, living earth for peace as well.",
     plantRange: 80,      // how close to the Waiting Ground counts as the right ground
     growTime: 2600,      // ms a rightly planted seed takes to become a Worldtree
 };
@@ -812,13 +815,14 @@ const WORLDTREE_PLOT = {
 // picture of the plot itself, and after WORLDTREE_PLOT.hintAfter misses the
 // Waiting Ground goes on the chart outright.
 const WORLDTREE_SEED_CLUES = [
-    "A sapling comes up under your hands almost at once \u2014 green, ordinary, and no more than that. It is a fine little tree, " +
-    "and it is not a Worldtree. Press E at the sapling to dig the seed up again.",
+    "The tree is real and the ladder in it is real, and neither of them is finished. A Worldtree in ground that suits it " +
+    "does not sway like that. Lift it out and try somewhere else \u2014 you will not lose it, and nothing you have opened closes " +
+    "for good until you stop carrying it.",
 
-    "The seed came out of your hand cold. Carry it and pay attention: it warms when you walk south, and it warms again " +
-    "when you walk east. Somewhere down in that corner is ground it will answer to.",
+    "Pay attention to the seed while you carry it: it goes cold in ground like this and warms when you walk south, " +
+    "and warms again when you walk east. Somewhere down in that corner is ground it will answer to.",
 
-    "A Worldtree cannot begin in ash, or in stone, or under another tree's shadow, or beside a road that people have worn. " +
+    "A Worldtree cannot take in ash, or in stone, or under another tree's shadow, or beside a road that people have worn. " +
     "It needs bare living earth that has never held anything. There is one acre of it left in the realm, and the old maps " +
     "name it plainly: the Fallow, in the far southeast.",
 

@@ -1,12 +1,14 @@
 const { test, expect } = require("@playwright/test");
 const { startNewGame, dismissDialogs } = require("./helpers");
 
-// Burning the Worldtree leaves one seed, and the seed does not go back in the
-// ash - that is the whole point of it. It goes in the Waiting Ground: a square
-// of bare brown earth in the middle of the Fallow, in the far southeast, with
-// no tree, no stone and no road anywhere near it. These tests cover the plot
-// being genuinely that, the clues that walk a lost player to it, and the tree
-// that comes up when the seed finally lands where it belongs.
+// Burning the Worldtree takes the ladder up with it: the fire leaves ash and
+// one seed, and no way into the Cloudlands at all. Every planting grows that
+// way back - a Worldtree with a ladder in it - but only the Waiting Ground
+// holds one, and only a tree that has taken settles Zeus's quarrel. These
+// tests cover the ash being a dead end, the plot being genuinely the clean
+// square of earth it is described as, the clues that walk a lost player to it,
+// a wrong planting opening the climb without buying peace, and the trade the
+// right planting makes: peace bought, the Olympian fight given up.
 
 /** Read every dialog the game has queued, answering each one as a player would. */
 async function drainDialogs(page, limit = 40) {
@@ -28,7 +30,7 @@ async function drainDialogs(page, limit = 40) {
 /** Hand over the seed the way burning the tree does, without the archery. */
 async function giveSeed(page) {
     await page.evaluate(() => {
-        window.game.world.revealSkyLadder();
+        window.game.world.burnWorldtreeToAsh();
         window.game.player.hasWorldtreeSeed = true;
     });
     await dismissDialogs(page);
@@ -50,7 +52,18 @@ async function plantAt(page, where) {
     return drainDialogs(page);
 }
 
-/** Pull a rootless sapling back up so the seed can be tried somewhere else. */
+/** Let a planting finish. The game pauses while a dialog is up, so keep talking. */
+async function growPlanting(page) {
+    const heard = [];
+    await expect.poll(async () => {
+        heard.push(...await drainDialogs(page));
+        return page.evaluate(() => !!(window.game.world.sapling && window.game.world.sapling.grown));
+    }, { timeout: 15000 }).toBe(true);
+    heard.push(...await drainDialogs(page));
+    return heard;
+}
+
+/** Lift a Worldtree that never took back out, so the seed can be tried elsewhere. */
 async function recoverSeed(page) {
     await page.evaluate(() => {
         const g = window.game;
@@ -125,7 +138,7 @@ test.describe("the Waiting Ground", () => {
     test("is the only ground the seed answers to", async ({ page }) => {
         const answers = await page.evaluate(() => {
             const w = window.game.world;
-            w.revealSkyLadder();
+            w.burnWorldtreeToAsh();
             const P = w.worldtreePlot;
             const st = w.skyTree;
             return {
@@ -148,85 +161,188 @@ test.describe("the Waiting Ground", () => {
 test.describe("planting the Worldtree Seed", () => {
     test.beforeEach(async ({ page }) => {
         await startNewGame(page);
-        await giveSeed(page);
     });
 
-    test("the old ash grows a sapling and says why", async ({ page }) => {
-        const said = (await plantAt(page, "ash")).join(" ");
+    test("burning the tree takes the ladder up with it", async ({ page }) => {
+        const after = await page.evaluate(() => {
+            const g = window.game;
+            g.world.burnWorldtreeToAsh();
+            const st = g.world.skyTree;
+            let ladderTiles = 0;
+            for (let dy = -SKY_TREE.radius; dy <= SKY_TREE.radius; dy++) {
+                for (let dx = -SKY_TREE.radius; dx <= SKY_TREE.radius; dx++) {
+                    if (g.world.tiles[st.tileY + dy][st.tileX + dx] === TILE.SKY_LADDER) ladderTiles++;
+                }
+            }
+            // Stand in the middle of the ash and try to climb.
+            g.player.x = st.x;
+            g.player.y = st.y;
+            g.checkSkyProximity();
+            return {
+                ladder: g.world.skyLadder,
+                ladderTiles,
+                canClimb: g.nearSkyLadder,
+                marked: g.world.mapLandmarks().some(m => m.label === "Worldtree Ash"),
+            };
+        });
+
+        expect(after.ladder, "there is no ladder anywhere").toBeNull();
+        expect(after.ladderTiles, "and none left in the ash").toBe(0);
+        expect(after.canClimb, "so standing in the ash climbs nothing").toBe(false);
+        expect(after.marked, "the spot is still worth finding, as a ruin").toBe(true);
+    });
+
+    test("a seed planted anywhere opens the way up, without buying peace", async ({ page }) => {
+        await giveSeed(page);
+        await plantAt(page, { x: 1200, y: 900 });
+        const said = (await growPlanting(page)).join(" ");
+
+        const state = await page.evaluate(() => {
+            const g = window.game;
+            g.checkSkyProximity();
+            return {
+                grown: g.world.sapling.grown,
+                rooted: g.world.sapling.rooted,
+                ladder: !!g.world.skyLadder,
+                canClimb: g.nearSkyLadder,
+                appeased: g.zeusAppeased,
+                restored: g.worldtreeRestored,
+                marked: g.world.mapLandmarks().some(m => m.label === "Worldtree & Sky Ladder"),
+            };
+        });
+
+        expect(state.grown, "a Worldtree comes up").toBe(true);
+        expect(state.rooted, "but it has not taken").toBe(false);
+        expect(state.ladder, "it carries a ladder all the same").toBe(true);
+        expect(state.canClimb, "and standing at the trunk offers the climb").toBe(true);
+        expect(state.appeased, "Zeus is not appeased by a tree that has not taken").toBe(false);
+        expect(state.restored, "nothing has been put back").toBe(false);
+        expect(said, "and the game says the climb is open").toContain("the way into the Cloudlands is open again");
+        expect(said, "and that there will be a fight at the top").toContain("will want a fight");
+        expect(state.marked, "the tree is the route now, and the chart says so").toBe(true);
+    });
+
+    test("lifting the tree out again closes the way up", async ({ page }) => {
+        await giveSeed(page);
+        await plantAt(page, { x: 1200, y: 900 });
+        await growPlanting(page);
+        await recoverSeed(page);
+
+        const after = await page.evaluate(() => {
+            const g = window.game;
+            g.checkSkyProximity();
+            return { carrying: g.player.hasWorldtreeSeed, ladder: g.world.skyLadder, canClimb: g.nearSkyLadder };
+        });
+
+        expect(after.carrying, "the seed is back in hand").toBe(true);
+        expect(after.ladder, "and the ladder went with the tree").toBeNull();
+        expect(after.canClimb, "so there is nothing to climb").toBe(false);
+    });
+
+    test("the old ash grows a tree that will not take, and says why", async ({ page }) => {
+        await giveSeed(page);
+        await plantAt(page, "ash");
+        const said = (await growPlanting(page)).join(" ");
 
         const state = await page.evaluate(() => ({
             rooted: window.game.world.sapling.rooted,
+            grown: window.game.world.sapling.grown,
             restored: window.game.worldtreeRestored,
-            carrying: window.game.player.hasWorldtreeSeed,
         }));
 
         expect(said, "the ash is named as the wrong answer").toContain("cannot begin in the end of itself");
-        expect(state.rooted, "nothing takes root there").toBe(false);
-        expect(state.restored, "and no Worldtree comes back").toBe(false);
-        expect(state.carrying, "the seed is in the ground, not the pocket").toBe(false);
+        expect(state.grown, "something still comes up").toBe(true);
+        expect(state.rooted, "but nothing takes there").toBe(false);
+        expect(state.restored, "and no Worldtree is put back").toBe(false);
 
         await recoverSeed(page);
         expect(await page.evaluate(() => window.game.player.hasWorldtreeSeed),
-            "a rootless sapling always gives the seed back").toBe(true);
+            "a tree that never took always gives the seed back").toBe(true);
     });
 
     test("every miss buys a plainer clue, and enough of them chart the plot", async ({ page }) => {
+        await giveSeed(page);
         const rungs = await page.evaluate(() => WORLDTREE_SEED_CLUES.length);
         const clues = [];
         for (let i = 0; i < rungs; i++) {
             if (i > 0) await recoverSeed(page);
-            clues.push((await plantAt(page, { x: 1200 + i * 260, y: 900 })).join(" "));
+            await plantAt(page, { x: 1200 + i * 260, y: 900 });
+            clues.push((await growPlanting(page)).join(" "));
         }
 
-        expect(clues[0], "the first miss is just a sapling").toContain("it is not a Worldtree");
+        expect(clues[0], "the first miss says the tree is unsettled").toContain("does not sway like that");
         expect(clues[1], "the second points a direction").toContain("south");
         expect(clues[2], "the third names the country").toContain("Fallow");
         expect(clues[3], "the fourth describes the plot").toContain("bare turned earth");
 
-        const charted = await page.evaluate(() => {
-            const plot = window.game.world.worldtreePlot;
-            return {
-                charted: plot.charted,
-                marked: window.game.world.mapLandmarks().some(m => m.label === WORLDTREE_PLOT.name),
-            };
-        });
+        const charted = await page.evaluate(() => ({
+            charted: window.game.world.worldtreePlot.charted,
+            marked: window.game.world.mapLandmarks().some(m => m.label === WORLDTREE_PLOT.name),
+        }));
         expect(charted.charted, "a lost player is never left lost").toBe(true);
         expect(charted.marked, "the plot goes on the chart").toBe(true);
     });
 
-    test("the right plot grows the Worldtree and settles Zeus", async ({ page }) => {
-        const planted = (await plantAt(page, "plot")).join(" ");
-        expect(planted, "the ground was ready for it").toContain("as though the hole had been dug for it");
-        expect(await page.evaluate(() => window.game.world.sapling.rooted), "it takes root").toBe(true);
+    test("the right plot settles Zeus, and spends the Olympian fight to do it", async ({ page }) => {
+        await giveSeed(page);
+        await plantAt(page, "plot");
+        expect(await page.evaluate(() => window.game.world.sapling.rooted), "it goes in ground that holds it").toBe(true);
+        const said = (await growPlanting(page)).join(" ");
 
-        // Growing is on a timer, and the game pauses while a dialog is up - so
-        // keep answering the world, and keep everything it says.
-        const heard = [];
-        await expect.poll(async () => {
-            heard.push(...await drainDialogs(page));
-            return page.evaluate(() => window.game.world.sapling.grown);
-        }, { timeout: 15000 }).toBe(true);
-        heard.push(...await drainDialogs(page));
-        const said = heard.join(" ");
-
-        const state = await page.evaluate(() => ({
-            restored: window.game.worldtreeRestored,
-            regrown: window.game.world.skyTree.regrown,
-            appeased: window.game.zeusAppeased,
-            bolts: window.game.player.hasZeusBolts,
-            marked: window.game.world.mapLandmarks().some(m => m.label === "The Worldtree"),
-        }));
+        const state = await page.evaluate(() => {
+            const g = window.game;
+            g.checkSkyProximity();
+            return {
+                restored: g.worldtreeRestored,
+                regrown: g.world.skyTree.regrown,
+                appeased: g.zeusAppeased,
+                bolts: g.player.hasZeusBolts,
+                canClimb: g.nearSkyLadder,
+                marked: g.world.mapLandmarks().some(m => m.label === "The Worldtree"),
+                // A tree that has taken is not coming back out.
+                liftable: g.world.uprootSapling(),
+            };
+        });
 
         expect(said, "Zeus notices it is not where he left it").toContain("Not where I put it");
+        expect(said, "and the run is told what it just gave up").toContain("is not something this run can do any more");
         expect(state.restored, "the Worldtree stands again").toBe(true);
         expect(state.regrown, "the world knows it").toBe(true);
-        expect(state.appeased, "and the quarrel is over before it starts").toBe(true);
+        expect(state.appeased, "the quarrel is over before it starts").toBe(true);
         expect(state.bolts, "with the lightning given freely").toBe(true);
-        expect(state.marked, "the new tree is on the chart, in the Fallow").toBe(true);
+        expect(state.canClimb, "and the climb is open at the new tree").toBe(true);
+        expect(state.marked, "which is what the chart calls it now").toBe(true);
+        expect(state.liftable, "a tree that has taken cannot be lifted out").toBe(false);
+    });
+
+    test("peace and the Olympian fight can never both happen", async ({ page }) => {
+        await giveSeed(page);
+        await plantAt(page, "plot");
+        await growPlanting(page);
+
+        const locked = await page.evaluate(() => {
+            const g = window.game;
+            // Everything the Olympian trigger needs, short of the quarrel.
+            g.inSky = true;
+            g.olympianSummoned = true;
+            g.skyMonsterKills = SKY_MONSTERS_TO_SUMMON;
+            const t = g.skyWorld.bossSpawnTile;
+            const pos = tileToWorld(t.x, t.y);
+            g.player.x = pos.x;
+            g.player.y = pos.y;
+            g.checkOlympianTrigger();
+            return { spawned: g.olympianSpawned, boss: !!g.olympianBoss, defeated: g.olympianDefeated };
+        });
+
+        expect(locked.spawned, "the Twelve do not rise for a run that made peace").toBe(false);
+        expect(locked.boss, "so there is nobody at the temple to fight").toBe(false);
+        expect(locked.defeated, "and the Olympus-defeated ending stays unearned").toBe(false);
     });
 
     test("a save remembers the misses and the plot it has found", async ({ page }) => {
+        await giveSeed(page);
         await plantAt(page, { x: 1200, y: 900 });
+        await growPlanting(page);
         await page.evaluate(() => { window.game.world.worldtreePlot.discovered = true; });
 
         const restored = await page.evaluate(() => {
@@ -239,10 +355,15 @@ test.describe("planting the Worldtree Seed", () => {
             return {
                 attempts: window.game.seedPlantAttempts,
                 discovered: window.game.world.worldtreePlot.discovered,
+                // The ladder is the tree, so a restored tree restores the route.
+                ladder: !!window.game.world.skyLadder,
+                burned: window.game.world.skyTree.state,
             };
         });
 
         expect(restored.attempts, "the misses are remembered").toBe(1);
         expect(restored.discovered, "and so is finding the plot").toBe(true);
+        expect(restored.burned, "the burned tree stays burned").toBe("revealed");
+        expect(restored.ladder, "and the planted tree brings its ladder back with it").toBe(true);
     });
 });

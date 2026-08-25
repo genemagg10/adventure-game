@@ -87,7 +87,7 @@ test.describe.serial("a saved game comes back as it was", () => {
 
             // Permanent changes to the ground itself.
             g.world.revealHiddenLadder();
-            g.world.revealSkyLadder();
+            g.world.burnWorldtreeToAsh();
         });
 
         // Burn a patch of forest to ash - the change the tile diff exists for.

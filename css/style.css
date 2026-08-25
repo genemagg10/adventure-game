@@ -2209,6 +2209,21 @@ button.relic-card:hover { filter: brightness(1.18); }
     max-width: 500px;
 }
 
+/* Continue Exploring sits above the button that leaves, and the warning the
+   leave button arms sits under both. */
+.game-over-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    max-width: 460px;
+}
+
+.game-over-actions .menu-note {
+    margin: 0;
+    text-align: center;
+}
+
 /* Boss health bar */
 #boss-health-container {
     position: absolute;

@@ -88,6 +88,9 @@ class Game {
         this.skyTreeHintGiven = false;
         this.skyTreeApproachSeen = false;
 
+        // Charting the whole surface is an achievement, and it is announced once.
+        this.surfaceCharted = false;
+
         // Fountain of Youth - the Lady of the Lake's second water
         this.nearFountain = false;
         this.fountainCooldownUntil = 0;
@@ -337,6 +340,9 @@ class Game {
         this.skyTreeHintGiven = false;
         this.skyTreeApproachSeen = false;
 
+        // Charting the whole surface is an achievement, and it is announced once.
+        this.surfaceCharted = false;
+
         // Fountain of Youth
         this.nearFountain = false;
         this.fountainCooldownUntil = 0;
@@ -446,7 +452,7 @@ class Game {
                     while (attempts < 20) {
                         const tx = zone.x + randInt(2, zone.w - 3);
                         const ty = zone.y + randInt(2, zone.h - 3);
-                        if (!this.world.isSolid(tx, ty)) {
+                        if (!this.world.blocksMonster(tx, ty)) {
                             const pos = tileToWorld(tx, ty);
                             this.monsters.push(new Monster(type, pos.x, pos.y));
                             break;
@@ -483,7 +489,7 @@ class Game {
                 while (attempts < 10) {
                     const tx = zone.x + randInt(2, zone.w - 3);
                     const ty = zone.y + randInt(2, zone.h - 3);
-                    if (!this.world.isSolid(tx, ty)) {
+                    if (!this.world.blocksMonster(tx, ty)) {
                         const pos = tileToWorld(tx, ty);
                         // Don't spawn near player
                         if (dist(pos.x, pos.y, this.player.x, this.player.y) > 300) {
@@ -513,7 +519,7 @@ class Game {
                 while (attempts < 10) {
                     const tx = zone.x + randInt(2, zone.w - 3);
                     const ty = zone.y + randInt(2, zone.h - 3);
-                    if (!this.world.isSolid(tx, ty)) {
+                    if (!this.world.blocksMonster(tx, ty)) {
                         const pos = tileToWorld(tx, ty);
                         if (dist(pos.x, pos.y, this.player.x, this.player.y) > 300) {
                             const m = new Monster("goblin", pos.x, pos.y);
@@ -745,7 +751,7 @@ class Game {
         this.touchControls.applyInput();
 
         // Don't update during dialogs, menus
-        const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive || this.ui.isRiddleOpen() || this.ui.isEnchantOpen() || this.ui.isLoreOpen() || this.ui.isAboutOpen();
+        const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive || this.ui.isRiddleOpen() || this.ui.isEnchantOpen() || this.ui.isLoreOpen() || this.ui.isAboutOpen() || this.ui.isGameOverOpen();
 
         // Handle menu input
         if (this.keyJustPressed.map) {
@@ -818,6 +824,7 @@ class Game {
         // sweep only runs when they step onto a new tile.
         if (activeWorld.fog) {
             activeWorld.fog.revealAround(this.player.x, this.player.y, (tx, ty) => activeWorld.blocksSight(tx, ty));
+            if (this.onSurface) this.checkSurfaceCharted();
         }
 
         // Player attack
@@ -1825,7 +1832,7 @@ class Game {
                 while (attempts < 20) {
                     const tx = zone.x + randInt(2, zone.w - 3);
                     const ty = zone.y + randInt(2, zone.h - 3);
-                    if (!this.world.isSolid(tx, ty)) {
+                    if (!this.world.blocksMonster(tx, ty)) {
                         const pos = tileToWorld(tx, ty);
                         const m = new Monster("goblin", pos.x, pos.y);
                         // Override with green monster stats
@@ -2501,6 +2508,22 @@ class Game {
                 );
             }
         );
+    }
+
+    // The last corner of the realm charted. Every cell of surface fog can be
+    // reached on foot, so this is a thing a player finishes rather than a thing
+    // that happens to them - it gets its own tune and its own announcement, and
+    // like every other one-shot it is remembered in the save.
+    checkSurfaceCharted() {
+        if (this.surfaceCharted || !FOG_ENABLED) return;
+        const fog = this.world.fog;
+        if (!fog || fog.charted < fog.cols * fog.rows) return;
+
+        this.surfaceCharted = true;
+        GameAnalytics.track("surface-fully-charted");
+        this.sound.explorerFanfare();
+        this.ui.showNotification("\ud83d\uddfa\ufe0f The realm is charted!");
+        this.ui.showDialog("Congratulations, you've explored 100% of the surface level! The fog has been cleared.");
     }
 
     // Dig an unrooted sapling back up.

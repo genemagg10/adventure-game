@@ -282,7 +282,11 @@
         <div id="game-over-screen" class="hidden">
             <h1 id="game-over-title">Game Over</h1>
             <p id="game-over-text"></p>
-            <button id="restartBtn" class="menu-btn">Try Again</button>
+            <div class="game-over-actions">
+                <button id="keepPlayingBtn" class="menu-btn menu-btn-primary hidden">Continue Exploring</button>
+                <button id="restartBtn" class="menu-btn">Try Again</button>
+                <p id="game-over-note" class="menu-note hidden"></p>
+            </div>
         </div>
     </div>
     <script src="js/constants.js"></script>

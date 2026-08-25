@@ -248,6 +248,14 @@ const MONSTER_TARGETING = {
     grudgeTime: 2600,       // ms a monster stays fixed on a companion that has hurt it
 };
 
+// The Lady of the Lake keeps both waters, and nothing hostile walks on either.
+// Her bridges and the ground around the Fountain of Youth are warded: monsters
+// are turned back at the edge, while Ingoizer and the animals with him cross
+// as they please.
+const LADY_WARD = {
+    fountainRadius: 3,   // tiles around the fountain a monster will not enter
+};
+
 // Shop locations (tile coordinates)
 const SHOP_LOCATIONS = [
     { x: 15, y: 60, name: "Camelot Armory", inventory: ["iron_sword", "mace", "spear", "hunters_bow", "leather_armor", "chain_mail", "health_potion", "arrows_bundle", "apple", "apple_basket"] },

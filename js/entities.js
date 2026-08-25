@@ -667,6 +667,7 @@ class Monster {
         // AI state
         this.state = "idle"; // idle, patrol, chase, attack
         this.target = null;        // what it is hunting: the player or a companion
+        this.onWardedGround = false; // standing on the Lady's ground: let it walk off
         this.targetTimer = 0;      // ms until it looks around for a better mark
         this.grudgeTimer = 0;      // ms it stays fixed on whatever last hurt it
         this.patrolTarget = null;
@@ -789,13 +790,15 @@ class Monster {
         if (Math.abs(this.knockbackVx) < 0.1) this.knockbackVx = 0;
         if (Math.abs(this.knockbackVy) < 0.1) this.knockbackVy = 0;
 
-        // Move with collision
+        // Move with collision. Warded ground counts as wall to a monster.
+        const here = worldToTile(this.x, this.y);
+        this.onWardedGround = !!(world.isWarded && world.isWarded(here.x, here.y));
         const newX = this.x + moveX;
         const newY = this.y + moveY;
         const tile1 = worldToTile(newX, this.y);
         const tile2 = worldToTile(this.x, newY);
-        if (!world.isSolid(tile1.x, tile1.y)) this.x = newX;
-        if (!world.isSolid(tile2.x, tile2.y)) this.y = newY;
+        if (!this.blockedAt(world, tile1.x, tile1.y)) this.x = newX;
+        if (!this.blockedAt(world, tile2.x, tile2.y)) this.y = newY;
 
         // Walk animation
         if (Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1) {
@@ -811,6 +814,15 @@ class Monster {
         if (this.flashTimer > 0) this.flashTimer -= dt;
 
         return null;
+    }
+
+    // Where a monster may not go. Walls stop everything; the Lady of the Lake's
+    // ward - her bridges and her fountain - stops monsters alone. A monster that
+    // somehow starts on warded ground is let out of it rather than pinned there.
+    blockedAt(world, tileX, tileY) {
+        if (world.isSolid(tileX, tileY)) return true;
+        if (this.onWardedGround || !world.isWarded) return false;
+        return world.isWarded(tileX, tileY);
     }
 
     // A mark has to be alive and actually in the world to be worth chasing.

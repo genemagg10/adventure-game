@@ -901,13 +901,14 @@ class World {
         st.state = "revealed";
         st.burnTimer = 0;
 
-        // Everything but the heart of the tree burns away to ash.
+        // Everything but the heart of the tree burns away to ash. Ash, not road:
+        // no road runs in the Reach, and burning the tree does not lay one.
         for (let dy = -SKY_TREE.radius; dy <= SKY_TREE.radius; dy++) {
             for (let dx = -SKY_TREE.radius; dx <= SKY_TREE.radius; dx++) {
                 const tx = st.tileX + dx;
                 const ty = st.tileY + dy;
                 if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
-                this.tiles[ty][tx] = (dx === 0 && dy === 0) ? TILE.SKY_LADDER : TILE.PATH;
+                this.tiles[ty][tx] = (dx === 0 && dy === 0) ? TILE.SKY_LADDER : TILE.STONE;
             }
         }
 
@@ -984,6 +985,25 @@ class World {
     isSolid(tx, ty) {
         if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) return true;
         return SOLID_TILES.has(this.tiles[ty][tx]);
+    }
+
+    // Ground the Lady of the Lake keeps. She holds both waters - the lake her
+    // island stands in and the Fountain of Youth whose riddles are asked in her
+    // voice - and nothing hostile sets foot on either. That is every bridge she
+    // laid, which is also the only way onto her island, and the ring of ground
+    // around the fountain itself.
+    isWarded(tx, ty) {
+        if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) return false;
+        if (this.tiles[ty][tx] === TILE.BRIDGE) return true;
+        const f = this.fountainOfYouth;
+        if (f && Math.abs(tx - f.tileX) <= LADY_WARD.fountainRadius
+            && Math.abs(ty - f.tileY) <= LADY_WARD.fountainRadius) return true;
+        return false;
+    }
+
+    // What stops a monster: the walls that stop everything, and the ward on top.
+    blocksMonster(tx, ty) {
+        return this.isSolid(tx, ty) || this.isWarded(tx, ty);
     }
 
     render(ctx, camera, time) {
@@ -2749,6 +2769,16 @@ class CaveWorld {
         return this.tiles[ty][tx] === TILE.CAVE_WALL;
     }
 
+    // No water of hers reaches this far down: rock is the only thing that
+    // turns a monster back underground.
+    isWarded() {
+        return false;
+    }
+
+    blocksMonster(tx, ty) {
+        return this.isSolid(tx, ty);
+    }
+
     render(ctx, camera, time) {
         const startTX = Math.floor(camera.x / TILE_SIZE) - 1;
         const startTY = Math.floor(camera.y / TILE_SIZE) - 1;
@@ -3332,6 +3362,15 @@ class SkyWorld {
         if (tx < 0 || tx >= SKY_W || ty < 0 || ty >= SKY_H) return true;
         const t = this.tiles[ty][tx];
         return t === TILE.SKY_VOID || t === TILE.PILLAR;
+    }
+
+    // The Cloudlands are not hers to ward; the keepers go where they like.
+    isWarded() {
+        return false;
+    }
+
+    blocksMonster(tx, ty) {
+        return this.isSolid(tx, ty);
     }
 
     // True when a ground tile touches the open sky, so it gets a rounded rim

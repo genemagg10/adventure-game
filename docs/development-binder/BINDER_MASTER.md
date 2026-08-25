@@ -621,6 +621,7 @@ The first two lists below check features that are **already in the game**. The l
 - Places the player can see right now show the full current picture.
 - The main world, each cave, and Cloudlands remember their own explored areas.
 - The map remains usable on desktop and compact landscape screens.
+- Charting the last cell of surface fog announces itself: a tune of its own, a banner, and the line *Congratulations, you've explored 100% of the surface level! The fog has been cleared.* Every cell of surface fog can be reached on foot, so this is a thing a player can actually finish. It fires once, is kept in the save, and is counted as `surface-fully-charted` in the analytics.
 
 ## Character selection
 

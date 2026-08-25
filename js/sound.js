@@ -1054,6 +1054,64 @@ class SoundSystem {
         bell.stop(bellAt + 1.9);
     }
 
+    // The realm charted end to end: a walking tune that climbs and settles,
+    // over a held chord, so it reads as arriving rather than as winning a fight.
+    explorerFanfare() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+
+        // The melody: a wanderer's phrase up to the octave and home again.
+        const melody = [
+            { f: 523.25, d: 0.00, len: 0.26 },  // C5
+            { f: 587.33, d: 0.22, len: 0.24 },  // D5
+            { f: 659.25, d: 0.44, len: 0.30 },  // E5
+            { f: 783.99, d: 0.74, len: 0.30 },  // G5
+            { f: 1046.5, d: 1.04, len: 0.46 },  // C6
+            { f: 880.00, d: 1.46, len: 0.26 },  // A5
+            { f: 783.99, d: 1.70, len: 0.60 },  // G5, left to ring
+        ];
+        for (const note of melody) {
+            const osc = this.ctx.createOscillator();
+            osc.type = "triangle";
+            osc.frequency.value = note.f;
+            const g = this.createGain(0.13);
+            const at = t + note.d;
+            g.gain.setValueAtTime(0.001, at);
+            g.gain.exponentialRampToValueAtTime(0.13 * this.masterVolume, at + 0.03);
+            g.gain.exponentialRampToValueAtTime(0.001, at + note.len);
+            osc.connect(g);
+            osc.start(at);
+            osc.stop(at + note.len);
+        }
+
+        // A quiet chord underneath, swelling and fading with the phrase.
+        for (const f of [130.81, 196.0, 261.63]) {
+            const osc = this.ctx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.value = f;
+            const g = this.createGain(0.07);
+            g.gain.setValueAtTime(0.001, t);
+            g.gain.linearRampToValueAtTime(0.07 * this.masterVolume, t + 0.5);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 2.5);
+            osc.connect(g);
+            osc.start(t);
+            osc.stop(t + 2.6);
+        }
+
+        // A bell on the last note, for the corner that finished the map.
+        const bell = this.ctx.createOscillator();
+        bell.type = "sine";
+        bell.frequency.value = 1567.98;   // G6
+        const bellGain = this.createGain(0.05);
+        const bellAt = t + 1.70;
+        bellGain.gain.setValueAtTime(0.0001, bellAt);
+        bellGain.gain.exponentialRampToValueAtTime(0.05 * this.masterVolume, bellAt + 0.02);
+        bellGain.gain.exponentialRampToValueAtTime(0.0001, bellAt + 1.4);
+        bell.connect(bellGain);
+        bell.start(bellAt);
+        bell.stop(bellAt + 1.5);
+    }
+
     victoryFanfare() {
         if (!this.ensureContext()) return;
         const t = this.ctx.currentTime;

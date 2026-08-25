@@ -52,7 +52,7 @@ const SaveSystem = {
         "skyTreeHintGiven", "skyTreeApproachSeen",
         "fountainIntroShown", "tapestryRead",
         "worldtreeRestored", "zeusAppeased", "zeusMetInPeace",
-        "loreUnlocks", "firstTameShown",
+        "loreUnlocks", "firstTameShown", "surfaceCharted",
         "ladyQuestState", "ladyQuestAsked", "merlinQuestState",
         "monsterGemDrops", "currentZone",
     ],

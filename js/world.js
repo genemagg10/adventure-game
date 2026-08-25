@@ -105,6 +105,11 @@ class World {
         this.makersHollow = null;
         this.placeMakersHollow(rng);
 
+        // The Waiting Ground, far in the southeast corner - the one plot the
+        // Worldtree Seed will take root in
+        this.worldtreePlot = null;
+        this.placeWorldtreePlot(rng);
+
         // Add decorations
         this.generateDecorations(rng);
     }
@@ -180,6 +185,13 @@ class World {
                 if (rng() < 0.04) return TILE.STONE;
                 if (rng() < z.treeChance) return TILE.TREE;
                 return TILE.DARK_GRASS;
+
+            case "fallow":
+                // Rested ground. Plain grass, scraped here and there down to
+                // bare brown earth, and not one tree in the whole acre - that
+                // is the whole point of the place.
+                if (rng() < 0.05) return TILE.BARE_EARTH;
+                return TILE.GRASS;
 
             default:
                 return TILE.GRASS;
@@ -713,6 +725,68 @@ class World {
     }
 
     // ============================================
+    // The Fallow & the Waiting Ground (bottom-right corner)
+    // ============================================
+
+    // The one plot in the realm that will take a Worldtree Seed. Everything
+    // about it is negative space: no road runs into the Fallow, nothing is
+    // built in it, and around the plot itself there is not a tree, a stone or
+    // a puddle for a good walk in any direction - just plain grass, and then
+    // the bare brown earth in the middle of it. Anyone who stumbles on it can
+    // tell at a glance that it was left this way on purpose.
+    placeWorldtreePlot(rng) {
+        const plot = WORLDTREE_PLOT;
+
+        // No road has ever been laid to the Fallow or across it.
+        this.clearRoads(ZONES.fallow, TILE.GRASS);
+
+        // Sweep the plot's surroundings back to clean grass. Bare earth in the
+        // Fallow is common; bare earth with nothing at all around it is not.
+        for (let dy = -plot.clearRadius; dy <= plot.clearRadius; dy++) {
+            for (let dx = -plot.clearRadius; dx <= plot.clearRadius; dx++) {
+                const tx = plot.x + dx;
+                const ty = plot.y + dy;
+                if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
+                if (dx * dx + dy * dy > plot.clearRadius * plot.clearRadius) continue;
+                this.tiles[ty][tx] = TILE.GRASS;
+            }
+        }
+
+        // The plot: a square of turned earth, edges softened so it reads as a
+        // thing somebody kept rather than a thing somebody drew.
+        const r = plot.earthRadius;
+        for (let dy = -r; dy <= r; dy++) {
+            for (let dx = -r; dx <= r; dx++) {
+                const tx = plot.x + dx;
+                const ty = plot.y + dy;
+                if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
+                if (Math.abs(dx) === r && Math.abs(dy) === r && rng() < 0.5) continue;
+                this.tiles[ty][tx] = TILE.BARE_EARTH;
+            }
+        }
+
+        this.worldtreePlot = {
+            tileX: plot.x,
+            tileY: plot.y,
+            x: plot.x * TILE_SIZE + TILE_SIZE / 2,
+            y: plot.y * TILE_SIZE + TILE_SIZE / 2,
+            discovered: false,   // set the first time somebody stands in it
+            charted: false,      // set when the clues give up and mark the map
+        };
+    }
+
+    // True for any ground inside the clean grass margin the plot keeps. Used
+    // to keep decorations - and anything else scattered over the whole map -
+    // out of the one clearing that is supposed to be empty.
+    isWorldtreeClearing(tx, ty) {
+        const p = this.worldtreePlot;
+        if (!p) return false;
+        const dx = tx - p.tileX;
+        const dy = ty - p.tileY;
+        return dx * dx + dy * dy <= WORLDTREE_PLOT.clearRadius * WORLDTREE_PLOT.clearRadius;
+    }
+
+    // ============================================
     // The Worldtree (top-right corner) & the ladder to the Cloudlands
     // ============================================
 
@@ -753,7 +827,7 @@ class World {
             state: "intact",   // intact -> burning -> revealed
             burnTimer: 0,
             discovered: false,
-            regrown: false,    // set when a Worldtree Seed is planted back in the ash
+            regrown: false,    // set when the seed takes root in the Waiting Ground
         };
     }
 
@@ -761,9 +835,18 @@ class World {
     // The Worldtree Seed
     // ============================================
 
-    // True when this spot is the ash where the old Worldtree stood - the only
-    // ground a Worldtree Seed will actually take root in.
+    // True when this spot is the Waiting Ground - the bare earth in the heart
+    // of the Fallow, and the only ground a Worldtree Seed will take root in.
     isWorldtreeGround(x, y) {
+        const p = this.worldtreePlot;
+        if (!p) return false;
+        return dist(x, y, p.x, p.y) <= WORLDTREE_SEED.plantRange;
+    }
+
+    // The ash the old trunk left behind. Planting here is the obvious guess and
+    // the wrong one, so it gets an answer of its own rather than the generic
+    // "nothing happened".
+    isWorldtreeAsh(x, y) {
         const st = this.skyTree;
         if (!st || st.state !== "revealed") return false;
         return dist(x, y, st.x, st.y) <= WORLDTREE_SEED.plantRange;
@@ -815,10 +898,12 @@ class World {
         const sy = sap.y - camera.y;
         if (sx < -60 || sx > CANVAS_W + 60 || sy < -80 || sy > CANVAS_H + 60) return;
 
-        // A rooted seed climbs out of frame; the regrown Worldtree itself is
-        // drawn by renderSkyLadderShaft, so stop drawing the sapling once it
-        // has finished growing.
-        if (sap.rooted && sap.grown) return;
+        // Once a rooted seed finishes, the sapling is not a sapling any more -
+        // the new Worldtree stands on this spot, and it is drawn as one.
+        if (sap.rooted && sap.grown) {
+            this.renderRegrownWorldtree(ctx, sx, sy, time);
+            return;
+        }
 
         const growth = sap.rooted
             ? 1 - Math.max(0, sap.growTimer) / WORLDTREE_SEED.growTime
@@ -862,6 +947,122 @@ class World {
             ctx.fillText("A young sapling", sx, sy + 20);
             ctx.fillStyle = "rgba(220, 235, 190, 0.6)";
             ctx.fillText("It has not taken root here", sx, sy + 30);
+        }
+
+        ctx.restore();
+    }
+
+    // The new Worldtree, standing in the Waiting Ground. It goes up out of
+    // frame the way the old one did, and the light coming down through its
+    // crown is Cloudlands light - the two countries are tied together again,
+    // and this time the knot is in the southeast.
+    renderRegrownWorldtree(ctx, sx, sy, time) {
+        const sway = Math.sin(time * 0.0011) * 3;
+
+        // Cloudlight pouring down the trunk
+        const beam = ctx.createLinearGradient(sx, sy - 210, sx, sy + 24);
+        beam.addColorStop(0, "rgba(210, 235, 255, 0)");
+        beam.addColorStop(0.55, "rgba(215, 240, 220, 0.20)");
+        beam.addColorStop(1, "rgba(180, 235, 170, 0.26)");
+        ctx.fillStyle = beam;
+        ctx.beginPath();
+        ctx.moveTo(sx - 14, sy - 210);
+        ctx.lineTo(sx + 14, sy - 210);
+        ctx.lineTo(sx + 34, sy + 24);
+        ctx.lineTo(sx - 34, sy + 24);
+        ctx.closePath();
+        ctx.fill();
+
+        // Roots and turned earth at the foot of it
+        ctx.fillStyle = "rgba(58, 38, 18, 0.6)";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 14, 34, 11, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Trunk, climbing out of the top of the frame. It stands on turned
+        // brown earth, so it gets an edge of its own or it disappears into it.
+        ctx.fillStyle = "#22150a";
+        ctx.fillRect(sx - 11, sy - 196, 22, 214);
+        ctx.fillStyle = "#4a2e12";
+        ctx.fillRect(sx - 9, sy - 194, 18, 210);
+        ctx.fillStyle = "#6a4520";
+        ctx.fillRect(sx - 9, sy - 194, 6, 210);
+
+        // Crown
+        for (const crown of [{ x: sx + sway, y: sy - 178, r: 34 },
+                             { x: sx - 26 + sway, y: sy - 146, r: 23 },
+                             { x: sx + 26 + sway, y: sy - 152, r: 25 },
+                             { x: sx - 8 + sway, y: sy - 118, r: 18 }]) {
+            ctx.fillStyle = "#1f6a18";
+            ctx.beginPath();
+            ctx.arc(crown.x, crown.y, crown.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#2b8a22";
+            ctx.beginPath();
+            ctx.arc(crown.x - crown.r * 0.25, crown.y - crown.r * 0.25, crown.r * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Leaf-light on the grass
+        ctx.fillStyle = "rgba(120, 220, 120, 0.16)";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 18, 50, 15, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#cfe8a8";
+        ctx.font = "bold 11px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("The Worldtree", sx, sy - 208);
+        ctx.fillStyle = `rgba(226, 245, 255, ${0.62 + Math.sin(time * 0.003) * 0.2})`;
+        ctx.font = "9px monospace";
+        ctx.fillText("Its roots are here. Its crown is in the Cloudlands.", sx, sy + 116);
+    }
+
+    // The Waiting Ground itself: bare turned earth in a clean ring of grass.
+    // It draws no attention to itself until somebody arrives carrying the one
+    // thing it is for, and then it is impossible to mistake.
+    renderWorldtreePlot(ctx, camera, time, carryingSeed) {
+        const p = this.worldtreePlot;
+        if (!p) return;
+        // Once something is planted here the sapling art takes over.
+        if (this.sapling && this.sapling.rooted) return;
+
+        const sx = p.x - camera.x;
+        const sy = p.y - camera.y;
+        if (sx < -140 || sx > CANVAS_W + 140 || sy < -140 || sy > CANVAS_H + 140) return;
+
+        const r = (WORLDTREE_PLOT.earthRadius + 0.5) * TILE_SIZE;
+
+        ctx.save();
+
+        // A soft rim so the edge of the turned earth reads as kept, not worn
+        ctx.strokeStyle = `rgba(196, 168, 108, ${carryingSeed ? 0.45 : 0.22})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(sx - r, sy - r, r * 2, r * 2);
+
+        if (carryingSeed) {
+            // The seed answers the ground long before you do
+            const pulse = 0.14 + Math.sin(time * 0.004) * 0.08;
+            ctx.fillStyle = `rgba(180, 240, 160, ${pulse})`;
+            ctx.beginPath();
+            ctx.ellipse(sx, sy, r * 1.15, r * 0.85, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            for (let i = 0; i < 7; i++) {
+                const t = (time * 0.0007 + i / 7) % 1;
+                const mx = sx + Math.sin(time * 0.0012 + i * 2.1) * r * 0.7;
+                const my = sy + r * 0.4 - t * (r * 2.2);
+                ctx.fillStyle = `rgba(214, 255, 190, ${(1 - t) * 0.7})`;
+                ctx.fillRect(Math.round(mx), Math.round(my), 2, 2);
+            }
+
+            ctx.fillStyle = "#e8f6cf";
+            ctx.font = "bold 10px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText(WORLDTREE_PLOT.name, sx, sy - r - 10);
+            ctx.fillStyle = "rgba(224, 240, 200, 0.65)";
+            ctx.font = "9px monospace";
+            ctx.fillText("The seed is warm in your hand", sx, sy + r + 16);
         }
 
         ctx.restore();
@@ -965,6 +1166,8 @@ class World {
             const tx = Math.floor(rng() * WORLD_W);
             const ty = Math.floor(rng() * WORLD_H);
             if (ty < WORLD_H && tx < WORLD_W && !SOLID_TILES.has(this.tiles[ty][tx])) {
+                // Nothing is allowed to clutter the Waiting Ground's clearing.
+                if (this.isWorldtreeClearing(tx, ty)) continue;
                 const zone = getZoneAt(tx, ty);
                 let type;
                 if (zone === "meadow" || zone === "village") type = rng() < 0.5 ? "flower" : "bush";
@@ -1006,7 +1209,7 @@ class World {
         return this.isSolid(tx, ty) || this.isWarded(tx, ty);
     }
 
-    render(ctx, camera, time) {
+    render(ctx, camera, time, opts = {}) {
         const startTX = Math.floor(camera.x / TILE_SIZE) - 1;
         const startTY = Math.floor(camera.y / TILE_SIZE) - 1;
         const endTX = startTX + TILES_X + 2;
@@ -1148,7 +1351,8 @@ class World {
             }
         }
 
-        // Render a planted Worldtree Seed
+        // The Waiting Ground, and then whatever has been planted in it
+        this.renderWorldtreePlot(ctx, camera, time, !!opts.carryingSeed);
         this.renderSapling(ctx, camera, time);
 
         // Render the great hall's family tapestry
@@ -1353,39 +1557,13 @@ class World {
         ctx.closePath();
         ctx.fill();
 
-        const regrown = this.skyTree && this.skyTree.regrown;
-
-        if (regrown) {
-            // The seed took. A young Worldtree climbs the shaft, twining around
-            // the ladder rather than replacing it - the way up stays open.
-            const sway = Math.sin(time * 0.0012) * 3;
-            ctx.fillStyle = "#4a2e12";
-            ctx.fillRect(sx - 7, sy - 150, 14, 172);
-            ctx.fillStyle = "#5b3a18";
-            ctx.fillRect(sx - 7, sy - 150, 5, 172);
-            for (const crown of [{ x: sx + sway, y: sy - 150, r: 30 },
-                                 { x: sx - 22 + sway, y: sy - 122, r: 20 },
-                                 { x: sx + 22 + sway, y: sy - 128, r: 22 }]) {
-                ctx.fillStyle = "#1f6a18";
-                ctx.beginPath();
-                ctx.arc(crown.x, crown.y, crown.r, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = "#2b8a22";
-                ctx.beginPath();
-                ctx.arc(crown.x - crown.r * 0.25, crown.y - crown.r * 0.25, crown.r * 0.6, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            ctx.fillStyle = "rgba(120, 220, 120, 0.16)";
-            ctx.beginPath();
-            ctx.ellipse(sx, sy + 16, 46, 14, 0, 0, Math.PI * 2);
-            ctx.fill();
-        } else {
-            // Ash ring where the tree stood
-            ctx.fillStyle = "rgba(40, 34, 28, 0.5)";
-            ctx.beginPath();
-            ctx.ellipse(sx, sy + 16, 40, 12, 0, 0, Math.PI * 2);
-            ctx.fill();
-        }
+        // Ash ring where the tree stood. It stays ash: the new Worldtree grows
+        // in the Fallow, half a realm to the south, and nothing comes back up
+        // here. What is left on this spot is the hole and the way up it.
+        ctx.fillStyle = "rgba(40, 34, 28, 0.5)";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 16, 40, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
 
         // Ladder rails and rungs, fading as they rise
         for (let i = 0; i < 12; i++) {
@@ -1418,7 +1596,7 @@ class World {
 
         ctx.fillStyle = "#dcefff";
         ctx.font = "bold 11px monospace";
-        ctx.fillText(regrown ? "The Worldtree, growing again" : "Ladder to the Cloudlands", sx, sy - 196);
+        ctx.fillText("Ladder to the Cloudlands", sx, sy - 196);
         ctx.fillStyle = `rgba(220, 240, 255, ${0.55 + Math.sin(time * 0.004) * 0.25})`;
         ctx.font = "9px monospace";
         ctx.fillText("[E] Climb", sx, sy + 40);
@@ -1551,6 +1729,17 @@ class World {
                 for (let i = 4; i < TILE_SIZE; i += 9) {
                     ctx.fillRect(sx + 8, sy + i, TILE_SIZE - 16, 3);
                 }
+                break;
+            }
+
+            case TILE.BARE_EARTH: {
+                // Turned soil: a couple of furrows and a clod or two, fixed per
+                // tile so the ground does not shimmer as the camera moves.
+                ctx.fillStyle = "#5c3f22";
+                ctx.fillRect(sx + 2, sy + 7 + ((tx * 5 + ty * 3) % 4), TILE_SIZE - 6, 2);
+                ctx.fillRect(sx + 4, sy + 20 + ((tx * 3 + ty * 7) % 4), TILE_SIZE - 10, 2);
+                ctx.fillStyle = "#7d5a34";
+                ctx.fillRect(sx + 6 + ((tx * 11 + ty) % 12), sy + 12 + ((tx + ty * 5) % 10), 3, 3);
                 break;
             }
 
@@ -2326,9 +2515,27 @@ class World {
             marks.push({
                 x: this.skyTree.x, y: this.skyTree.y,
                 shape: "star",
-                colour: revealed ? (this.skyTree.regrown ? "#a8e88a" : "#dcefff") : "#3f7d33",
-                label: revealed ? (this.skyTree.regrown ? "The Worldtree" : "Sky Ladder") : null,
+                colour: revealed ? "#dcefff" : "#3f7d33",
+                label: revealed ? "Sky Ladder" : null,
                 size: revealed ? 6 : 4,
+                priority: 3,
+            });
+        }
+
+        // The Waiting Ground goes on the chart once it has been stood in, or
+        // once the seed's clues have run far enough to simply hand it over.
+        // Holding the last seed of the Worldtree and not knowing where to put
+        // it is a dead end, and this is the door out of it.
+        const plot = this.worldtreePlot;
+        if (plot && (plot.discovered || plot.charted)) {
+            const done = this.skyTree && this.skyTree.regrown;
+            marks.push({
+                x: plot.x, y: plot.y,
+                shape: "star",
+                colour: done ? "#a8e88a" : "#c9b06a",
+                label: done ? "The Worldtree" : WORLDTREE_PLOT.name,
+                size: done ? 6 : 5,
+                rumour: !plot.discovered,
                 priority: 3,
             });
         }

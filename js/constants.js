@@ -46,6 +46,11 @@ const ZONES = {
     // has been found, the maps draw this ground as unnamed wilderness, so the
     // first Fire Gem memory still points at a blank on the chart.
     worldtree: { name: "The Worldtree Reach", x: 160, y: 0, w: 40, h: 40, color: "#1c3d4e", treeChance: 0.09, secret: true },
+    // The far southeast corner: an acre of plain grass strewn with scrapes of
+    // bare brown earth, where nothing has ever been built, sown or felled. It
+    // is on the chart from the first day - the puzzle is not finding the
+    // Fallow, it is knowing what the Fallow is for.
+    fallow: { name: "The Fallow", x: 170, y: 110, w: 30, h: 40, color: "#4f7f3c", treeChance: 0 },
 };
 
 // Tile types
@@ -78,6 +83,9 @@ const TILE = {
     MARBLE: 25,
     PILLAR: 26,
     SKY_PORTAL: 27,
+    // Bare turned earth. Only the far-southeast Fallow has any, and the
+    // Worldtree Seed will not take root in anything else.
+    BARE_EARTH: 28,
 };
 
 // Tile colors
@@ -110,6 +118,7 @@ const TILE_COLORS = {
     [TILE.MARBLE]: "#d8d4e8",
     [TILE.PILLAR]: "#bfb9d4",
     [TILE.SKY_PORTAL]: "#cfd8ff",
+    [TILE.BARE_EARTH]: "#6b4a28",
 };
 
 // Solid tiles (can't walk through)
@@ -370,18 +379,23 @@ const MERLIN_LORE = [
     {
         title: "The Lands of the Realm",
         icon: "\ud83d\uddfa\ufe0f",
-        text: "The realm stretches from the peaceful Green Meadow in the west to the dread Darklands in the east. Camelot Village shelters honest folk and merchants. The Dark Forest hides dangers and treasures in equal measure. The Scorched Wastes bake under an unforgiving sun, while the Dragon Mountains pierce the clouds with jagged peaks. Merlin's Swamp bubbles with arcane energy, and the Ancient Ruins hold secrets of civilizations long forgotten. Beneath all of it run four caves that no river cut and no earthquake opened \u2014 those were dug, by hands, on purpose. Each land harbors unique monsters and challenges for those who dare explore."
+        text: "The realm stretches from the peaceful Green Meadow in the west to the dread Darklands in the east. Camelot Village shelters honest folk and merchants. The Dark Forest hides dangers and treasures in equal measure. The Scorched Wastes bake under an unforgiving sun, while the Dragon Mountains pierce the clouds with jagged peaks. Merlin's Swamp bubbles with arcane energy, and the Ancient Ruins hold secrets of civilizations long forgotten. Beneath all of it run four caves that no river cut and no earthquake opened \u2014 those were dug, by hands, on purpose. In the far southeast, past the last of the Darklands, lies the emptiest country of the lot: the Fallow, an acre of plain grass and bare brown earth where nothing has ever been built, felled or sown. Nobody remembers deciding to leave it alone. Everybody has. Each land harbors unique monsters and challenges for those who dare explore."
     },
     {
         title: "The Worldtree",
         icon: "\ud83c\udf33",
-        text: "In the farthest northeast corner of the realm, where no road runs and no monster dares nest, there stands a single ancient tree. It was old when the mountains were young. The elders called it the Worldtree, for its roots drink from this world while its crown drinks from another. No axe has ever marked it and no storm has ever bent it \u2014 but the old texts whisper of one key: fire loosed from a bowstring. Set a fire arrow into the Worldtree, and what the trunk conceals will finally be laid bare. A ladder. And it does not go down. Burn it and you will get your ladder. You will also have burned down the only thing holding two worlds together, and the ash will leave you one seed. Do not lose the seed."
+        text: "In the farthest northeast corner of the realm, where no road runs and no monster dares nest, there stands a single ancient tree. It was old when the mountains were young. The elders called it the Worldtree, for its roots drink from this world while its crown drinks from another. No axe has ever marked it and no storm has ever bent it \u2014 but the old texts whisper of one key: fire loosed from a bowstring. Set a fire arrow into the Worldtree, and what the trunk conceals will finally be laid bare. A ladder. And it does not go down. Burn it and you will get your ladder. You will also have burned down the only thing holding two worlds together, and the ash will leave you one seed. Do not lose the seed \u2014 and do not waste it on the ash it came out of. A Worldtree does not grow back where it died. It has to be started again somewhere living."
     },
     {
         title: "The Worldtree Seed",
         icon: "\ud83c\udf30",
         unlock: "seed",
-        text: "One seed came out of the ash, no bigger than a thumbnail and far heavier than it has any right to be. It is a Worldtree, entire, waiting. You may plant it wherever you like and something will grow, because that is what seeds do \u2014 but a Worldtree is not an ordinary tree and it does not want ordinary ground. It wants the ground it came from. Push it into the ash of the northeast corner, on the very spot where the old trunk stood, and it will take root in a night and climb through the hole you tore in the sky. Plant it anywhere else and you will have a sapling, a nice one, and nothing more; dig it up again and you may carry it on. Whatever else you have burned, this can be put back."
+        text: "One seed came out of the ash, no bigger than a thumbnail and far heavier than it has any right to be. It is a Worldtree, entire, waiting. You may plant it wherever you like and something will grow, because that is what seeds do \u2014 but a Worldtree is not an ordinary tree and it does not want ordinary ground. Do not put it back in the ash. That was the mistake the first keepers made and they made it for a hundred years: a Worldtree cannot begin in the end of itself, and burnt ground is dead ground. What it wants is the opposite \u2014 bare living earth that has never carried a tree, never been paved, never been built on, never been sown. There is exactly one acre of it left, in the far southeast corner of the realm, and the maps have called it the Fallow since before there were maps. Somewhere in the middle of it, in plain grass with no tree near it and no road within a long walk, there is a small square of turned brown earth. That is the Waiting Ground. Plant the seed anywhere else and you will have a sapling, a nice one, and nothing more; dig it up again and you may carry it on. Whatever else you have burned, this can be put back."
+    },
+    {
+        title: "The Fallow",
+        icon: "\ud83c\udf3e",
+        text: "Every other country in the realm is the shape of what happened to it. The meadow was grazed, the forest grew, the Wastes burned, the Ruins fell down. The Fallow is the shape of what did not happen to it. It is thirty miles of plain grass in the far southeast corner, scraped here and there with bare brown earth, and in all the years anybody has kept records nothing has ever been raised there, cut down there, or driven across it. No road was ever laid to it and no road was ever laid through it. Ask a farmer why and you will be told that ground is fallow, which only means it is resting; ask what it is resting for, and the answer stops. The truth is older than the asking. A Worldtree was going to be needed one day, and a Worldtree cannot be started in ash or stone or another tree's shadow. So a plot was left bare and it has been kept bare ever since, and in the middle of the Fallow you can still see it \u2014 a small square of turned earth with clean grass all round it, waiting for the one thing it was turned for."
     },
     {
         title: "The Cloudlands",
@@ -763,16 +777,57 @@ const SKY_TREE = {
     ladderRange: 46,    // interaction range for the revealed ladder
 };
 
-// The seed left in the ashes of the Worldtree. Planting it back on the spot
-// the old trunk stood regrows the tree and settles Zeus's grievance without a
-// fight; planting it anywhere else just grows a sapling you can dig up again.
+// The seed left in the ashes of the Worldtree. Planted in the Waiting Ground
+// it regrows the tree and settles Zeus's grievance without a fight; planted
+// anywhere else it just grows a sapling you can dig up and carry on.
 const WORLDTREE_SEED = {
     name: "Worldtree Seed",
     icon: "\ud83c\udf30",
-    description: "All that survived the fire. Plant it \u2014 but a Worldtree wants the ground it came from.",
-    plantRange: 60,      // how close to the ashes counts as the right ground
+    description: "All that survived the fire. A Worldtree will not begin in its own ashes \u2014 it wants bare, living earth.",
+    plantRange: 80,      // how close to the Waiting Ground counts as the right ground
     growTime: 2600,      // ms a rightly planted seed takes to become a Worldtree
 };
+
+// ============================================
+// The Fallow & the Waiting Ground
+// ============================================
+
+// The one plot the Worldtree Seed will take. It sits in the heart of the
+// Fallow, in the far southeast corner of the realm: a small square of bare
+// brown earth, with no tree, no stone and no road anywhere near it, ringed by
+// nothing but plain grass. Burnt ash is dead ground - this is the opposite,
+// and it has been kept this way for exactly one purpose.
+const WORLDTREE_PLOT = {
+    name: "the Waiting Ground",
+    x: 187, y: 140,      // tile coordinates, deep inside The Fallow
+    earthRadius: 2,      // tiles of bare turned earth at the centre
+    clearRadius: 7,      // tiles of plain grass kept around it - nothing else grows here
+    noticeRange: 150,    // how close you must walk before the plot names itself
+    hintAfter: 3,        // failed plantings before the plot is marked on the chart
+};
+
+// What the seed tells you each time it is pushed into ground that will not
+// have it. Nobody is meant to be left holding this seed with nowhere to put
+// it: the clues run from a feeling, to a direction, to a named country, to a
+// picture of the plot itself, and after WORLDTREE_PLOT.hintAfter misses the
+// Waiting Ground goes on the chart outright.
+const WORLDTREE_SEED_CLUES = [
+    "A sapling comes up under your hands almost at once \u2014 green, ordinary, and no more than that. It is a fine little tree, " +
+    "and it is not a Worldtree. Press E at the sapling to dig the seed up again.",
+
+    "The seed came out of your hand cold. Carry it and pay attention: it warms when you walk south, and it warms again " +
+    "when you walk east. Somewhere down in that corner is ground it will answer to.",
+
+    "A Worldtree cannot begin in ash, or in stone, or under another tree's shadow, or beside a road that people have worn. " +
+    "It needs bare living earth that has never held anything. There is one acre of it left in the realm, and the old maps " +
+    "name it plainly: the Fallow, in the far southeast.",
+
+    "In the Fallow, look for the brown. Somewhere in all that plain grass there is a small square of bare turned earth \u2014 " +
+    "no tree near it, no stone in it, no road within a long walk. That is the Waiting Ground. It has been waiting a while.",
+
+    "The far southeast corner of the realm. The Fallow. The bare brown earth in the middle of the clean grass. " +
+    "It is marked on your chart now, so stop losing it.",
+];
 
 // Sky world dimensions (in tiles) - a wide, shallow archipelago of clouds
 const SKY_W = 80;

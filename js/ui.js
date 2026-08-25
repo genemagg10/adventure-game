@@ -292,7 +292,7 @@ class UIManager {
             if (player.hasWorldtreeSeed) {
                 carrying.push({
                     icon: WORLDTREE_SEED.icon,
-                    label: `${WORLDTREE_SEED.name} - ${touch ? "plant it" : "press P to plant it"} where the Worldtree stood`,
+                    label: `${WORLDTREE_SEED.name} - ${touch ? "plant it" : "press P to plant it"} in the bare earth of the Fallow, far to the southeast`,
                 });
             }
 

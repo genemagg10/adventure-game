@@ -446,7 +446,7 @@ class Game {
                     while (attempts < 20) {
                         const tx = zone.x + randInt(2, zone.w - 3);
                         const ty = zone.y + randInt(2, zone.h - 3);
-                        if (!this.world.isSolid(tx, ty)) {
+                        if (!this.world.blocksMonster(tx, ty)) {
                             const pos = tileToWorld(tx, ty);
                             this.monsters.push(new Monster(type, pos.x, pos.y));
                             break;
@@ -483,7 +483,7 @@ class Game {
                 while (attempts < 10) {
                     const tx = zone.x + randInt(2, zone.w - 3);
                     const ty = zone.y + randInt(2, zone.h - 3);
-                    if (!this.world.isSolid(tx, ty)) {
+                    if (!this.world.blocksMonster(tx, ty)) {
                         const pos = tileToWorld(tx, ty);
                         // Don't spawn near player
                         if (dist(pos.x, pos.y, this.player.x, this.player.y) > 300) {
@@ -513,7 +513,7 @@ class Game {
                 while (attempts < 10) {
                     const tx = zone.x + randInt(2, zone.w - 3);
                     const ty = zone.y + randInt(2, zone.h - 3);
-                    if (!this.world.isSolid(tx, ty)) {
+                    if (!this.world.blocksMonster(tx, ty)) {
                         const pos = tileToWorld(tx, ty);
                         if (dist(pos.x, pos.y, this.player.x, this.player.y) > 300) {
                             const m = new Monster("goblin", pos.x, pos.y);
@@ -745,7 +745,7 @@ class Game {
         this.touchControls.applyInput();
 
         // Don't update during dialogs, menus
-        const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive || this.ui.isRiddleOpen() || this.ui.isEnchantOpen() || this.ui.isLoreOpen() || this.ui.isAboutOpen();
+        const inMenu = this.ui.isMapOpen() || this.ui.isShopOpen() || this.ui.isInventoryOpen() || this.ui.dialogActive || this.ui.isRiddleOpen() || this.ui.isEnchantOpen() || this.ui.isLoreOpen() || this.ui.isAboutOpen() || this.ui.isGameOverOpen();
 
         // Handle menu input
         if (this.keyJustPressed.map) {
@@ -1825,7 +1825,7 @@ class Game {
                 while (attempts < 20) {
                     const tx = zone.x + randInt(2, zone.w - 3);
                     const ty = zone.y + randInt(2, zone.h - 3);
-                    if (!this.world.isSolid(tx, ty)) {
+                    if (!this.world.blocksMonster(tx, ty)) {
                         const pos = tileToWorld(tx, ty);
                         const m = new Monster("goblin", pos.x, pos.y);
                         // Override with green monster stats

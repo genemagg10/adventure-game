@@ -44,6 +44,11 @@ class UIManager {
         this.gameOverScreen = document.getElementById("game-over-screen");
         this.gameOverTitle = document.getElementById("game-over-title");
         this.gameOverText = document.getElementById("game-over-text");
+        this.keepPlayingBtn = document.getElementById("keepPlayingBtn");
+        this.restartBtn = document.getElementById("restartBtn");
+        this.gameOverNote = document.getElementById("game-over-note");
+        // Set once the leave button has asked whether the unsaved run can go.
+        this.gameOverQuitArmed = false;
 
         this.enchantOverlay = document.getElementById("enchant-overlay");
         this.enchantItems = document.getElementById("enchant-items");
@@ -160,8 +165,18 @@ class UIManager {
             this.closeAbout();
         });
 
+        document.getElementById("keepPlayingBtn").addEventListener("click", () => {
+            this.closeGameOver();
+        });
+
         document.getElementById("restartBtn").addEventListener("click", () => {
-            this.gameOverScreen.classList.add("hidden");
+            // A defeat has nothing to lose; an ending reached mid-run does.
+            const armable = this.gameOverScreen.classList.contains("victory");
+            if (armable && !this.gameOverQuitArmed) {
+                this.armGameOverQuit();
+                return;
+            }
+            this.closeGameOver();
             this.game.restart();
         });
     }
@@ -416,6 +431,7 @@ class UIManager {
         document.getElementById("slots-overlay").classList.add("hidden");
         this.controlsScreen.classList.add("hidden");
         this.pauseOverlay.classList.add("hidden");
+        this.closeGameOver();
         this.slotsPending = null;
         this.game.paused = false;
     }
@@ -1308,35 +1324,52 @@ class UIManager {
         return !this.riddleOverlay.classList.contains("hidden");
     }
 
-    // Game Over
+    // An ending. A victory is not the end of the run - every one of them leaves
+    // the realm open to wander - so Continue Exploring is the headline action
+    // and the button that leaves is honest about what it costs: the run is only
+    // in memory, and going back to the title throws it away.
     showGameOver(victory, text) {
         this.gameOverScreen.classList.remove("hidden");
+        this.disarmGameOverQuit();
+
         if (victory) {
             this.gameOverScreen.classList.add("victory");
             this.gameOverTitle.textContent = "Victory!";
-            // Add continue button for victories
-            let continueBtn = document.getElementById("continueBtn");
-            if (!continueBtn) {
-                continueBtn = document.createElement("button");
-                continueBtn.id = "continueBtn";
-                continueBtn.className = "menu-btn";
-                continueBtn.textContent = "Continue Exploring";
-                continueBtn.style.marginTop = "8px";
-                document.getElementById("restartBtn").parentNode.insertBefore(continueBtn, document.getElementById("restartBtn"));
-            }
-            continueBtn.classList.remove("hidden");
-            continueBtn.onclick = () => {
-                this.gameOverScreen.classList.add("hidden");
-                this.gameOverScreen.classList.remove("victory");
-                continueBtn.classList.add("hidden");
-            };
+            this.keepPlayingBtn.classList.remove("hidden");
+            this.restartBtn.textContent = "Return to Title";
         } else {
             this.gameOverScreen.classList.remove("victory");
             this.gameOverTitle.textContent = "Game Over";
-            const continueBtn = document.getElementById("continueBtn");
-            if (continueBtn) continueBtn.classList.add("hidden");
+            this.keepPlayingBtn.classList.add("hidden");
+            this.restartBtn.textContent = "Try Again";
         }
         this.gameOverText.textContent = text;
+    }
+
+    closeGameOver() {
+        this.gameOverScreen.classList.add("hidden");
+        this.gameOverScreen.classList.remove("victory");
+        this.keepPlayingBtn.classList.add("hidden");
+        this.disarmGameOverQuit();
+    }
+
+    // Leaving a run for the title is not undoable and nothing has been written
+    // to storage, so the button asks once before it does it.
+    armGameOverQuit() {
+        this.gameOverQuitArmed = true;
+        this.restartBtn.textContent = "Leave without saving";
+        this.gameOverNote.textContent = "This run has not been saved. Continue Exploring, then save from the pause menu, to keep it.";
+        this.gameOverNote.classList.remove("hidden");
+    }
+
+    disarmGameOverQuit() {
+        this.gameOverQuitArmed = false;
+        this.gameOverNote.classList.add("hidden");
+        this.gameOverNote.textContent = "";
+    }
+
+    isGameOverOpen() {
+        return !this.gameOverScreen.classList.contains("hidden");
     }
 
     // Boss health

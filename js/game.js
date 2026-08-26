@@ -24,6 +24,14 @@ class Game {
         }
         window.addEventListener("resize", () => this.resizeViewport());
         window.addEventListener("orientationchange", () => this.resizeViewport());
+        // A hidden tab stops asking for frames, so nothing would ever turn the
+        // Clubhouse music off again. Take the needle off here; the first frame
+        // back puts it down again if Ingoizer is still standing in the room.
+        document.addEventListener("visibilitychange", () => {
+            if (!document.hidden) return;
+            this.clubMusicOn = false;
+            this.sound.stopClubMusic();
+        });
 
         this.running = false;
         this.paused = false;
@@ -124,6 +132,15 @@ class Game {
         this.animalSpawnTimer = 0;
         this.nearAnimal = null;
         this.firstTameShown = false;
+
+        // The Clubhouse - what the Green Knight's castle becomes once a full
+        // pack of five walks it in. Permanent once earned; the housewarming
+        // hit points are handed over exactly once.
+        this.clubhouseUnlocked = false;
+        this.clubhouseBoonTaken = false;
+        this.insideClubhouse = false;
+        this.clubGuestTimer = 0;
+        this.clubMusicOn = false;
 
         // Camera
         this.camera = { x: 0, y: 0 };
@@ -341,6 +358,14 @@ class Game {
         this.nearAnimal = null;
         this.firstTameShown = false;
         this.spawnInitialAnimals();
+
+        // The Clubhouse is not built yet, and the party has not started
+        this.clubhouseUnlocked = false;
+        this.clubhouseBoonTaken = false;
+        this.insideClubhouse = false;
+        this.clubGuestTimer = 0;
+        this.clubMusicOn = false;
+        this.sound.stopClubMusic();
 
         // Boss (not yet spawned)
         this.boss = new Boss(this.world.bossSpawnPoint.x, this.world.bossSpawnPoint.y);
@@ -767,6 +792,168 @@ class Game {
         return true;
     }
 
+    // ============================================
+    // The Clubhouse
+    // ============================================
+    //
+    // The Green Knight is beaten and his castle is standing empty. Walk back to
+    // it with a full pack of five animals at your heel and they take it off
+    // your hands: the green comes off the walls, the floor lights up, the music
+    // starts, and every animal for miles lets itself in. Nothing hostile ever
+    // does. Step through the door the first time and the place makes you at
+    // home the only way it knows how - thirty more hit points, for good.
+
+    updateClubhouse(dt) {
+        if (!this.onSurface) {
+            this.setInsideClubhouse(false);
+            return;
+        }
+        if (!this.clubhouseUnlocked) {
+            this.checkClubhouseTrigger();
+            return;
+        }
+        // A save that remembers the party but not the building - rebuild it.
+        if (!this.world.clubhouse) this.world.openClubhouse();
+
+        this.updateClubGuests(dt);
+        this.setInsideClubhouse(this.world.inClubhouse(this.player.x, this.player.y));
+
+        // An animal tamed in the middle of the party joins in like everyone else.
+        if (this.insideClubhouse) {
+            for (const c of this.companions) c.dancing = true;
+        }
+    }
+
+    // Five animals, one dead Green Knight, and his own front gate.
+    checkClubhouseTrigger() {
+        if (!this.greenKnightDefeated || !this.world.greenCastleBuilt) return;
+        if (this.aliveCompanionCount() < CLUBHOUSE.companionsNeeded) return;
+        const gate = this.world.greenKnightCastle;
+        if (!gate) return;
+        if (dist(this.player.x, this.player.y, gate.x, gate.y) > CLUBHOUSE.approachRange) return;
+        this.openClubhouse();
+    }
+
+    openClubhouse() {
+        if (this.clubhouseUnlocked) return;
+        const club = this.world.openClubhouse();
+        if (!club) return;
+
+        this.clubhouseUnlocked = true;
+        this.clubGuestTimer = 0;
+        GameAnalytics.track("clubhouse-opened");
+        this.sound.clubhouseFanfare();
+        this.ui.showNotification("\u2605 The Clubhouse is open! \u2605");
+
+        // Read the pack back by name. Five of the same animal is a legal pack,
+        // so the roll-call is de-duplicated before it is read out.
+        const pack = [...new Set(this.companions.filter(c => c.alive).map(c => c.name.toLowerCase()))];
+        const roll = pack.length > 1
+            ? `${pack.slice(0, -1).join(", ")} and ${pack[pack.length - 1]}`
+            : (pack[0] || "the pack");
+
+        this.ui.showDialog(
+            "Five animals reach the gate ahead of you and stop, all together, looking up at it. " +
+            "Then they go in.", () => {
+                this.ui.showDialog(
+                    `Something in the building gives up being a castle. The green washes off the walls in long bright ` +
+                    `streaks; the flagstones come up lit from underneath; a mirrorball none of you brought turns slowly ` +
+                    `over the middle of the floor. Bunting runs itself along the battlements. Somewhere a very good song starts.`, () => {
+                        this.ui.showDialog(
+                            `Your ${roll} are already dancing. The doorway is knocked wide enough for the lot of you ` +
+                            `and there is a sign over it that nobody had time to paint: THE CLUBHOUSE. Everyone welcome. No monsters.`, () => {
+                                this.ui.showDialog(
+                                    "Nothing with teeth will come through that door again - the whole building is warded " +
+                                    "like the Lady's water. Go inside whenever the world gets loud.");
+                            });
+                    });
+            });
+    }
+
+    // Turning the party on and off around Ingoizer.
+    setInsideClubhouse(inside) {
+        const next = !!inside;
+        if (next === this.insideClubhouse) return;
+        this.insideClubhouse = next;
+
+        // The pack dances with him, and gets back to work when he leaves.
+        for (const c of this.companions) {
+            c.dancing = next;
+            c.danceSpot = null;
+            c.danceTimer = randFloat(0, 900);
+        }
+
+        if (next) this.onEnterClubhouse();
+    }
+
+    onEnterClubhouse() {
+        this.sound.partyCheer();
+
+        if (!this.clubhouseBoonTaken) {
+            this.clubhouseBoonTaken = true;
+            this.player.maxHp += CLUBHOUSE.maxHpBonus;
+            this.player.hp = Math.min(this.player.hp + CLUBHOUSE.maxHpBonus, this.player.maxHp);
+            GameAnalytics.track("clubhouse-entered");
+            this.ui.showNotification(`\u2605 Welcome to the Clubhouse! (+${CLUBHOUSE.maxHpBonus} Max HP)`);
+            this.ui.showDialog(
+                "The room turns round to look at you and then cheers, all of it at once. A paper crown has been put on " +
+                "the biggest animal in the room and nobody will say who did it. You are handed food you cannot identify " +
+                "and it is wonderful.", () => {
+                    this.ui.showDialog(
+                        `You leave the door a good deal harder to knock over than you came in: +${CLUBHOUSE.maxHpBonus} maximum health, ` +
+                        `for the rest of the story.`);
+                });
+        } else {
+            this.ui.showNotification("\u266a The party is still going \u266b");
+        }
+    }
+
+    // Animals hear about the place and turn up. They arrive at the door, walk
+    // in, and dance until somebody stops them, which nobody does.
+    updateClubGuests(dt) {
+        const club = this.world.clubhouse;
+        if (!club) return;
+
+        // Only worth populating when there is somebody there to see it.
+        if (dist(this.player.x, this.player.y, club.x, club.y) > 700) return;
+
+        const guests = this.wildAnimals.filter(a => a.alive && a.partyGuest).length;
+        if (guests >= CLUBHOUSE.guests) return;
+
+        this.clubGuestTimer -= dt;
+        if (this.clubGuestTimer > 0) return;
+        this.clubGuestTimer = CLUBHOUSE.guestSpawnDelay;
+        this.spawnClubGuest(club, guests);
+    }
+
+    spawnClubGuest(club, existing) {
+        const types = Object.keys(ANIMAL_TYPES);
+        const type = types[randInt(0, types.length - 1)];
+
+        // In at the door, in a loose queue, so they read as arriving.
+        const guest = new Animal(type, club.doorX + randFloat(-26, 26), club.doorY + randFloat(6, 40));
+        guest.homeZone = "clubhouse";
+        guest.partyGuest = true;
+        guest.dancing = true;
+        guest.danceHome = { x: club.x, y: club.y, r: CLUBHOUSE.danceRadius };
+        guest.danceTimer = 0;
+        this.wildAnimals.push(guest);
+
+        // A cheer as the room notices the new arrival - not for every single one.
+        if (existing % 3 === 0) this.sound.partyCheer();
+    }
+
+    // The record player. Driven from the frame rather than from the door, so
+    // pausing, dying, loading and quitting all stop it without each having to
+    // remember to.
+    syncClubMusic() {
+        const wanted = this.state === "playing" && !this.paused && this.insideClubhouse;
+        if (wanted === this.clubMusicOn) return;
+        this.clubMusicOn = wanted;
+        if (wanted) this.sound.startClubMusic();
+        else this.sound.stopClubMusic();
+    }
+
     gameLoop(timestamp) {
         if (!this.running) return;
 
@@ -791,6 +978,11 @@ class Game {
         if (this.state === "playing" && !this.paused) {
             this.update(dt);
         }
+
+        // The party plays while Ingoizer is standing in it, and only then -
+        // pausing, dying, going down a cave or walking back out of the door all
+        // put the needle back on the shelf.
+        this.syncClubMusic();
 
         // The on-screen buttons wear what they will do, so they are repainted
         // from the same state the frame is drawn from.
@@ -1242,6 +1434,9 @@ class Game {
             this.checkHiddenBaseTreasure();
         }
 
+        // The Clubhouse: earning it, walking into it, and the party inside
+        this.updateClubhouse(dt);
+
         // Update HUD
         this.ui.updateHud(this.player);
     }
@@ -1296,6 +1491,7 @@ class Game {
         // Companions are lost on death; the player can tame a new pack with apples
         this.nearAnimal = null;
         this.companions = [];
+        this.setInsideClubhouse(false);
 
         // Repopulate roaming animals so a respawn also refreshes the living world
         this.wildAnimals = [];
@@ -1369,13 +1565,21 @@ class Game {
                 this.ui.showNotification(`${MAGIC_CHARM.icon} ${MAGIC_CHARM.name} obtained! (+${MAGIC_CHARM.damageBonus} DMG all weapons)`);
                 this.ui.showDialog("The Green Knight crumbles and drops a shimmering Magic Charm!", () => {
                     this.ui.showDialog(`The ${MAGIC_CHARM.name} empowers all your weapons with +${MAGIC_CHARM.damageBonus} attack damage!`, () => {
-                        this.ui.showGameOver(true,
-                            "The Green Knight has been vanquished, and the realm is free of him. It is a strange kind of victory: " +
-                            "the man in the green armour was your cousin, fighting for a father who walked out on the family " +
-                            "long before either of you was born. Two Ingoizers have fallen to a third, and the name outlives all of them. " +
-                            `Monsters defeated: ${this.player.monstersKilled}. ` +
-                            "You may continue exploring with all your gear!"
-                        );
+                        // The castle behind him is empty now, and the animals have noticed.
+                        const pack = this.aliveCompanionCount();
+                        const notice = pack >= CLUBHOUSE.companionsNeeded
+                            ? "Behind you the castle stands empty, and every animal at your heel is looking at it and not at you."
+                            : `Behind you the castle stands empty. The animals that walk with you keep looking at it - and there are only ${pack} of them. `
+                              + `A full pack is ${CLUBHOUSE.companionsNeeded}.`;
+                        this.ui.showDialog(notice, () => {
+                            this.ui.showGameOver(true,
+                                "The Green Knight has been vanquished, and the realm is free of him. It is a strange kind of victory: " +
+                                "the man in the green armour was your cousin, fighting for a father who walked out on the family " +
+                                "long before either of you was born. Two Ingoizers have fallen to a third, and the name outlives all of them. " +
+                                `Monsters defeated: ${this.player.monstersKilled}. ` +
+                                "You may continue exploring with all your gear!"
+                            );
+                        });
                     });
                 });
             }, 2000);
@@ -3284,6 +3488,12 @@ class Game {
 
         // Render combat effects (on top)
         this.combat.render(ctx, this.camera, this.time);
+
+        // The Clubhouse hangs its mirrorball, its confetti and its sign above
+        // everybody's heads, so they go on after the dancers rather than under them.
+        if (this.onSurface) {
+            this.world.renderClubhouseOverhead(ctx, this.camera, this.time);
+        }
 
         // Zone display
         if (this.zoneDisplayTimer > 0) {

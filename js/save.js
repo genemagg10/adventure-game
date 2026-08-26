@@ -53,6 +53,7 @@ const SaveSystem = {
         "fountainIntroShown", "tapestryRead",
         "worldtreeRestored", "zeusAppeased", "zeusMetInPeace", "seedPlantAttempts", "plantedInAsh",
         "loreUnlocks", "firstTameShown", "surfaceCharted",
+        "clubhouseUnlocked", "clubhouseBoonTaken",
         "ladyQuestState", "ladyQuestAsked", "merlinQuestState",
         "monsterGemDrops", "currentZone",
     ],
@@ -187,7 +188,8 @@ const SaveSystem = {
     replayWorldEvents(world, flags) {
         if (!world || !flags) return;
         if (flags.greenCastleBuilt) world.unlockGreenlands();
-        if (flags.worldtreeBurned || flags.skyLadderRevealed) world.burnWorldtreeToAsh();
+        if (flags.clubhouseOpened) world.openClubhouse();
+        if (flags.skyLadderRevealed) world.revealSkyLadder();
         if (flags.hiddenLadderRevealed) world.revealHiddenLadder();
     },
 
@@ -195,9 +197,8 @@ const SaveSystem = {
         const burned = !!(world.skyTree && world.skyTree.state === "revealed");
         return {
             greenCastleBuilt: !!world.greenCastleBuilt,
-            worldtreeBurned: burned,
-            // Saves written before the ladder belonged to the seed call it this.
-            skyLadderRevealed: burned,
+            clubhouseOpened: !!world.clubhouse,
+            skyLadderRevealed: !!(world.skyTree && world.skyTree.state === "revealed"),
             hiddenLadderRevealed: !!(world.hiddenLadder && world.hiddenLadder.revealed),
         };
     },

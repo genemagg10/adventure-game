@@ -86,6 +86,10 @@ const TILE = {
     // Bare turned earth. Only the far-southeast Fallow has any, and the
     // Worldtree Seed will not take root in anything else.
     BARE_EARTH: 28,
+    // What the Green Knight's castle becomes once the animals move in: a lit
+    // dance floor inside painted walls hung with bunting.
+    CLUB_FLOOR: 29,
+    CLUB_WALL: 30,
 };
 
 // Tile colors
@@ -103,6 +107,8 @@ const TILE_COLORS = {
     [TILE.SWAMP]: "#3a5a2a",
     [TILE.CASTLE_FLOOR]: "#4a4a5a",
     [TILE.CASTLE_WALL]: "#2a2a3a",
+    [TILE.CLUB_FLOOR]: "#3b2a55",
+    [TILE.CLUB_WALL]: "#5a2f6e",
     [TILE.SHOP_FLOOR]: "#6a5a3a",
     [TILE.LAVA]: "#cc3300",
     [TILE.BURNING_TREE]: "#1a5a12",
@@ -122,7 +128,7 @@ const TILE_COLORS = {
 };
 
 // Solid tiles (can't walk through)
-const SOLID_TILES = new Set([TILE.TREE, TILE.WATER, TILE.WALL, TILE.MOUNTAIN, TILE.CASTLE_WALL, TILE.LAVA, TILE.BURNING_TREE, TILE.CAVE_WALL, TILE.SKY_TREE, TILE.SKY_TREE_BURNING, TILE.SKY_VOID, TILE.PILLAR]);
+const SOLID_TILES = new Set([TILE.TREE, TILE.WATER, TILE.WALL, TILE.MOUNTAIN, TILE.CASTLE_WALL, TILE.CLUB_WALL, TILE.LAVA, TILE.BURNING_TREE, TILE.CAVE_WALL, TILE.SKY_TREE, TILE.SKY_TREE_BURNING, TILE.SKY_VOID, TILE.PILLAR]);
 
 // Weapons
 const WEAPONS = {
@@ -446,6 +452,25 @@ const DARK_CREST = {
 
 // Green Knight Castle location (tile coordinates)
 const GREEN_CASTLE_POS = { x: 80, y: 130 };
+
+// The party's palette: bunting, floor lights, confetti and the glow off the
+// dance floor all draw from the same handful of colours.
+const PARTY_COLORS = ["#ff5f9e", "#ffd23f", "#4ad9ff", "#8cff6b", "#c77dff", "#ff8c42"];
+
+// The Clubhouse. Beat the Green Knight, then walk back to his castle with a
+// full pack of five animals at your heel, and the place stops being a fortress:
+// the green goes off the walls, the floor comes up as a dance floor, the music
+// starts and every animal for miles lets itself in. Nothing hostile ever does -
+// the whole building is warded like the Lady's water - and the first time
+// Ingoizer steps inside, the welcome is worth thirty hit points, for good.
+const CLUBHOUSE = {
+    companionsNeeded: 5,     // a full pack, and no fewer
+    approachRange: 300,      // how near the gate the pack has to get
+    maxHpBonus: 30,          // the housewarming gift, once per run
+    guests: 9,               // animals that flock in for the party
+    guestSpawnDelay: 260,    // ms between arrivals, so they pile in rather than blink in
+    danceRadius: 74,         // how far from the middle of the floor guests dance
+};
 
 // Green Gems - scattered in the Green Knight's Domain
 const GREEN_GEM_ATTACK = {

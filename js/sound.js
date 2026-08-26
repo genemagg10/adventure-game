@@ -2,12 +2,55 @@
 // Ingoizer's World - Sound System (Web Audio API)
 // ============================================
 
+// --- THE CLUBHOUSE TRACK ---
+//
+// One four-bar loop, I - vi - IV - V in C, played at a pace nobody can stand
+// still to. It is scheduled a bar or so ahead of the clock rather than fired
+// from a timer, so the beat never drifts the way setInterval would let it.
+const CLUB_BPM = 128;
+const CLUB_BEAT = 60 / CLUB_BPM;
+const CLUB_BAR = CLUB_BEAT * 4;
+
+// Each bar: the bass note it walks on, the chord the pad holds, and the lead
+// line over the top as [beat, frequency, length-in-beats].
+const CLUB_PROGRESSION = [
+    {
+        bass: 65.41,                              // C2
+        chord: [261.63, 329.63, 392.00],          // C4 E4 G4
+        lead: [[0, 523.25, 0.5], [0.5, 659.25, 0.5], [1.5, 783.99, 0.5], [2, 659.25, 0.5], [3, 880.00, 0.75]],
+    },
+    {
+        bass: 110.00,                             // A2
+        chord: [261.63, 329.63, 440.00],          // A minor
+        lead: [[0, 880.00, 0.5], [1, 783.99, 0.5], [1.5, 659.25, 0.5], [2.5, 587.33, 0.5], [3, 523.25, 0.75]],
+    },
+    {
+        bass: 87.31,                              // F2
+        chord: [261.63, 349.23, 440.00],          // F major
+        lead: [[0, 698.46, 0.5], [0.5, 880.00, 0.5], [1.5, 1046.50, 0.5], [2.5, 880.00, 0.5], [3, 698.46, 0.75]],
+    },
+    {
+        bass: 98.00,                              // G2
+        chord: [293.66, 392.00, 493.88],          // G major
+        lead: [[0, 783.99, 0.5], [1, 987.77, 0.5], [1.5, 1174.66, 0.5], [2, 987.77, 0.5], [3, 783.99, 1.0]],
+    },
+];
+
+// Where the bass lands inside a bar, and whether it hops the octave.
+const CLUB_BASS_PATTERN = [[0, 1], [0.75, 1], [1.5, 2], [2, 1], [2.75, 1], [3.5, 2]];
+
 class SoundSystem {
     constructor() {
         this.ctx = null;
         this.enabled = true;
         this.masterVolume = 0.35;
         this.initialized = false;
+        // The Clubhouse loop, while it is running: the bus everything in it
+        // goes through, the lookahead timer, and where in the bar we are.
+        this.clubBus = null;
+        this.clubTimer = null;
+        this.clubNext = 0;
+        this.clubBarIndex = 0;
     }
 
     init() {
@@ -1136,6 +1179,243 @@ class SoundSystem {
             osc.connect(gain);
             osc.start(t + note.d);
             osc.stop(t + note.d + 0.3);
+        }
+    }
+
+    // --- THE CLUBHOUSE ---
+
+    // The moment the castle stops being a castle: a rising sweep, a cheer, and
+    // the first downbeat of the party landing on top of it.
+    clubhouseFanfare() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+
+        // A sweep up out of the old fortress and into the new place.
+        const sweep = this.ctx.createOscillator();
+        sweep.type = "sawtooth";
+        sweep.frequency.setValueAtTime(110, t);
+        sweep.frequency.exponentialRampToValueAtTime(1320, t + 0.85);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(500, t);
+        filter.frequency.exponentialRampToValueAtTime(6000, t + 0.85);
+        const sweepGain = this.createGain(0.14);
+        sweepGain.gain.setValueAtTime(0.02 * this.masterVolume, t);
+        sweepGain.gain.linearRampToValueAtTime(0.14 * this.masterVolume, t + 0.8);
+        sweepGain.gain.exponentialRampToValueAtTime(0.001, t + 1.05);
+        sweep.connect(filter);
+        filter.connect(sweepGain);
+        sweep.start(t);
+        sweep.stop(t + 1.05);
+
+        // The chord it all lands on.
+        for (const f of [261.63, 329.63, 392.00, 523.25]) {
+            const osc = this.ctx.createOscillator();
+            osc.type = "triangle";
+            osc.frequency.value = f;
+            const g = this.createGain(0.11);
+            g.gain.setValueAtTime(0.0001, t + 0.85);
+            g.gain.exponentialRampToValueAtTime(0.11 * this.masterVolume, t + 0.9);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 2.0);
+            osc.connect(g);
+            osc.start(t + 0.85);
+            osc.stop(t + 2.05);
+        }
+
+        this.partyCheer(0.9);
+    }
+
+    // A whoop from the room. Used when the doors open and whenever the party
+    // gets bigger.
+    partyCheer(delay = 0) {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime + delay;
+
+        for (let i = 0; i < 3; i++) {
+            const osc = this.ctx.createOscillator();
+            osc.type = "square";
+            const at = t + i * 0.055;
+            osc.frequency.setValueAtTime(420 + i * 90, at);
+            osc.frequency.exponentialRampToValueAtTime(880 + i * 120, at + 0.16);
+            const g = this.createGain(0.05);
+            g.gain.setValueAtTime(0.0001, at);
+            g.gain.exponentialRampToValueAtTime(0.05 * this.masterVolume, at + 0.03);
+            g.gain.exponentialRampToValueAtTime(0.001, at + 0.34);
+            osc.connect(g);
+            osc.start(at);
+            osc.stop(at + 0.36);
+        }
+
+        // The applause underneath it.
+        const bufSize = Math.floor(this.ctx.sampleRate * 0.55);
+        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) {
+            const env = Math.pow(1 - i / bufSize, 1.7);
+            d[i] = (Math.random() * 2 - 1) * env * (Math.random() > 0.86 ? 1 : 0.32);
+        }
+        const ns = this.ctx.createBufferSource();
+        ns.buffer = buf;
+        const band = this.ctx.createBiquadFilter();
+        band.type = "bandpass";
+        band.frequency.value = 2200;
+        const nGain = this.createGain(0.1);
+        nGain.gain.setValueAtTime(0.1 * this.masterVolume, t);
+        nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+        ns.connect(band);
+        band.connect(nGain);
+        ns.start(t);
+        ns.stop(t + 0.56);
+    }
+
+    // Start the loop. Safe to call when it is already going.
+    startClubMusic() {
+        if (!this.ensureContext()) return;
+        if (this.clubTimer) return;
+
+        this.clubBus = this.ctx.createGain();
+        this.clubBus.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+        this.clubBus.gain.linearRampToValueAtTime(this.masterVolume, this.ctx.currentTime + 0.5);
+        this.clubBus.connect(this.ctx.destination);
+
+        this.clubBarIndex = 0;
+        this.clubNext = this.ctx.currentTime + 0.1;
+        this.scheduleClubBars();
+        this.clubTimer = setInterval(() => this.scheduleClubBars(), 220);
+    }
+
+    // Fade the room out. Anything already scheduled goes down with the bus, so
+    // walking out of the door never chops a note in half.
+    stopClubMusic() {
+        if (this.clubTimer) {
+            clearInterval(this.clubTimer);
+            this.clubTimer = null;
+        }
+        const bus = this.clubBus;
+        this.clubBus = null;
+        if (!bus || !this.ctx) return;
+        const t = this.ctx.currentTime;
+        bus.gain.cancelScheduledValues(t);
+        bus.gain.setValueAtTime(bus.gain.value, t);
+        bus.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+        setTimeout(() => {
+            try { bus.disconnect(); } catch (e) { /* already gone */ }
+        }, 600);
+    }
+
+    isClubMusicPlaying() {
+        return !!this.clubTimer;
+    }
+
+    // Keep roughly a bar and a half of music queued up ahead of the clock.
+    scheduleClubBars() {
+        if (!this.ctx || !this.clubBus) return;
+        while (this.clubNext < this.ctx.currentTime + CLUB_BAR * 1.5) {
+            // Never schedule into the past if the tab was asleep for a while.
+            if (this.clubNext < this.ctx.currentTime) this.clubNext = this.ctx.currentTime + 0.05;
+            this.playClubBar(this.clubNext, this.clubBarIndex);
+            this.clubNext += CLUB_BAR;
+            this.clubBarIndex++;
+        }
+    }
+
+    // A voice in the loop. Everything routes through the bus so the whole room
+    // can be faded at once.
+    clubVoice(type, freq, at, len, volume) {
+        const osc = this.ctx.createOscillator();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, at);
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(volume, at + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+        osc.connect(g);
+        g.connect(this.clubBus);
+        osc.start(at);
+        osc.stop(at + len + 0.02);
+        return osc;
+    }
+
+    clubNoise(at, len, volume, freq, type = "highpass") {
+        const bufSize = Math.max(1, Math.floor(this.ctx.sampleRate * len));
+        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) {
+            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 2.2);
+        }
+        const ns = this.ctx.createBufferSource();
+        ns.buffer = buf;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = type;
+        filter.frequency.value = freq;
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(volume, at);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+        ns.connect(filter);
+        filter.connect(g);
+        g.connect(this.clubBus);
+        ns.start(at);
+        ns.stop(at + len);
+    }
+
+    playClubBar(at, barIndex) {
+        const bar = CLUB_PROGRESSION[barIndex % CLUB_PROGRESSION.length];
+
+        // Four on the floor.
+        for (let beat = 0; beat < 4; beat++) {
+            const kt = at + beat * CLUB_BEAT;
+            const kick = this.ctx.createOscillator();
+            kick.type = "sine";
+            kick.frequency.setValueAtTime(150, kt);
+            kick.frequency.exponentialRampToValueAtTime(46, kt + 0.13);
+            const kg = this.ctx.createGain();
+            kg.gain.setValueAtTime(0.34, kt);
+            kg.gain.exponentialRampToValueAtTime(0.0001, kt + 0.18);
+            kick.connect(kg);
+            kg.connect(this.clubBus);
+            kick.start(kt);
+            kick.stop(kt + 0.2);
+        }
+
+        // Claps on two and four, hats on the off-beats.
+        for (const beat of [1, 3]) {
+            this.clubNoise(at + beat * CLUB_BEAT, 0.13, 0.13, 1500, "bandpass");
+        }
+        for (let i = 0; i < 8; i++) {
+            if (i % 2 === 0) continue;
+            this.clubNoise(at + i * CLUB_BEAT / 2, 0.055, 0.05, 7000);
+        }
+
+        // Bass line.
+        for (const [beat, octave] of CLUB_BASS_PATTERN) {
+            this.clubVoice("square", bar.bass * octave, at + beat * CLUB_BEAT, CLUB_BEAT * 0.42, 0.1);
+        }
+
+        // Chord pad, held under the whole bar.
+        for (const f of bar.chord) {
+            const osc = this.ctx.createOscillator();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(f, at);
+            const g = this.ctx.createGain();
+            g.gain.setValueAtTime(0.0001, at);
+            g.gain.linearRampToValueAtTime(0.045, at + 0.12);
+            g.gain.linearRampToValueAtTime(0.03, at + CLUB_BAR * 0.7);
+            g.gain.exponentialRampToValueAtTime(0.0001, at + CLUB_BAR);
+            osc.connect(g);
+            g.connect(this.clubBus);
+            osc.start(at);
+            osc.stop(at + CLUB_BAR + 0.02);
+        }
+
+        // The tune on top.
+        for (const [beat, freq, len] of bar.lead) {
+            this.clubVoice("square", freq, at + beat * CLUB_BEAT, len * CLUB_BEAT * 0.9, 0.075);
+            this.clubVoice("sine", freq * 2, at + beat * CLUB_BEAT, len * CLUB_BEAT * 0.5, 0.028);
+        }
+
+        // A cymbal to turn the loop round again.
+        if (barIndex % CLUB_PROGRESSION.length === CLUB_PROGRESSION.length - 1) {
+            this.clubNoise(at + 3.5 * CLUB_BEAT, 0.45, 0.07, 6000);
         }
     }
 }

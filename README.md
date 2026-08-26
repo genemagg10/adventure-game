@@ -22,6 +22,7 @@ Current features include:
 - The Worldtree, Cloudlands, Temple of Olympus, twelve-form Olympian encounter, and Zeus reward — or the peace that replaces all of it.
 - The Worldtree Seed: burning the Worldtree takes the ladder to the Cloudlands with it, and the seed is the only way to open the way up again. Plant it anywhere for the climb; plant it in the Waiting Ground in the far southeast and Zeus grants his lightning without a fight.
 - Fountain of Youth riddles.
+- The Clubhouse: beat the Green Knight, walk back to his castle with a full pack of five animals, and the place stops being a fortress. Warded against monsters, permanently worth +30 max HP the first time the player walks in, and full of music and dancing animals.
 - Friendly wild animals that can be tamed with apples and accompany the player. A companion fights what threatens Ingoizer, and monsters fight back: they hunt the pack as readily as the hero, and an animal that bites one has its attention until the grudge wears off.
 - Keyboard and touch controls, mobile landscape play, sound, inventory, shops, a mini map, and a world map.
 - An announcement, with a tune of its own, for charting every last cell of the surface map.
@@ -184,6 +185,18 @@ That gives the player two ways through the ending, and the game is explicit abou
 **Choosing peace gives up the other ending.** A Zeus with no quarrel never rises, and a Zeus who never rises cannot be thrown down — so a run that mends the Worldtree can never earn the Olympus-defeated ending or its analytics event. The two are mutually exclusive by design, and the game says so out loud at the moment the tree takes, rather than letting a player discover it afterwards.
 
 Nothing is lost by guessing wrong. A Worldtree that never took comes up as easily as it went in — press P at the trunk, or use the relic shelf in the inventory on a phone — and the whole tree folds back down into the seed, ladder and all. The way up closes until you plant it again, which is the point: the seed is meant to be carried until it is somewhere worth leaving. Each wrong planting also buys a plainer clue — the tree's own restlessness, then a direction, then the name of the country, then a description of the plot — and after three misses the Waiting Ground is marked on the chart outright. A player can be delayed. They cannot be stranded.
+
+## The Clubhouse
+
+The Green Knight's castle does not stay a castle. Beat him, keep a full pack of five tamed animals alive, and walk back to his gate: the animals go in ahead of Ingoizer and the building gives up. The green washes off the walls, the flagstones come up as a lit dance floor, a mirrorball turns over the middle of it, bunting runs along the battlements, the doorway is knocked wide enough for the whole pack, and a four-bar loop starts playing that does not stop while anyone is standing in the room.
+
+Three things make it worth going back to:
+
+- **It is safe.** The whole building is warded exactly the way the Lady of the Lake's water is. Nothing hostile crosses the doorway, so it is somewhere to stand still when the world outside is loud. The walls are still walls, so Ingoizer goes in through the door like everybody else.
+- **The welcome is worth +30 maximum health**, permanently, the first time he steps inside. Once per run, remembered in the save, and never handed out twice.
+- **The party fills up.** Animals turn up at the door in ones and twos until there are nine of them on the floor, and they dance for as long as the place stands. The pack dances too - in a slow ring around Ingoizer - and goes back to fighting the moment he walks back out.
+
+The music only plays while he is in the room. Pausing, dying, going down a cave, loading a save or stepping back onto the road all stop it, and walking back in starts it again.
 
 ## Development documents
 

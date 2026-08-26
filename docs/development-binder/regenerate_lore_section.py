@@ -48,15 +48,15 @@ NOTES = {
  "The Lands of the Realm": ("Merlin's Hut; reinforced by map and zone-name displays.",
     "Names the main lands, notes that the four caves were dug on purpose rather than formed by nature, and points at the Fallow as the one country nothing has ever happened to."),
  "The Worldtree": ("Merlin's Hut; hinted again when Fire unlocks; discovered in the far northeast.",
-    "Explains the tree, the fire-arrow key, and warns that burning it leaves one seed that must not be lost - or wasted on the ash it came out of."),
+    "Explains the tree and the fire-arrow key, and delivers the twist the old texts miss: the ladder is part of the tree, so burning it closes the only road between the two countries. All the fire leaves is ash and one seed, and the seed is now the way up."),
  "The Worldtree Seed": ("Merlin's Hut, but only after the Worldtree has burned and the seed is in hand.",
-    "Explains that the seed can be planted anywhere, that the ash it came from is the one place it will not take, and that the ground it wants is the Waiting Ground in the Fallow. A sapling in the wrong soil can always be dug up again."),
+    "Explains that any planting grows a Worldtree with a ladder in it, so the Cloudlands open wherever the seed goes; that only the Waiting Ground in the Fallow will hold one; that a tree which never took folds back into the seed to be carried on; and that mending the boundary means giving up the fight with Zeus for good."),
  "The Fallow": ("Merlin's Hut, from the first minute; the Fallow itself is named on the map from the start.",
     "Says what the empty southeast corner of the map is for, and describes the plot of bare earth in the middle of it - the clue a player can find before they ever need it."),
  "The Cloudlands": ("Merlin's Hut; confirmed when climbing the Worldtree ladder.",
     "Introduces the sky world and states that mortals do not belong there - Zeus's second grievance."),
  "The Twelve Olympians": ("Merlin's Hut; demonstrated in the Temple of Olympus encounter.",
-    "Explains Zeus's two grievances, the 12-part boss fight, and that replanting the Worldtree is the other way through."),
+    "Explains Zeus's two grievances, the 12-part boss fight, and that replanting the Worldtree is the other way through - and states plainly that the two endings are exclusive: a Zeus who never rises can never be thrown down."),
 }
 
 out = []

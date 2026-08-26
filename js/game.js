@@ -112,12 +112,16 @@ class Game {
 
         // The Worldtree Seed and the peace it can buy with Zeus
         this.nearSapling = null;
+        this.nearUprootable = null;
         this.worldtreeRestored = false;
         this.zeusAppeased = false;
         this.zeusMetInPeace = false;
         // How many times the seed has been pushed into ground that would not
         // have it. Each miss buys a plainer clue about where the plot is.
         this.seedPlantAttempts = 0;
+        // Whether the planting now in the ground went into the old ash - read
+        // when it finishes growing, so the ash can be answered by name.
+        this.plantedInAsh = false;
 
         // Lore entries whose spoilers have been earned in the world
         this.loreUnlocks = {};
@@ -194,6 +198,10 @@ class Game {
     resizeViewport() {
         const host = this.canvas.parentElement;
         const rect = host.getBoundingClientRect();
+        // Measured first, and every time: the minimap is a DOM panel laid over
+        // the canvas, so a height-only resize or a media query changing its
+        // scale moves it without CANVAS_W budging an inch.
+        this.measureMinimapFootprint();
         const width = canvasWidthForAspect(rect.height > 0 ? rect.width / rect.height : 0);
         if (width === CANVAS_W && this.canvas.width === width) return;
 
@@ -207,6 +215,50 @@ class Game {
         // wait for the player to step onto a new tile.
         for (const fog of this.allFogs()) fog.lastTile = null;
         if (this.player && this.state === "playing") this.snapCamera();
+    }
+
+    // Where the minimap panel sits, in canvas pixels rather than CSS ones, so
+    // the render loop can ask "is the player behind it?" without touching the
+    // layout. Null whenever the panel is not on screen to be measured.
+    measureMinimapFootprint() {
+        this.minimapFootprint = null;
+        const panel = this.minimapPanel || (this.minimapPanel = document.getElementById("minimap-container"));
+        if (!panel || !this.canvas) return;
+        const c = this.canvas.getBoundingClientRect();
+        const m = panel.getBoundingClientRect();
+        if (c.width <= 0 || c.height <= 0 || m.width <= 0) return;
+        const sx = CANVAS_W / c.width;
+        const sy = CANVAS_H / c.height;
+        this.minimapFootprint = {
+            left: (m.left - c.left) * sx,
+            right: (m.right - c.left) * sx,
+            top: (m.top - c.top) * sy,
+            bottom: (m.bottom - c.top) * sy,
+        };
+    }
+
+    // Fade the minimap down while Ingoizer is standing behind it. Walking into
+    // a corner of a world clamps the camera, which parks him - and whatever
+    // landmark he came to see - under the panel; this hands the view back
+    // without taking the map away, and it fades straight back in on the way out.
+    updateMinimapShyness() {
+        // Runs every frame, so it holds on to the element and only touches the
+        // DOM on the frame the answer actually changes.
+        const panel = this.minimapPanel;
+        if (!panel) return;
+        const box = this.minimapFootprint;
+
+        let shy = false;
+        if (box && this.player && this.state === "playing" && !this.ui.isMapOpen()) {
+            const pad = MINIMAP_LAYOUT.shy;
+            const px = this.player.x - this.camera.x;
+            const py = this.player.y - this.camera.y;
+            shy = px > box.left - pad.padX && px < box.right + pad.padX
+                && py > box.top - pad.padTop && py < box.bottom + pad.padBottom;
+        }
+        if (shy === this._minimapShy) return;
+        this._minimapShy = shy;
+        panel.classList.toggle("minimap-shy", shy);
     }
 
     allFogs() {
@@ -381,10 +433,12 @@ class Game {
         this.nearTapestry = false;
         this.tapestryRead = false;
         this.nearSapling = null;
+        this.nearUprootable = null;
         this.worldtreeRestored = false;
         this.zeusAppeased = false;
         this.zeusMetInPeace = false;
         this.seedPlantAttempts = 0;
+        this.plantedInAsh = false;
         this.loreUnlocks = {};
 
         this.ui.showHud();
@@ -1098,9 +1152,15 @@ class Game {
             }
         }
 
-        // Plant the Worldtree Seed where you stand (P key, or the inventory relic)
-        if (this.keyJustPressed.plant && this.player.hasWorldtreeSeed) {
-            this.plantWorldtreeSeed();
+        // P plants the seed where you stand, and takes it back out again: at a
+        // Worldtree that never took, the same key lifts the whole tree.
+        // (The inventory relic shelf offers both, which is the phone route.)
+        if (this.keyJustPressed.plant) {
+            if (this.player.hasWorldtreeSeed) {
+                this.plantWorldtreeSeed();
+            } else if (this.nearUprootable) {
+                this.uprootSapling();
+            }
         }
 
         // Interaction check
@@ -1353,8 +1413,8 @@ class Game {
 
         // Cloudlands: burn down the Worldtree, summon the Olympian, gather ambrosia
         if (this.onSurface) {
-            if (this.world.updateSkyTree(dt)) this.onSkyLadderRevealed();
-            if (this.world.updateSapling(dt)) this.onWorldtreeRegrown();
+            if (this.world.updateSkyTree(dt)) this.onWorldtreeBurned();
+            if (this.world.updateSapling(dt)) this.onWorldtreeGrown();
             if (this.skyTreeHintCooldown > 0) this.skyTreeHintCooldown -= dt;
             this.checkWorldtreeApproach();
             this.checkWaitingGroundApproach();
@@ -1801,11 +1861,15 @@ class Game {
             }
         }
 
-        // Check a planted sapling that never took root - the seed can be recovered
+        // A planting that never took can always be lifted out again. While it is
+        // still a shoot there is no ladder in it yet, so E digs it up; once it
+        // is a grown Worldtree E belongs to the climb and P does the digging.
         this.nearSapling = null;
+        this.nearUprootable = null;
         const sap = this.world.sapling;
-        if (sap && !sap.rooted && dist(this.player.x, this.player.y, sap.x, sap.y) < 44) {
-            this.nearSapling = sap;
+        if (sap && !sap.rooted && dist(this.player.x, this.player.y, sap.x, sap.y) < SKY_TREE.ladderRange) {
+            this.nearUprootable = sap;
+            if (!sap.grown) this.nearSapling = sap;
         }
 
         // Check the great hall tapestry - only once the Black Knight is gone
@@ -2620,26 +2684,38 @@ class Game {
         );
     }
 
-    onSkyLadderRevealed() {
+    // The fire burns out. The old texts were right that there is a ladder in
+    // the trunk and wrong about what fire does to it: the ladder is part of the
+    // living tree and it goes up with the tree. What is left is ash, one seed,
+    // and no way into the Cloudlands at all until another Worldtree is standing.
+    onWorldtreeBurned() {
         this.sound.excaliburReveal();
-        this.ui.showNotification("A ladder into the clouds is revealed!");
         this.player.hasWorldtreeSeed = true;
         this.unlockLore("seed");
         this.ui.showDialog(
-            "The Worldtree burns away to ash and leaves a ladder standing in empty air, climbing up " +
-            "past the clouds until you lose sight of it.",
+            "The Worldtree burns down to ash, and for one moment you see it: rungs, worn smooth by hands that were " +
+            "never mortal, running all the way up the inside of the trunk. Then they burn too, and the sky closes " +
+            "over the top of them.",
             () => {
                 this.ui.showDialog(
-                    "One thing survives the fire. In the middle of the ash there is a seed the size of a thumbnail, " +
-                    "far heavier than it has any right to be, and still warm. It is a Worldtree, entire, waiting.",
+                    "The ladder was never hidden in the tree. It was part of it. You have just burned down the only " +
+                    "road between this country and the one above it, and there is nothing standing here now but ash.",
                     () => {
-                        this.ui.showNotification(`${WORLDTREE_SEED.icon} ${WORLDTREE_SEED.name} obtained!`);
                         this.ui.showDialog(
-                            "You can plant it wherever you like \u2014 open the inventory and use it, or press P where you stand. " +
-                            "But a Worldtree is not an ordinary tree, and it will not begin in ash. Do not waste it on this spot. " +
-                            "It wants bare living earth that has never held a tree, and there is one acre of that left in the realm.",
+                            "One thing survives the fire. In the middle of the ash there is a seed the size of a thumbnail, " +
+                            "far heavier than it has any right to be, and still warm. It is a Worldtree, entire, waiting.",
                             () => {
-                                this.ui.showDialog("Press E at the ladder to climb into the Cloudlands. Whatever lives up there is far stronger than anything below.");
+                                this.ui.showNotification(`${WORLDTREE_SEED.icon} ${WORLDTREE_SEED.name} obtained!`);
+                                this.ui.showDialog(
+                                    "Plant it and a Worldtree comes up with a ladder in it, and the way to the Cloudlands is open again \u2014 " +
+                                    "open the inventory and use it, or press P where you stand. It will grow anywhere. " +
+                                    "But where you put it decides what is waiting at the top."
+                                );
+                                this.ui.showDialog(
+                                    "A Worldtree will not take in ash, or stone, or another tree's shadow. Put it in ground that holds it and " +
+                                    "the boundary you burned is mended and the gods have nothing left to quarrel about. Put it anywhere else " +
+                                    "and you will still have your ladder \u2014 and you will have to fight for what is at the top of it."
+                                );
                             }
                         );
                     }
@@ -2652,11 +2728,10 @@ class Game {
     // The Worldtree Seed
     // ============================================
 
-    // Push the seed into the ground under Ingoizer's feet. Planted in the
-    // Waiting Ground - the bare earth in the heart of the Fallow - the
-    // Worldtree grows again and Zeus's first complaint stops being true.
-    // Planted anywhere else it is just a sapling, and can be dug up and
-    // carried on, with a plainer clue for the trouble.
+    // Push the seed into the ground under Ingoizer's feet. Every planting grows
+    // a Worldtree with a ladder in it, so the Cloudlands open wherever the seed
+    // goes. Only the Waiting Ground holds the tree - and only a tree that has
+    // taken settles Zeus's quarrel. Anything else can be lifted out and moved.
     plantWorldtreeSeed() {
         if (!this.onSurface) {
             this.ui.showNotification("There is no ground to plant in here.");
@@ -2664,9 +2739,9 @@ class Game {
         }
         if (!this.player.hasWorldtreeSeed) return;
 
-        // Remember what kind of wrong ground this was before the seed leaves
-        // the hand: the ash is the guess everyone makes, and it deserves a
-        // straight answer rather than the generic one.
+        // Remember what kind of ground this was before the seed leaves the
+        // hand: the ash is the guess everyone makes, and it deserves a straight
+        // answer rather than the generic one.
         const inAsh = this.world.isWorldtreeAsh(this.player.x, this.player.y);
 
         const sapling = this.world.plantSeed(this.player.x, this.player.y);
@@ -2676,46 +2751,67 @@ class Game {
         }
 
         this.player.hasWorldtreeSeed = false;
+        this.plantedInAsh = inAsh;
         this.sound.gemCollect();
-
-        if (!sapling.rooted) {
-            this.onSeedPlantedWrong(inAsh);
-            return;
-        }
-
-        GameAnalytics.track("worldtree-replanted");
-        this.ui.showNotification("\ud83c\udf33 The seed takes root in the Waiting Ground!");
-        this.ui.showDialog(
-            "The seed goes into the turned earth as though the hole had been dug for it, because it had been. " +
-            "The ground answers before your hand is out of it: a shoot comes up under your fingers, and it does not stop coming up."
-        );
+        this.ui.showNotification(`${WORLDTREE_SEED.icon} Seed planted. Something is coming up.`);
     }
 
-    // A sapling in the wrong soil. Nothing is lost - the seed can always be
-    // dug back up - but each miss buys the next clue down the ladder, and
-    // after enough of them the Waiting Ground simply goes on the chart.
-    onSeedPlantedWrong(inAsh) {
+    // The planting finishes. There is a Worldtree standing and a way into the
+    // Cloudlands either way - what the ground decides is who meets you up there.
+    onWorldtreeGrown() {
+        const sap = this.world.sapling;
+        GameAnalytics.track("worldtree-ladder-opened");
+        if (!sap.rooted) {
+            this.onWorldtreeGrownWrong();
+            return;
+        }
+        this.onWorldtreeRegrown();
+    }
+
+    // A Worldtree in ground that will not hold it. The ladder is real and the
+    // climb is open; nothing else about the story has been answered, and the
+    // tree can be lifted out and carried to the ground that wants it.
+    onWorldtreeGrownWrong() {
+        const inAsh = this.plantedInAsh;
+        this.plantedInAsh = false;
+
         const step = Math.min(this.seedPlantAttempts, WORLDTREE_SEED_CLUES.length - 1);
         this.seedPlantAttempts++;
         GameAnalytics.track("worldtree-seed-missed");
 
-        this.ui.showNotification(`${WORLDTREE_SEED.icon} Seed planted. It is only a sapling.`);
+        this.sound.divineChime();
+        this.ui.showNotification("\ud83c\udf33 A Worldtree stands - the Cloudlands are open.");
 
         const clue = () => {
             this.ui.showDialog(WORLDTREE_SEED_CLUES[step], () => this.chartWaitingGroundIfLost());
         };
 
+        const verdict = () => {
+            this.ui.showDialog(
+                "A Worldtree comes up under your hands with a ladder running up the inside of it, and the way into " +
+                "the Cloudlands is open again. Press E at the trunk to climb.",
+                () => {
+                    this.ui.showDialog(
+                        "But it has climbed without taking. The ground is holding it up rather than holding on to it, " +
+                        "and up there the boundary is still burned: whatever is waiting at the top of this ladder will " +
+                        "want a fight. Press P at the trunk to lift the tree out again and carry it on.",
+                        clue
+                    );
+                }
+            );
+        };
+
         if (inAsh) {
             // The one wrong answer worth naming out loud.
             this.ui.showDialog(
-                "You push the seed into the ash on the exact spot the old trunk stood, and nothing answers. A sapling " +
-                "comes up, green and ordinary, and the ground under it stays dead. Ash is what is left when a thing has " +
-                "finished; a Worldtree cannot begin in the end of itself.",
-                clue
+                "You put the seed into the ash on the exact spot the old trunk stood, and something does come up \u2014 " +
+                "but the ground under it stays dead. Ash is what is left when a thing has finished; a Worldtree cannot " +
+                "begin in the end of itself.",
+                verdict
             );
             return;
         }
-        clue();
+        verdict();
     }
 
     // The seed is the only route to peace with Zeus, so it must never become
@@ -2729,16 +2825,19 @@ class Game {
         this.ui.showNotification(`\ud83d\uddfa\ufe0f ${WORLDTREE_PLOT.name} marked on your map`);
     }
 
-    // A rooted seed finishing its climb: the Worldtree stands again, and the
-    // quarrel Zeus was going to pick with you is settled before it starts.
+    // The seed taking in the Waiting Ground: the Worldtree stands again, the
+    // ladder in it is the way up, and the quarrel Zeus was going to pick is
+    // settled before it starts. That is a trade - the twelve-form fight and the
+    // ending that comes with it are off the table for this run - so the game
+    // says so out loud rather than letting a player find out afterwards.
     onWorldtreeRegrown() {
         this.worldtreeRestored = true;
         this.sound.divineChime();
+        this.ui.showNotification("\ud83c\udf33 The Worldtree stands again!");
         this.ui.showDialog(
-            "The Worldtree stands again. It is young and thin and it does not stop at the clouds \u2014 it goes through them, " +
-            "out of the Fallow and into the country above, and the boundary between the two lands is whole. It is nowhere near " +
-            "where the old one stood. It does not seem to matter. Far to the north the ladder is still there, still open, " +
-            "still yours: you tore that hole and the tree has not closed it.",
+            "The Worldtree takes. It is young and thin and it does not stop at the clouds \u2014 it goes through them, out of " +
+            "the Fallow and into the country above, with a ladder running up the inside of it, and the boundary between the " +
+            "two lands is whole. It is nowhere near where the old one stood. It does not seem to matter.",
             () => {
                 if (this.olympianDefeated) {
                     this.ui.showDialog("Somewhere far above, in a Cloudlands with no king left in it, the weather turns gentle for a moment.");
@@ -2774,7 +2873,18 @@ class Game {
                                     `The arrows in your quiver crackle and change without a blow being struck. Every one of them is a bolt of ` +
                                     `Zeus now, and every arrow you pick up from here will become one too. +${ZEUS_BOLT.damageBonus} damage on top of your bow.`,
                                     () => {
-                                        this.ui.showDialog("\"Climb when you like. I will be at the temple, and I will not raise a hand to you.\"");
+                                        this.ui.showDialog(
+                                            "\"Climb when you like. I will be at the temple, and I will not raise a hand to you.\"",
+                                            () => {
+                                                // Say the price plainly. This run cannot earn the
+                                                // other ending any more, and that was the choice.
+                                                this.ui.showDialog(
+                                                    "And that is that. The Twelve will not rise for you now, and Zeus will not fight you \u2014 " +
+                                                    "so throwing down the King of Olympus is not something this run can do any more. " +
+                                                    "You chose to mend the thing you broke instead. Only one of those two ever gets to be true."
+                                                );
+                                            }
+                                        );
                                     }
                                 );
                             }
@@ -2801,13 +2911,32 @@ class Game {
         this.ui.showDialog("Congratulations, you've explored 100% of the surface level! The fog has been cleared.");
     }
 
-    // Dig an unrooted sapling back up.
+    // Lift a Worldtree that never took back out of the ground. A grown one is
+    // the whole route to the Cloudlands, so this closes the way up until it is
+    // planted again - which is the point: the seed is meant to be carried until
+    // it is somewhere worth leaving.
     uprootSapling() {
+        // Proximity to the tree is only tracked while Ingoizer is on the
+        // surface, so the last reading goes stale underground and in the sky.
+        // Nobody pulls the ladder out from halfway up it.
+        if (!this.onSurface) return;
+        const grown = !!(this.world.sapling && this.world.sapling.grown);
         if (!this.world.uprootSapling()) return;
         this.player.hasWorldtreeSeed = true;
         this.sound.applePickup();
         this.ui.showNotification(`${WORLDTREE_SEED.icon} ${WORLDTREE_SEED.name} recovered.`);
-        this.ui.showDialog("The sapling comes up easily, and the seed at its root is as whole and as heavy as the day the fire left it.");
+        if (!grown) {
+            this.ui.showDialog("The shoot comes up easily, and the seed at its root is as whole and as heavy as the day the fire left it.");
+            return;
+        }
+        this.ui.showDialog(
+            "You take hold of the trunk and the whole Worldtree comes up in your hands \u2014 roots, ladder, crown and all \u2014 " +
+            "folding down as it rises until there is nothing left of it but a seed the size of a thumbnail. The ground " +
+            "underneath is not even marked. It never had hold of it.",
+            () => {
+                this.ui.showDialog("The way into the Cloudlands closes with it. There is no ladder anywhere in the realm now \u2014 only the seed in your hand.");
+            }
+        );
     }
 
     // Pull world-level events out of the combat system (arrows hitting the Worldtree).
@@ -3449,6 +3578,7 @@ class Game {
         }
 
         // Render minimap
+        this.updateMinimapShyness();
         const mapOpts = { time: this.time };
         if (this.inCave && this.caveWorlds[this.activeCaveId]) {
             this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss, mapOpts);

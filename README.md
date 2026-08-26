@@ -19,8 +19,8 @@ Current features include:
 - Merlin's wand quest, Enchanter's Mallet, and a sixteen-entry Ancient Lore library whose hidden entries stay hidden until the player earns them.
 - Black Knight and Green Knight progression arcs, and the family tapestry in Ing Castle that connects them.
 - Four caves with elemental locks, mazes or bosses, treasure chests, Purple Gems, and special rewards.
-- The Worldtree, Cloudlands, Temple of Olympus, twelve-form Olympian encounter, and Zeus reward.
-- The Worldtree Seed: carry it to the Waiting Ground in the far southeast and Zeus grants his lightning without a fight.
+- The Worldtree, Cloudlands, Temple of Olympus, twelve-form Olympian encounter, and Zeus reward — or the peace that replaces all of it.
+- The Worldtree Seed: burning the Worldtree takes the ladder to the Cloudlands with it, and the seed is the only way to open the way up again. Plant it anywhere for the climb; plant it in the Waiting Ground in the far southeast and Zeus grants his lightning without a fight.
 - Fountain of Youth riddles.
 - The Clubhouse: beat the Green Knight, walk back to his castle with a full pack of five animals, and the place stops being a fortress. Warded against monsters, permanently worth +30 max HP the first time the player walks in, and full of music and dancing animals.
 - Friendly wild animals that can be tamed with apples and accompany the player. A companion fights what threatens Ingoizer, and monsters fight back: they hunt the pack as readily as the hero, and an animal that bites one has its attention until the grudge wears off.
@@ -40,7 +40,7 @@ Current features include:
 | Q | Use the selected elemental power |
 | T | Use a health potion |
 | I | Open inventory |
-| P | Plant the Worldtree Seed |
+| P | Plant the Worldtree Seed, or lift a Worldtree that never took back out |
 | Esc | Pause menu — save, load, controls, quit |
 
 Touch controls appear automatically on supported phones and tablets. Hold the device sideways for the best view — the game fills the whole screen, so a wide phone puts the joystick and the action buttons out at the edges where the thumbs already are. The action buttons wear symbols rather than labels, and the symbols are the things themselves: the sword or axe you have equipped, your bow, the elemental power you have selected, and — on the last button — whatever is in reach, an apple for an animal waiting to be tamed, a shop front, a speech bubble for someone with something to say. A button with nothing to do — no potions left, no arrows, no power chosen, nothing within reach — fades until it does. The mini map is the map button: tap it to open the world map, and tap anywhere to close it again. The menu button beside the pack opens the pause menu, which is where saving and loading live. The first elemental power a Blue Gem gives is selected automatically, so it is ready to use straight away.
@@ -163,17 +163,28 @@ The realm above ground, each of the four caves, and the Cloudlands each remember
 
 Charting the whole surface is possible, and the game says so when it happens: the last cell of fog plays a short tune of its own and announces that 100% of the surface has been explored. It is announced once and remembered in the save.
 
+The mini map is a panel laid over the playfield, and the camera stops at the edge of the world — so walking into a corner parks the player, and whatever landmark they came to see, underneath it. On a short wide phone screen that is enough to hide a whole Worldtree. Two things stop it: the corner landmarks are held back far enough from the edges to stay clear of the panel, and the panel fades down to a ghost whenever the player walks in behind it, fading straight back in on the way out. It stays on screen and stays tappable the whole time — it is the map button as well as the map.
+
 The corner where the Worldtree grows has no name on the map until the tree is found. Before that it looks like plain wilderness. Walk close enough to see the tree and the whole region turns its own colour and is named **The Worldtree Reach**. No road runs into it, as the old verse says: the Reach is trackless ground, and the only way to the tree is to leave the roads and walk.
 
 **The Fallow**, in the opposite corner, is on the chart from the first minute — and it is the emptiest thing on it. Thirty tiles of plain grass, flecked all over with the brown of bare earth, with no road laid to it or through it, not one tree standing in it, and nothing hostile nesting in it. Somewhere in the middle of that grass is a small square of turned brown earth with a clean margin all round: **the Waiting Ground**. Walk into it and it names itself and goes on the map for good. That is where the Worldtree Seed goes.
 
 ## The Worldtree Seed
 
-Burning the Worldtree leaves one seed, and the obvious thing to do with it is the wrong thing. A Worldtree cannot begin in its own ash — burnt ground is dead ground. It needs bare living earth that has never held a tree, never been paved and never been sown, and there is exactly one plot of that left in the realm: the Waiting Ground, in the heart of the Fallow, in the far southeast corner.
+The old texts promise a ladder hidden inside the Worldtree's trunk, and they are right. What they leave out — because nobody who wrote them ever got that far — is that the ladder is *part of the tree*. Burn the tree and the ladder goes up with it. The fire leaves ash, one seed, and, for the first time in the history of either country, no road at all between the realm and the Cloudlands.
 
-The seed can be pushed into any ground that will take it, and a perfectly nice ordinary sapling comes up. Pressing E at a rootless sapling always digs the seed back up, so the peaceful ending can never be lost by planting in the wrong place. It can only be delayed — and each wrong planting buys a plainer clue: a feeling, then a direction, then the name of the country, then a description of the plot itself. After three misses the game gives up being coy and marks the Waiting Ground on the chart. Standing in the plot with the seed in hand is unmistakable on its own: the earth lights, the plot names itself, and the seed goes warm.
+So the seed is the way up. Push it into any ground that will take it and a Worldtree comes up in seconds with a ladder running up the inside of the trunk; press E at the trunk to climb. That much works anywhere.
 
-Planted there, the new Worldtree comes up in seconds and does not stop at the clouds. It is nowhere near where the old one stood and it does not matter — a Worldtree is a knot, and a knot holds wherever it is tied. The ladder you tore in the northeast stays open, the boundary between the two countries is whole again, and Zeus's first grievance stops being true before he can make it.
+What does not work anywhere is *taking*. A Worldtree cannot begin in its own ash, and it will not hold in stone, under another tree's shadow, or beside a worn road. It wants bare living earth that has never carried a tree, never been paved and never been sown, and there is exactly one plot of that left: the Waiting Ground, in the heart of the Fallow, in the far southeast corner.
+
+That gives the player two ways through the ending, and the game is explicit about both:
+
+- **Plant it anywhere.** You get your ladder and your climb, and the boundary stays burned. The keepers of the Cloudlands are hostile, and Zeus rises as the Twelve Olympians and has to be beaten mask by mask. Win and his bolts become your arrows.
+- **Plant it in the Waiting Ground.** The Worldtree takes, the boundary is mended, and Zeus has nothing left to quarrel about. He meets you on the temple steps and gives you the lightning without a blow being struck.
+
+**Choosing peace gives up the other ending.** A Zeus with no quarrel never rises, and a Zeus who never rises cannot be thrown down — so a run that mends the Worldtree can never earn the Olympus-defeated ending or its analytics event. The two are mutually exclusive by design, and the game says so out loud at the moment the tree takes, rather than letting a player discover it afterwards.
+
+Nothing is lost by guessing wrong. A Worldtree that never took comes up as easily as it went in — press P at the trunk, or use the relic shelf in the inventory on a phone — and the whole tree folds back down into the seed, ladder and all. The way up closes until you plant it again, which is the point: the seed is meant to be carried until it is somewhere worth leaving. Each wrong planting also buys a plainer clue — the tree's own restlessness, then a direction, then the name of the country, then a description of the plot — and after three misses the Waiting Ground is marked on the chart outright. A player can be delayed. They cannot be stranded.
 
 ## The Clubhouse
 

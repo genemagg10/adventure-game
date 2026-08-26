@@ -96,9 +96,9 @@ class World {
         this.caveEntrances = [];
         this.placeCaveEntrances();
 
-        // The Worldtree in the top-right corner - burn it to reveal the sky ladder
+        // The Worldtree in the top-right corner. Burning it does not open a way
+        // up - it closes the only one there was. See the skyLadder getter.
         this.skyTree = null;
-        this.skyLadder = null;
         this.placeSkyTree();
 
         // Fountain of Youth
@@ -921,42 +921,57 @@ class World {
         return dist(x, y, st.x, st.y) <= WORLDTREE_SEED.plantRange;
     }
 
-    // Push the seed into the ground under the player. Returns the new sapling,
-    // or null when there is already one planted or the tile will not take it.
+    // The way into the Cloudlands. There is no such thing as a ladder standing
+    // on its own: a ladder is something a Worldtree has, so the route exists
+    // exactly as long as a grown Worldtree does. Burning the old one shut it;
+    // growing a new one anywhere opens it again; digging that one up shuts it.
+    get skyLadder() {
+        const sap = this.sapling;
+        if (!sap || !sap.grown) return null;
+        return { tileX: sap.tileX, tileY: sap.tileY, x: sap.x, y: sap.y };
+    }
+
+    // Push the seed into the ground under the player. Returns the new planting,
+    // or null when there is already one or the tile will not take it. Every
+    // seed grows a Worldtree with a ladder in it - the ground only decides
+    // whether the tree has taken, and a tree that has not can be lifted again.
     plantSeed(x, y) {
         if (this.sapling) return null;
         const tile = worldToTile(x, y);
         if (tile.x < 0 || tile.x >= WORLD_W || tile.y < 0 || tile.y >= WORLD_H) return null;
         if (this.isSolid(tile.x, tile.y)) return null;
 
-        const rooted = this.isWorldtreeGround(x, y);
         this.sapling = {
             tileX: tile.x,
             tileY: tile.y,
             x: tile.x * TILE_SIZE + TILE_SIZE / 2,
             y: tile.y * TILE_SIZE + TILE_SIZE / 2,
-            rooted,
-            growTimer: rooted ? WORLDTREE_SEED.growTime : 0,
-            grown: !rooted,
+            rooted: this.isWorldtreeGround(x, y),
+            growTimer: WORLDTREE_SEED.growTime,
+            grown: false,
         };
         return this.sapling;
     }
 
-    // Dig an unrooted sapling back up so the seed can be carried on.
+    // Lift a Worldtree that has not taken back out of the ground - shoot or
+    // full-grown, it comes up as easily as it went in, and its ladder with it.
+    // Only the Waiting Ground holds one for good.
     uprootSapling() {
         if (!this.sapling || this.sapling.rooted) return false;
         this.sapling = null;
         return true;
     }
 
-    // Advance a rooted sapling. Returns true on the frame the Worldtree stands again.
+    // Advance a planting. Returns true on the frame the Worldtree stands.
     updateSapling(dt) {
         const sap = this.sapling;
-        if (!sap || !sap.rooted || sap.grown) return false;
+        if (!sap || sap.grown) return false;
         sap.growTimer -= dt;
         if (sap.growTimer > 0) return false;
         sap.grown = true;
-        if (this.skyTree) this.skyTree.regrown = true;
+        // "Regrown" is the strong word and it is kept for the strong case: the
+        // Worldtree put back in ground that will hold it.
+        if (sap.rooted && this.skyTree) this.skyTree.regrown = true;
         return true;
     }
 
@@ -967,16 +982,14 @@ class World {
         const sy = sap.y - camera.y;
         if (sx < -60 || sx > CANVAS_W + 60 || sy < -80 || sy > CANVAS_H + 60) return;
 
-        // Once a rooted seed finishes, the sapling is not a sapling any more -
-        // the new Worldtree stands on this spot, and it is drawn as one.
-        if (sap.rooted && sap.grown) {
-            this.renderRegrownWorldtree(ctx, sx, sy, time);
+        // Once a planting finishes, it is not a sapling any more - a Worldtree
+        // stands on this spot, with a ladder in it, and it is drawn as one.
+        if (sap.grown) {
+            this.renderRegrownWorldtree(ctx, sx, sy, time, sap.rooted);
             return;
         }
 
-        const growth = sap.rooted
-            ? 1 - Math.max(0, sap.growTimer) / WORLDTREE_SEED.growTime
-            : 0;
+        const growth = 1 - Math.max(0, sap.growTimer) / WORLDTREE_SEED.growTime;
         const height = 14 + growth * 34;
         const sway = Math.sin(time * 0.003 + sap.x) * 2;
 
@@ -1002,30 +1015,27 @@ class World {
         ctx.arc(sx - 3 + sway, sy - 1 - height, 4 + growth * 5, 0, Math.PI * 2);
         ctx.fill();
 
-        if (sap.rooted) {
-            // Light pouring down the hole this thing is climbing towards
-            const glow = 0.25 + Math.sin(time * 0.006) * 0.18;
-            ctx.fillStyle = `rgba(210, 255, 190, ${glow})`;
-            ctx.beginPath();
-            ctx.arc(sx, sy - height, 26 + growth * 20, 0, Math.PI * 2);
-            ctx.fill();
-        } else {
-            ctx.fillStyle = "#cfe8a8";
-            ctx.font = "9px monospace";
-            ctx.textAlign = "center";
-            ctx.fillText("A young sapling", sx, sy + 20);
-            ctx.fillStyle = "rgba(220, 235, 190, 0.6)";
-            ctx.fillText("It has not taken root here", sx, sy + 30);
-        }
+        // Light pouring down out of the country this thing is climbing towards
+        const glow = 0.25 + Math.sin(time * 0.006) * 0.18;
+        ctx.fillStyle = `rgba(210, 255, 190, ${glow})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy - height, 26 + growth * 20, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#cfe8a8";
+        ctx.font = "9px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("A Worldtree, coming up", sx, sy + 22);
 
         ctx.restore();
     }
 
-    // The new Worldtree, standing in the Waiting Ground. It goes up out of
-    // frame the way the old one did, and the light coming down through its
-    // crown is Cloudlands light - the two countries are tied together again,
-    // and this time the knot is in the southeast.
-    renderRegrownWorldtree(ctx, sx, sy, time) {
+    // A grown Worldtree, wherever the seed went in. It goes up out of frame the
+    // way the old one did, with a ladder climbing the trunk, and the light
+    // coming down through its crown is Cloudlands light. Rooted in the Waiting
+    // Ground it is the boundary put back; anywhere else it is a fine tree with
+    // a way up in it and nothing settled.
+    renderRegrownWorldtree(ctx, sx, sy, time, rooted) {
         const sway = Math.sin(time * 0.0011) * 3;
 
         // Cloudlight pouring down the trunk
@@ -1078,13 +1088,37 @@ class World {
         ctx.ellipse(sx, sy + 18, 50, 15, 0, 0, Math.PI * 2);
         ctx.fill();
 
+        // The ladder in the trunk. This is the whole route to the Cloudlands -
+        // there is no other one, and it stands exactly as long as the tree does.
+        for (let i = 0; i < 11; i++) {
+            const ry = sy + 8 - i * 17;
+            const alpha = Math.max(0, 1 - i / 11) * 0.95;
+            ctx.strokeStyle = `rgba(214, 172, 96, ${alpha})`;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(sx - 6, ry);
+            ctx.lineTo(sx - 6, ry - 17);
+            ctx.moveTo(sx + 6, ry);
+            ctx.lineTo(sx + 6, ry - 17);
+            ctx.stroke();
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(sx - 6, ry);
+            ctx.lineTo(sx + 6, ry);
+            ctx.stroke();
+        }
+
         ctx.fillStyle = "#cfe8a8";
         ctx.font = "bold 11px monospace";
         ctx.textAlign = "center";
-        ctx.fillText("The Worldtree", sx, sy - 208);
+        ctx.fillText(rooted ? "The Worldtree" : "A Worldtree", sx, sy - 208);
         ctx.fillStyle = `rgba(226, 245, 255, ${0.62 + Math.sin(time * 0.003) * 0.2})`;
         ctx.font = "9px monospace";
-        ctx.fillText("Its roots are here. Its crown is in the Cloudlands.", sx, sy + 116);
+        ctx.fillText(rooted
+            ? "Its roots are here. Its crown is in the Cloudlands."
+            : "It has climbed, but it has not taken. This ground will not hold it.", sx, sy + 116);
+        ctx.fillStyle = `rgba(220, 240, 255, ${0.55 + Math.sin(time * 0.004) * 0.25})`;
+        ctx.fillText(rooted ? "[E] Climb" : "[E] Climb   [P] Lift it out again", sx, sy + 130);
     }
 
     // The Waiting Ground itself: bare turned earth in a clean ring of grass.
@@ -1155,39 +1189,36 @@ class World {
         return true;
     }
 
-    // Burn down the Worldtree over time. Returns true on the frame the ladder appears.
+    // Burn down the Worldtree over time. Returns true on the frame it goes out.
     updateSkyTree(dt) {
         const st = this.skyTree;
         if (!st || st.state !== "burning") return false;
         st.burnTimer -= dt;
         if (st.burnTimer > 0) return false;
-        this.revealSkyLadder();
+        this.burnWorldtreeToAsh();
         return true;
     }
 
-    revealSkyLadder() {
+    // What the fire actually leaves. The old texts promise a ladder inside the
+    // trunk and they are not wrong - but the ladder is part of the living tree,
+    // and it burns with it. What is left on this spot is ash and one seed, and
+    // the only way up from here is to grow another Worldtree to hold one.
+    burnWorldtreeToAsh() {
         const st = this.skyTree;
         if (!st || st.state === "revealed") return;
         st.state = "revealed";
         st.burnTimer = 0;
 
-        // Everything but the heart of the tree burns away to ash. Ash, not road:
-        // no road runs in the Reach, and burning the tree does not lay one.
+        // Ash, not road: no road runs in the Reach, and burning the tree does
+        // not lay one.
         for (let dy = -SKY_TREE.radius; dy <= SKY_TREE.radius; dy++) {
             for (let dx = -SKY_TREE.radius; dx <= SKY_TREE.radius; dx++) {
                 const tx = st.tileX + dx;
                 const ty = st.tileY + dy;
                 if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
-                this.tiles[ty][tx] = (dx === 0 && dy === 0) ? TILE.SKY_LADDER : TILE.STONE;
+                this.tiles[ty][tx] = TILE.STONE;
             }
         }
-
-        this.skyLadder = {
-            tileX: st.tileX,
-            tileY: st.tileY,
-            x: st.x,
-            y: st.y,
-        };
     }
 
     placeFountainOfYouth(rng) {
@@ -1696,7 +1727,7 @@ class World {
         ctx.textAlign = "center";
 
         if (st.state === "revealed") {
-            this.renderSkyLadderShaft(ctx, sx, sy, time);
+            this.renderWorldtreeAsh(ctx, sx, sy, time);
             ctx.restore();
             return;
         }
@@ -1784,12 +1815,16 @@ class World {
         ctx.restore();
     }
 
-    renderSkyLadderShaft(ctx, sx, sy, time) {
-        // A shaft of light with a ladder climbing out of frame into the clouds
+    // What is left in the Worldtree Reach: a ring of ash and a hole in the sky
+    // with nothing under it. The ladder was part of the tree and went up with
+    // it, so this spot is a monument now, not a route.
+    renderWorldtreeAsh(ctx, sx, sy, time) {
+        // Daylight from the other country still leaks through the gap the tree
+        // used to fill - close enough to see, far too high to reach.
         const beam = ctx.createLinearGradient(sx, sy - 200, sx, sy + 20);
         beam.addColorStop(0, "rgba(200, 225, 255, 0)");
-        beam.addColorStop(0.5, "rgba(210, 235, 255, 0.22)");
-        beam.addColorStop(1, "rgba(255, 255, 255, 0.34)");
+        beam.addColorStop(0.6, "rgba(210, 235, 255, 0.12)");
+        beam.addColorStop(1, "rgba(120, 110, 100, 0.20)");
         ctx.fillStyle = beam;
         ctx.beginPath();
         ctx.moveTo(sx - 12, sy - 200);
@@ -1799,49 +1834,46 @@ class World {
         ctx.closePath();
         ctx.fill();
 
-        // Ash ring where the tree stood. It stays ash: the new Worldtree grows
-        // in the Fallow, half a realm to the south, and nothing comes back up
-        // here. What is left on this spot is the hole and the way up it.
+        // The ash ring, and the stump inside it
         ctx.fillStyle = "rgba(40, 34, 28, 0.5)";
         ctx.beginPath();
         ctx.ellipse(sx, sy + 16, 40, 12, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.fillStyle = "#2e2620";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 10, 15, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#3d332a";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 8, 12, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
 
-        // Ladder rails and rungs, fading as they rise
-        for (let i = 0; i < 12; i++) {
-            const ry = sy + 12 - i * 18;
-            const alpha = Math.max(0, 1 - i / 12);
-            ctx.strokeStyle = `rgba(214, 172, 96, ${alpha})`;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(sx - 9, ry);
-            ctx.lineTo(sx - 9, ry - 18);
-            ctx.moveTo(sx + 9, ry);
-            ctx.lineTo(sx + 9, ry - 18);
-            ctx.stroke();
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.moveTo(sx - 9, ry);
-            ctx.lineTo(sx + 9, ry);
-            ctx.stroke();
+        // Ash still lifting off it, years later
+        for (let i = 0; i < 6; i++) {
+            const t = (time * 0.00035 + i / 6) % 1;
+            const ax = sx + Math.sin(time * 0.0009 + i * 1.9) * 26;
+            const ay = sy + 10 - t * 120;
+            ctx.fillStyle = `rgba(190, 180, 170, ${(1 - t) * 0.35})`;
+            ctx.fillRect(Math.round(ax), Math.round(ay), 2, 2);
         }
 
-        // Small clouds drifting past the top of the ladder
+        // Small clouds drifting past, well out of reach
         for (let i = 0; i < 3; i++) {
             const cx = sx + Math.sin(time * 0.0006 + i * 2.2) * 46;
             const cy = sy - 120 - i * 34;
-            ctx.fillStyle = `rgba(255, 255, 255, ${0.3 - i * 0.06})`;
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.22 - i * 0.05})`;
             ctx.beginPath();
             ctx.ellipse(cx, cy, 26 - i * 4, 9, 0, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        ctx.fillStyle = "#dcefff";
+        ctx.fillStyle = "#c9c0b4";
         ctx.font = "bold 11px monospace";
-        ctx.fillText("Ladder to the Cloudlands", sx, sy - 196);
-        ctx.fillStyle = `rgba(220, 240, 255, ${0.55 + Math.sin(time * 0.004) * 0.25})`;
+        ctx.fillText("Where the Worldtree stood", sx, sy - 96);
+        ctx.fillStyle = `rgba(215, 205, 195, ${0.5 + Math.sin(time * 0.003) * 0.18})`;
         ctx.font = "9px monospace";
-        ctx.fillText("[E] Climb", sx, sy + 40);
+        ctx.fillText("The ladder was part of the tree. It burned with it.", sx, sy + 40);
+        ctx.fillText("Only the seed can open the way up again.", sx, sy + 50);
     }
 
     renderHiddenLadder(ctx, camera, time) {
@@ -2812,40 +2844,53 @@ class World {
             marks.push({ x: this.fountainOfYouth.x, y: this.fountainOfYouth.y, shape: "ring", colour: "#64c8ff", label: "Fountain of Youth", size: 4, priority: 1 });
         }
 
-        // The Worldtree stays off the chart until it has been seen. Once the
-        // ladder is open it is a route worth naming.
+        // The Worldtree stays off the chart until it has been seen. Once it has
+        // burned the spot is still worth marking - not as a way anywhere, but
+        // so a player can find the ash again and see what is missing from it.
         if (this.skyTree && (this.skyTree.discovered || this.skyTree.state !== "intact")) {
-            const revealed = this.skyTree.state === "revealed";
+            const burned = this.skyTree.state === "revealed";
             marks.push({
                 x: this.skyTree.x, y: this.skyTree.y,
                 shape: "star",
-                colour: revealed ? "#dcefff" : "#3f7d33",
-                label: revealed ? "Sky Ladder" : null,
-                size: revealed ? 6 : 4,
-                priority: 3,
+                colour: burned ? "#8b8175" : "#3f7d33",
+                label: burned ? "Worldtree Ash" : null,
+                size: 4,
+                priority: burned ? 2 : 3,
             });
         }
 
         // The Waiting Ground goes on the chart once it has been stood in, or
         // once the seed's clues have run far enough to simply hand it over.
         // Holding the last seed of the Worldtree and not knowing where to put
-        // it is a dead end, and this is the door out of it.
+        // it is a dead end, and this is the door out of it. Once the Worldtree
+        // is standing in it the mark has done its job and the tree takes over.
         const plot = this.worldtreePlot;
-        if (plot && (plot.discovered || plot.charted)) {
-            const done = this.skyTree && this.skyTree.regrown;
+        if (plot && (plot.discovered || plot.charted) && !(this.skyTree && this.skyTree.regrown)) {
             marks.push({
                 x: plot.x, y: plot.y,
-                shape: "star",
-                colour: done ? "#a8e88a" : "#c9b06a",
-                label: done ? "The Worldtree" : WORLDTREE_PLOT.name,
-                size: done ? 6 : 5,
+                shape: "ring",
+                colour: "#c9b06a",
+                label: WORLDTREE_PLOT.name,
+                size: 5,
                 rumour: !plot.discovered,
                 priority: 3,
             });
         }
 
-        if (this.sapling && !(this.sapling.rooted && this.sapling.grown)) {
-            marks.push({ x: this.sapling.x, y: this.sapling.y, shape: "star", colour: "#7fd06a", label: "Sapling", size: 4, priority: 2 });
+        // Whatever the seed grew, and where. A grown Worldtree holds the only
+        // ladder into the Cloudlands there is, so once one is standing it is
+        // the most important thing on the chart.
+        const sap = this.sapling;
+        if (sap) {
+            marks.push({
+                x: sap.x, y: sap.y,
+                shape: "star",
+                colour: sap.grown ? (sap.rooted ? "#a8e88a" : "#dcefff") : "#7fd06a",
+                label: !sap.grown ? "Worldtree Sapling"
+                    : sap.rooted ? "The Worldtree" : "Worldtree & Sky Ladder",
+                size: sap.grown ? 6 : 4,
+                priority: 3,
+            });
         }
 
         // The Maker's Hollow goes on the chart only once somebody has stood in

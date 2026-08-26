@@ -151,3 +151,100 @@ test.describe.serial("the title screen fits its frame", () => {
         });
     }
 });
+
+// The minimap is a panel laid over the canvas in the top-right corner, and the
+// camera stops at the edge of the world. Put those together and anything
+// standing within about eight tiles of the north-east corner can never be
+// centred - it is drawn under the panel instead. On a phone, where the canvas
+// is short and wide, that meant walking all the way to the Worldtree and
+// finding the minimap sitting squarely on top of it.
+test.describe.serial("corner landmarks are not hidden under the minimap", () => {
+    /** @type {import('@playwright/test').Page} */
+    let page;
+
+    // A phone held sideways: the shape the panel and the canvas fight over.
+    const PHONE = { width: 844, height: 390 };
+
+    /** Where a world point lands on screen, in the page's own pixels. */
+    function onScreen(page, pick) {
+        return page.evaluate((which) => {
+            const g = window.game;
+            const spot = which === "tree" ? g.world.skyTree : g.world.sapling;
+            const canvas = document.querySelector("#game-container canvas");
+            const c = canvas.getBoundingClientRect();
+            const m = document.getElementById("minimap-container").getBoundingClientRect();
+            const x = c.left + ((spot.x - g.camera.x) / CANVAS_W) * c.width;
+            const y = c.top + ((spot.y - g.camera.y) / CANVAS_H) * c.height;
+            return {
+                x, y,
+                behindPanel: x > m.left && x < m.right && y > m.top && y < m.bottom,
+                shy: document.getElementById("minimap-container").classList.contains("minimap-shy"),
+                opacity: Number(getComputedStyle(document.getElementById("minimap-container")).opacity),
+            };
+        }, pick);
+    }
+
+    test.beforeAll(async ({ browser }) => {
+        page = await browser.newPage({ viewport: PHONE, hasTouch: true, isMobile: true });
+        await startNewGame(page);
+        await dismissDialogs(page);
+    });
+
+    test.afterAll(async () => {
+        await page.close();
+    });
+
+    test("the Worldtree stands clear of the panel on a phone", async () => {
+        await page.evaluate(() => {
+            const st = window.game.world.skyTree;
+            window.game.player.x = st.x - 70;
+            window.game.player.y = st.y + 40;
+            window.game.snapCamera();
+        });
+        await dismissDialogs(page);
+        await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+
+        const tree = await onScreen(page, "tree");
+        expect(tree.behindPanel, "the tree you walked here to find is visible").toBe(false);
+    });
+
+    test("a Worldtree planted in the corner makes the panel step aside", async () => {
+        await page.evaluate(() => {
+            const g = window.game;
+            g.world.burnWorldtreeToAsh();
+            g.player.hasWorldtreeSeed = true;
+            // As far into the corner as the world allows.
+            g.player.x = (WORLD_W - 4) * TILE_SIZE;
+            g.player.y = 4 * TILE_SIZE;
+            g.snapCamera();
+            g.plantWorldtreeSeed();
+        });
+        await expect.poll(async () => {
+            await dismissDialogs(page);
+            return page.evaluate(() => !!(window.game.world.sapling && window.game.world.sapling.grown));
+        }, { timeout: 15000 }).toBe(true);
+        await dismissDialogs(page);
+        await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+
+        const planted = await onScreen(page, "sapling");
+        expect(planted.behindPanel, "a corner planting really is behind the panel").toBe(true);
+        expect(planted.shy, "so the panel gets out of the way").toBe(true);
+        expect(planted.opacity, "faded, not taken away - it is still the map button").toBeLessThan(0.4);
+        expect(planted.opacity, "and still there to be seen and tapped").toBeGreaterThan(0);
+    });
+
+    test("walking away brings the panel back", async () => {
+        await page.evaluate(() => {
+            window.game.player.x = 170 * TILE_SIZE;
+            window.game.player.y = 30 * TILE_SIZE;
+            window.game.snapCamera();
+        });
+        await dismissDialogs(page);
+        await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+
+        const away = await page.evaluate(() => ({
+            shy: document.getElementById("minimap-container").classList.contains("minimap-shy"),
+        }));
+        expect(away.shy, "the map is a map again").toBe(false);
+    });
+});

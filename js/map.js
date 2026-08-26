@@ -429,6 +429,8 @@ function mapTileColour(tile, art, shade) {
         case TILE.WALL: return "#57574a";
         case TILE.CASTLE_WALL: return "#2b2a3c";
         case TILE.CASTLE_FLOOR: return "#5a5970";
+        case TILE.CLUB_WALL: return "#5a2f6e";
+        case TILE.CLUB_FLOOR: return shade ? "#7d4fb0" : "#6b3f9c";
         case TILE.SHOP_FLOOR: return "#8a6a3a";
         case TILE.CAVE_ENTRANCE: return "#2b2333";
         case TILE.SKY_TREE: return "#1f5a1a";

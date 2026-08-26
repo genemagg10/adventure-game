@@ -22,6 +22,7 @@ Current features include:
 - The Worldtree, Cloudlands, Temple of Olympus, twelve-form Olympian encounter, and Zeus reward.
 - The Worldtree Seed: carry it to the Waiting Ground in the far southeast and Zeus grants his lightning without a fight.
 - Fountain of Youth riddles.
+- The Clubhouse: beat the Green Knight, walk back to his castle with a full pack of five animals, and the place stops being a fortress. Warded against monsters, permanently worth +30 max HP the first time the player walks in, and full of music and dancing animals.
 - Friendly wild animals that can be tamed with apples and accompany the player. A companion fights what threatens Ingoizer, and monsters fight back: they hunt the pack as readily as the hero, and an animal that bites one has its attention until the grudge wears off.
 - Keyboard and touch controls, mobile landscape play, sound, inventory, shops, a mini map, and a world map.
 - An announcement, with a tune of its own, for charting every last cell of the surface map.
@@ -173,6 +174,18 @@ Burning the Worldtree leaves one seed, and the obvious thing to do with it is th
 The seed can be pushed into any ground that will take it, and a perfectly nice ordinary sapling comes up. Pressing E at a rootless sapling always digs the seed back up, so the peaceful ending can never be lost by planting in the wrong place. It can only be delayed — and each wrong planting buys a plainer clue: a feeling, then a direction, then the name of the country, then a description of the plot itself. After three misses the game gives up being coy and marks the Waiting Ground on the chart. Standing in the plot with the seed in hand is unmistakable on its own: the earth lights, the plot names itself, and the seed goes warm.
 
 Planted there, the new Worldtree comes up in seconds and does not stop at the clouds. It is nowhere near where the old one stood and it does not matter — a Worldtree is a knot, and a knot holds wherever it is tied. The ladder you tore in the northeast stays open, the boundary between the two countries is whole again, and Zeus's first grievance stops being true before he can make it.
+
+## The Clubhouse
+
+The Green Knight's castle does not stay a castle. Beat him, keep a full pack of five tamed animals alive, and walk back to his gate: the animals go in ahead of Ingoizer and the building gives up. The green washes off the walls, the flagstones come up as a lit dance floor, a mirrorball turns over the middle of it, bunting runs along the battlements, the doorway is knocked wide enough for the whole pack, and a four-bar loop starts playing that does not stop while anyone is standing in the room.
+
+Three things make it worth going back to:
+
+- **It is safe.** The whole building is warded exactly the way the Lady of the Lake's water is. Nothing hostile crosses the doorway, so it is somewhere to stand still when the world outside is loud. The walls are still walls, so Ingoizer goes in through the door like everybody else.
+- **The welcome is worth +30 maximum health**, permanently, the first time he steps inside. Once per run, remembered in the save, and never handed out twice.
+- **The party fills up.** Animals turn up at the door in ones and twos until there are nine of them on the floor, and they dance for as long as the place stands. The pack dances too - in a slow ring around Ingoizer - and goes back to fighting the moment he walks back out.
+
+The music only plays while he is in the room. Pausing, dying, going down a cave, loading a save or stepping back onto the road all stop it, and walking back in starts it again.
 
 ## Development documents
 

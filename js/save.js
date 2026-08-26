@@ -189,7 +189,7 @@ const SaveSystem = {
         if (!world || !flags) return;
         if (flags.greenCastleBuilt) world.unlockGreenlands();
         if (flags.clubhouseOpened) world.openClubhouse();
-        if (flags.skyLadderRevealed) world.revealSkyLadder();
+        if (flags.worldtreeBurned || flags.skyLadderRevealed) world.burnWorldtreeToAsh();
         if (flags.hiddenLadderRevealed) world.revealHiddenLadder();
     },
 
@@ -198,7 +198,9 @@ const SaveSystem = {
         return {
             greenCastleBuilt: !!world.greenCastleBuilt,
             clubhouseOpened: !!world.clubhouse,
-            skyLadderRevealed: !!(world.skyTree && world.skyTree.state === "revealed"),
+            worldtreeBurned: burned,
+            // Saves written before the ladder belonged to the seed call it this.
+            skyLadderRevealed: burned,
             hiddenLadderRevealed: !!(world.hiddenLadder && world.hiddenLadder.revealed),
         };
     },

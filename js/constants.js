@@ -767,12 +767,17 @@ const FOUNTAIN_RIDDLES = [
 // The Cloudlands - Sky Realm Constants
 // ============================================
 
-// The Worldtree stands in the far top-right corner of the realm, with the only
+// The Worldtree stands in the far northeast of the realm, with the only
 // road to the Cloudlands running up the inside of its trunk. A fire arrow burns
 // it down - and takes that road with it, leaving ash and one seed.
 const SKY_TREE = {
     name: "The Worldtree",
-    x: 193, y: 6,       // tile coordinates (top-right corner of the world)
+    // Northeast, but not jammed into the very corner. The camera stops at the
+    // edge of the world, so anything inside about eight tiles of a corner can
+    // never be centred and is drawn under the HUD instead - which on a phone
+    // means the minimap sits squarely on top of the tree you walked here to
+    // find. Standing it a little further in costs nothing and fixes that.
+    x: 186, y: 12,      // tile coordinates (the northeast of the world)
     radius: 1,          // canopy is a (radius*2+1) square of solid tree tiles
     burnTime: 3600,     // ms the tree burns before it goes out
     ladderRange: 46,    // how close you stand to climb a Worldtree, or lift it

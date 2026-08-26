@@ -386,7 +386,7 @@ Because Ingoizer is a family name, “Ingozer's Armour” reads as an ancestor's
 
 ## Worldtree discovery
 
-**Where and when:** Far northeast near tile 193,6. Unlock Fire to remember a verse. Walk close for another hint. Shoot the tree with a fire arrow.  
+**Where and when:** Far northeast, at tile 186,12 - inside the Reach but held back from the very corner, because the camera stops at the edge of the world and anything closer than that is drawn under the minimap on a phone. Unlock Fire to remember a verse. Walk close for another hint. Shoot the tree with a fire arrow.  
 **Getting there:** No road runs into the Worldtree Reach - the verse says so, and the map keeps its word. The corner is trackless ground and nothing is carved across it, so the tree is found by leaving the roads and walking northeast. Nothing nests there either: no monster spawns in the Reach.  
 **What players learn:** The tree is older than the mountains and joins two worlds. Hands that were not human wore down the ladder steps. Fire burns away the tree and leaves the ladder standing in the air.
 

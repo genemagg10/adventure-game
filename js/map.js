@@ -1033,4 +1033,11 @@ const MINIMAP_LAYOUT = {
     h: 187,
     view: { x: 9, y: 9, w: 200, h: 150 },
     caption: { x: 8, y: 162, w: 202, h: 16 },
+    // The minimap gets out of the way when Ingoizer walks in behind it. That
+    // only happens where the camera is clamped against the edge of a world,
+    // which is exactly where the corner landmarks stand - and where a player
+    // may well plant a Worldtree of their own. The pad is measured in canvas
+    // pixels and is deliberately lopsided downwards: the art worth seeing
+    // here is tall, and it is drawn above whoever is standing in it.
+    shy: { padX: 80, padTop: 40, padBottom: 220 },
 };

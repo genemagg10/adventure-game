@@ -181,6 +181,10 @@ class Game {
     resizeViewport() {
         const host = this.canvas.parentElement;
         const rect = host.getBoundingClientRect();
+        // Measured first, and every time: the minimap is a DOM panel laid over
+        // the canvas, so a height-only resize or a media query changing its
+        // scale moves it without CANVAS_W budging an inch.
+        this.measureMinimapFootprint();
         const width = canvasWidthForAspect(rect.height > 0 ? rect.width / rect.height : 0);
         if (width === CANVAS_W && this.canvas.width === width) return;
 
@@ -194,6 +198,50 @@ class Game {
         // wait for the player to step onto a new tile.
         for (const fog of this.allFogs()) fog.lastTile = null;
         if (this.player && this.state === "playing") this.snapCamera();
+    }
+
+    // Where the minimap panel sits, in canvas pixels rather than CSS ones, so
+    // the render loop can ask "is the player behind it?" without touching the
+    // layout. Null whenever the panel is not on screen to be measured.
+    measureMinimapFootprint() {
+        this.minimapFootprint = null;
+        const panel = this.minimapPanel || (this.minimapPanel = document.getElementById("minimap-container"));
+        if (!panel || !this.canvas) return;
+        const c = this.canvas.getBoundingClientRect();
+        const m = panel.getBoundingClientRect();
+        if (c.width <= 0 || c.height <= 0 || m.width <= 0) return;
+        const sx = CANVAS_W / c.width;
+        const sy = CANVAS_H / c.height;
+        this.minimapFootprint = {
+            left: (m.left - c.left) * sx,
+            right: (m.right - c.left) * sx,
+            top: (m.top - c.top) * sy,
+            bottom: (m.bottom - c.top) * sy,
+        };
+    }
+
+    // Fade the minimap down while Ingoizer is standing behind it. Walking into
+    // a corner of a world clamps the camera, which parks him - and whatever
+    // landmark he came to see - under the panel; this hands the view back
+    // without taking the map away, and it fades straight back in on the way out.
+    updateMinimapShyness() {
+        // Runs every frame, so it holds on to the element and only touches the
+        // DOM on the frame the answer actually changes.
+        const panel = this.minimapPanel;
+        if (!panel) return;
+        const box = this.minimapFootprint;
+
+        let shy = false;
+        if (box && this.player && this.state === "playing" && !this.ui.isMapOpen()) {
+            const pad = MINIMAP_LAYOUT.shy;
+            const px = this.player.x - this.camera.x;
+            const py = this.player.y - this.camera.y;
+            shy = px > box.left - pad.padX && px < box.right + pad.padX
+                && py > box.top - pad.padTop && py < box.bottom + pad.padBottom;
+        }
+        if (shy === this._minimapShy) return;
+        this._minimapShy = shy;
+        panel.classList.toggle("minimap-shy", shy);
     }
 
     allFogs() {
@@ -3320,6 +3368,7 @@ class Game {
         }
 
         // Render minimap
+        this.updateMinimapShyness();
         const mapOpts = { time: this.time };
         if (this.inCave && this.caveWorlds[this.activeCaveId]) {
             this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss, mapOpts);

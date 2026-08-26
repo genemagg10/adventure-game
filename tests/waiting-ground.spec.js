@@ -63,6 +63,24 @@ async function growPlanting(page) {
     return heard;
 }
 
+/**
+ * Put Ingoizer at the foot of whatever he planted and re-read what is in reach.
+ * Planted in, injected into the page: a tree takes a few seconds to come up,
+ * and being shoved off the spot by a passing monster in the meantime is not
+ * what any of these tests are about.
+ */
+async function installStandAtTree(page) {
+    await page.evaluate(() => {
+        window.standAtTree = () => {
+            const g = window.game;
+            const sap = g.world.sapling;
+            if (sap) { g.player.x = sap.x; g.player.y = sap.y; }
+            g.checkSkyProximity();
+            g.checkProximity();
+        };
+    });
+}
+
 /** Lift a Worldtree that never took back out, so the seed can be tried elsewhere. */
 async function recoverSeed(page) {
     await page.evaluate(() => {
@@ -161,6 +179,7 @@ test.describe("the Waiting Ground", () => {
 test.describe("planting the Worldtree Seed", () => {
     test.beforeEach(async ({ page }) => {
         await startNewGame(page);
+        await installStandAtTree(page);
     });
 
     test("burning the tree takes the ladder up with it", async ({ page }) => {
@@ -199,7 +218,7 @@ test.describe("planting the Worldtree Seed", () => {
 
         const state = await page.evaluate(() => {
             const g = window.game;
-            g.checkSkyProximity();
+            standAtTree();
             return {
                 grown: g.world.sapling.grown,
                 rooted: g.world.sapling.rooted,
@@ -291,7 +310,7 @@ test.describe("planting the Worldtree Seed", () => {
 
         const state = await page.evaluate(() => {
             const g = window.game;
-            g.checkSkyProximity();
+            standAtTree();
             return {
                 restored: g.worldtreeRestored,
                 regrown: g.world.skyTree.regrown,

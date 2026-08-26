@@ -105,10 +105,16 @@ test.describe.serial("a saved game comes back as it was", () => {
             return burnt;
         });
 
+        // Read the run only once the world has stopped. Taking it while the
+        // game is still running leaves a window between the reading and the
+        // write in which a monster can take another bite out of a companion -
+        // and then the save is a faithful record of a run this test never
+        // looked at, and the comparison below fails for being right.
+        await openPause(page);
+
         before = { ...(await readState(page)), burnt };
         expect(before.charted, "walking charted some ground to remember").toBeGreaterThan(0);
 
-        await openPause(page);
         await page.click("#pause-save");
         await page.click(slotChoose(1));
         await expect.poll(() => page.evaluate(() => SaveSystem.hasSave(1))).toBe(true);
@@ -124,6 +130,17 @@ test.describe.serial("a saved game comes back as it was", () => {
     });
 
     test("continuing restores the run exactly", async () => {
+        // Stop the world on the very frame the restored run starts, before a
+        // single update has gone through. Reading it back takes several round
+        // trips to the browser, and a monster standing next to a companion
+        // will happily spend them taking another bite out of it - which is a
+        // fair thing for a monster to do, and nothing whatever to do with
+        // whether the save came back intact.
+        await page.evaluate(() => {
+            const g = window.game;
+            const begin = g.beginLoop.bind(g);
+            g.beginLoop = () => { begin(); g.paused = true; };
+        });
         await page.click("#continueBtn");
         await waitForRunningGame(page);
 

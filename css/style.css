@@ -584,7 +584,7 @@ body {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.55));
-    transition: filter 0.12s ease, transform 0.12s ease;
+    transition: filter 0.12s ease, transform 0.12s ease, opacity 0.25s ease;
 }
 
 #minimap-container:hover,
@@ -595,6 +595,13 @@ body {
 
 #minimap-container:active {
     transform: scale(0.97);
+}
+/* Ingoizer has walked in behind the panel - most likely into a corner of the
+   world, where the camera stops and the landmarks stand. Get out of his way
+   without disappearing: the map is still there, and still tappable. */
+#minimap-container.minimap-shy {
+    opacity: 0.18;
+    filter: none;
 }
 
 #minimap {

@@ -53,6 +53,7 @@ const SaveSystem = {
         "fountainIntroShown", "tapestryRead",
         "worldtreeRestored", "zeusAppeased", "zeusMetInPeace", "seedPlantAttempts",
         "loreUnlocks", "firstTameShown", "surfaceCharted",
+        "clubhouseUnlocked", "clubhouseBoonTaken",
         "ladyQuestState", "ladyQuestAsked", "merlinQuestState",
         "monsterGemDrops", "currentZone",
     ],
@@ -187,6 +188,7 @@ const SaveSystem = {
     replayWorldEvents(world, flags) {
         if (!world || !flags) return;
         if (flags.greenCastleBuilt) world.unlockGreenlands();
+        if (flags.clubhouseOpened) world.openClubhouse();
         if (flags.skyLadderRevealed) world.revealSkyLadder();
         if (flags.hiddenLadderRevealed) world.revealHiddenLadder();
     },
@@ -194,6 +196,7 @@ const SaveSystem = {
     worldEventFlags(world) {
         return {
             greenCastleBuilt: !!world.greenCastleBuilt,
+            clubhouseOpened: !!world.clubhouse,
             skyLadderRevealed: !!(world.skyTree && world.skyTree.state === "revealed"),
             hiddenLadderRevealed: !!(world.hiddenLadder && world.hiddenLadder.revealed),
         };

@@ -88,6 +88,10 @@ class World {
         };
         this.greenBossSpawnPoint = tileToWorld(gateX, GREEN_CASTLE_POS.y + 12 + 2);
 
+        // The castle after the animals get hold of it. Null until the pack
+        // walks it in - see openClubhouse().
+        this.clubhouse = null;
+
         // Place cave entrances at map corners with obstacle rings
         this.caveEntrances = [];
         this.placeCaveEntrances();
@@ -599,6 +603,71 @@ class World {
             y: (cy + ch + 2) * TILE_SIZE + TILE_SIZE / 2,
         };
         this.greenBossSpawnPoint = tileToWorld(gateX, cy + ch + 2);
+    }
+
+    // Hand the Green Knight's castle over to the animals.
+    //
+    // Nothing is torn down - the walls stay exactly where they were, which is
+    // what makes the place worth hiding in - but the green comes off them, the
+    // flagstones come up as a dance floor, and the gate is knocked wide enough
+    // for five animals and a knight to get through side by side. Idempotent,
+    // because loading a save replays it.
+    openClubhouse() {
+        if (this.clubhouse) return this.clubhouse;
+        if (!this.greenCastleBuilt) return null;
+
+        const cx = GREEN_CASTLE_POS.x;
+        const cy = GREEN_CASTLE_POS.y;
+        const cw = 12, ch = 12;
+        const gateX = cx + Math.floor(cw / 2);
+
+        for (let y = cy; y < cy + ch; y++) {
+            for (let x = cx; x < cx + cw; x++) {
+                if (x < 0 || x >= WORLD_W || y < 0 || y >= WORLD_H) continue;
+                const tile = this.tiles[y][x];
+                if (tile === TILE.CASTLE_WALL) this.tiles[y][x] = TILE.CLUB_WALL;
+                else if (tile === TILE.CASTLE_FLOOR) this.tiles[y][x] = TILE.CLUB_FLOOR;
+            }
+        }
+
+        // A doorway a whole pack can come through at once.
+        for (let dx = -2; dx <= 2; dx++) {
+            const gx = gateX + dx;
+            if (gx < 0 || gx >= WORLD_W) continue;
+            this.tiles[cy + ch - 1][gx] = TILE.CLUB_FLOOR;
+        }
+
+        this.clubhouse = {
+            // The tiles the party owns: the inside of the walls plus the doorway.
+            tx: cx + 1, ty: cy + 1, tw: cw - 2, th: ch - 2,
+            doorTX: gateX, doorTY: cy + ch - 1,
+            // The middle of the dance floor, in world coordinates.
+            x: (cx + cw / 2) * TILE_SIZE,
+            y: (cy + ch / 2) * TILE_SIZE,
+            doorX: gateX * TILE_SIZE + TILE_SIZE / 2,
+            doorY: (cy + ch - 1) * TILE_SIZE + TILE_SIZE / 2,
+        };
+
+        this.invalidateMapCache();
+        return this.clubhouse;
+    }
+
+    // Is this tile part of the party - the floor inside the walls, or the
+    // doorway itself? Used both for the ward and for knowing when Ingoizer has
+    // actually got inside.
+    inClubhouseTile(tx, ty) {
+        const c = this.clubhouse;
+        if (!c) return false;
+        if (tx === c.doorTX || tx === c.doorTX - 1 || tx === c.doorTX + 1) {
+            if (ty === c.doorTY) return true;
+        }
+        return tx >= c.tx && tx < c.tx + c.tw && ty >= c.ty && ty < c.ty + c.th;
+    }
+
+    // The same question in world coordinates.
+    inClubhouse(x, y) {
+        const t = worldToTile(x, y);
+        return this.inClubhouseTile(t.x, t.y);
     }
 
     placeGreenGems(rng) {
@@ -1201,6 +1270,9 @@ class World {
         const f = this.fountainOfYouth;
         if (f && Math.abs(tx - f.tileX) <= LADY_WARD.fountainRadius
             && Math.abs(ty - f.tileY) <= LADY_WARD.fountainRadius) return true;
+        // The Clubhouse keeps its own door. Nothing hostile gets in, which is
+        // the whole reason Ingoizer can put his feet up in there.
+        if (this.inClubhouseTile(tx, ty)) return true;
         return false;
     }
 
@@ -1312,8 +1384,9 @@ class World {
             this.renderCaveEntrance(ctx, ex, ey, time, entrance.label);
         }
 
-        // Render Green Knight Castle sign (castle itself is tile-based like Ing Castle)
-        if (this.greenKnightCastle && this.greenCastleBuilt) {
+        // Render Green Knight Castle sign (castle itself is tile-based like Ing
+        // Castle). Once the animals have the place, it gets a very different sign.
+        if (this.greenKnightCastle && this.greenCastleBuilt && !this.clubhouse) {
             const gcx = this.greenKnightCastle.x - camera.x;
             const gcy = this.greenKnightCastle.y - camera.y;
             if (gcx > -100 && gcx < CANVAS_W + 100 && gcy > -100 && gcy < CANVAS_H + 100) {
@@ -1323,6 +1396,9 @@ class World {
                 ctx.fillText("Green Knight's Castle", gcx, gcy - 100);
             }
         }
+
+        // The party itself - lights, mirrorball, confetti, and the sign over the door
+        this.renderClubhouse(ctx, camera, time);
 
         // Render Merlin's Hut
         if (this.merlinHut) {
@@ -1363,6 +1439,172 @@ class World {
 
         // Render the Worldtree / sky ladder in the top-right corner
         this.renderSkyTree(ctx, camera, time);
+    }
+
+    // The Clubhouse, drawn on top of its tiles: beams sweeping the dance floor,
+    // a mirrorball over the middle of it, confetti that never quite lands, and
+    // a sign over the door big enough to see from outside the walls.
+    renderClubhouse(ctx, camera, time) {
+        const c = this.clubhouse;
+        if (!c) return;
+
+        const cx = c.x - camera.x;
+        const cy = c.y - camera.y;
+        const halfW = (c.tw * TILE_SIZE) / 2;
+        const halfH = (c.th * TILE_SIZE) / 2;
+        if (cx < -halfW - 160 || cx > CANVAS_W + halfW + 160) return;
+        if (cy < -halfH - 200 || cy > CANVAS_H + halfH + 200) return;
+
+        ctx.save();
+
+        // Light beams sweeping out from under the mirrorball.
+        ctx.globalCompositeOperation = "lighter";
+        for (let i = 0; i < 6; i++) {
+            const a = time * 0.0009 + (i / 6) * Math.PI * 2;
+            const reach = halfW * 1.15;
+            ctx.fillStyle = PARTY_COLORS[i % PARTY_COLORS.length];
+            ctx.globalAlpha = 0.09 + Math.sin(time * 0.004 + i) * 0.04;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + Math.cos(a - 0.16) * reach, cy + Math.sin(a - 0.16) * reach * 0.75);
+            ctx.lineTo(cx + Math.cos(a + 0.16) * reach, cy + Math.sin(a + 0.16) * reach * 0.75);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = 1;
+
+        // Lanterns either side of the doorway, and the welcome light spilling out.
+        const dx = c.doorX - camera.x;
+        const dy = c.doorY - camera.y;
+        const spill = ctx.createRadialGradient(dx, dy, 2, dx, dy, 46);
+        spill.addColorStop(0, "rgba(255, 214, 130, 0.42)");
+        spill.addColorStop(1, "rgba(255, 214, 130, 0)");
+        ctx.fillStyle = spill;
+        ctx.beginPath();
+        ctx.arc(dx, dy, 46, 0, Math.PI * 2);
+        ctx.fill();
+        for (const side of [-1, 1]) {
+            const lx = dx + side * 46;
+            const glow = 0.55 + Math.sin(time * 0.005 + side) * 0.3;
+            ctx.fillStyle = `rgba(255, 190, 80, ${glow})`;
+            ctx.beginPath();
+            ctx.arc(lx, dy - 6, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#fff3c4";
+            ctx.beginPath();
+            ctx.arc(lx, dy - 6, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.restore();
+    }
+
+    // The half of the party that hangs above head height: the mirrorball, the
+    // confetti coming down through it, the notes going up off the roof and the
+    // sign over the door. Drawn after the dancers so none of it ends up behind
+    // an animal.
+    renderClubhouseOverhead(ctx, camera, time) {
+        const c = this.clubhouse;
+        if (!c) return;
+
+        const cx = c.x - camera.x;
+        const cy = c.y - camera.y;
+        const halfW = (c.tw * TILE_SIZE) / 2;
+        const halfH = (c.th * TILE_SIZE) / 2;
+        if (cx < -halfW - 160 || cx > CANVAS_W + halfW + 160) return;
+        if (cy < -halfH - 200 || cy > CANVAS_H + halfH + 200) return;
+
+        ctx.save();
+
+        // Confetti, drifting down the room over and over.
+        const fallH = c.th * TILE_SIZE;
+        for (let i = 0; i < 34; i++) {
+            const driftX = Math.sin(time * 0.0013 + i * 1.7) * 14;
+            const px = cx - halfW + ((i * 37) % (halfW * 2)) + driftX;
+            const py = cy - halfH + ((time * 0.035 + i * 53) % fallH);
+            ctx.fillStyle = PARTY_COLORS[i % PARTY_COLORS.length];
+            ctx.globalAlpha = 0.75;
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.rotate(time * 0.005 + i);
+            ctx.fillRect(-1.5, -2.5, 3, 5);
+            ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+
+        // The mirrorball, hanging high over the middle of the floor - well clear
+        // of whoever is dancing under it.
+        const ballY = cy - halfH * 0.42 + Math.sin(time * 0.0018) * 3;
+        ctx.strokeStyle = "#d8d8e8";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - halfH);
+        ctx.lineTo(cx, ballY - 11);
+        ctx.stroke();
+        const ball = ctx.createRadialGradient(cx - 4, ballY - 4, 1, cx, ballY, 12);
+        ball.addColorStop(0, "#ffffff");
+        ball.addColorStop(0.55, "#b9c6e8");
+        ball.addColorStop(1, "#5c6690");
+        ctx.fillStyle = ball;
+        ctx.beginPath();
+        ctx.arc(cx, ballY, 11, 0, Math.PI * 2);
+        ctx.fill();
+        for (let i = 0; i < 10; i++) {
+            const a = time * 0.003 + (i / 10) * Math.PI * 2;
+            ctx.fillStyle = PARTY_COLORS[i % PARTY_COLORS.length];
+            ctx.globalAlpha = 0.5 + Math.sin(time * 0.006 + i) * 0.35;
+            ctx.fillRect(cx + Math.cos(a) * 6 - 1.5, ballY + Math.sin(a) * 6 - 1.5, 3, 3);
+        }
+        // The glitter it throws on the ceiling right around itself.
+        ctx.globalCompositeOperation = "lighter";
+        for (let i = 0; i < 5; i++) {
+            const a = -time * 0.0016 + (i / 5) * Math.PI * 2;
+            ctx.fillStyle = PARTY_COLORS[(i + 2) % PARTY_COLORS.length];
+            ctx.globalAlpha = 0.3 + Math.sin(time * 0.005 + i * 1.3) * 0.2;
+            ctx.beginPath();
+            ctx.arc(cx + Math.cos(a) * 26, ballY + Math.sin(a) * 14, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = 1;
+
+        // Music notes rising off the roof, so the party reads from outside too.
+        ctx.font = "13px serif";
+        ctx.textAlign = "center";
+        for (let i = 0; i < 7; i++) {
+            const life = ((time * 0.05 + i * 260) % 900) / 900;
+            const nx = cx + Math.sin(time * 0.002 + i * 2.1) * (halfW * 0.7);
+            const ny = cy - halfH - life * 52;
+            ctx.globalAlpha = (1 - life) * 0.9;
+            ctx.fillStyle = PARTY_COLORS[i % PARTY_COLORS.length];
+            ctx.fillText(i % 2 === 0 ? "\u266a" : "\u266b", nx, ny);
+        }
+        ctx.globalAlpha = 1;
+
+        // The sign. It swings a little, because everything in here does.
+        const signY = cy - halfH - 66;
+        const tilt = Math.sin(time * 0.0022) * 0.045;
+        ctx.save();
+        ctx.translate(cx, signY);
+        ctx.rotate(tilt);
+        ctx.fillStyle = "rgba(24, 12, 34, 0.82)";
+        ctx.fillRect(-72, -13, 144, 26);
+        ctx.strokeStyle = PARTY_COLORS[Math.floor(time * 0.004) % PARTY_COLORS.length];
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-72, -13, 144, 26);
+        ctx.fillStyle = "#ffe9a8";
+        ctx.font = "bold 11px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("\u2605 THE CLUBHOUSE \u2605", 0, -1);
+        ctx.fillStyle = "#ffd23f";
+        ctx.font = "7px monospace";
+        ctx.fillText("everyone welcome \u00b7 no monsters", 0, 9);
+        ctx.restore();
+
+        ctx.textBaseline = "alphabetic";
+        ctx.restore();
     }
 
     // The tapestry on the north wall of Ing Castle's great hall. Under the
@@ -1715,6 +1957,65 @@ class World {
                     ctx.fillRect(sx + i, sy, 4, 6);
                 }
                 break;
+
+            case TILE.CLUB_WALL: {
+                // The Green Knight's stonework, repainted and strung with bunting.
+                ctx.fillStyle = "#4a2860";
+                ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+                ctx.fillStyle = "#6b3a84";
+                for (let i = 0; i < TILE_SIZE; i += 8) {
+                    ctx.fillRect(sx + i, sy, 4, 6);
+                }
+                // Bunting: a string of flags that never stops swaying.
+                ctx.strokeStyle = "rgba(255, 236, 170, 0.75)";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(sx, sy + 9);
+                ctx.quadraticCurveTo(sx + TILE_SIZE / 2, sy + 14, sx + TILE_SIZE, sy + 9);
+                ctx.stroke();
+                for (let i = 0; i < 4; i++) {
+                    const fx = sx + 4 + i * 8;
+                    const sway = Math.sin(time * 0.004 + (tx + ty + i) * 0.9) * 1.6;
+                    ctx.fillStyle = PARTY_COLORS[(tx * 3 + ty * 5 + i) % PARTY_COLORS.length];
+                    ctx.beginPath();
+                    ctx.moveTo(fx - 3, sy + 11);
+                    ctx.lineTo(fx + 3, sy + 11);
+                    ctx.lineTo(fx + sway, sy + 18);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                // A lantern hung on every third block.
+                if ((tx * 7 + ty * 11) % 3 === 0) {
+                    const glow = 0.5 + Math.sin(time * 0.005 + tx + ty) * 0.3;
+                    ctx.fillStyle = `rgba(255, 200, 90, ${glow})`;
+                    ctx.beginPath();
+                    ctx.arc(sx + TILE_SIZE / 2, sy + 24, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = "#ffe8a8";
+                    ctx.beginPath();
+                    ctx.arc(sx + TILE_SIZE / 2, sy + 24, 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                break;
+            }
+
+            case TILE.CLUB_FLOOR: {
+                // Lit squares, chasing each other around the floor in time.
+                const beat = time * 0.0042;
+                const phase = (tx + ty) * 0.7 + beat;
+                const half = TILE_SIZE / 2;
+                for (let qy = 0; qy < 2; qy++) {
+                    for (let qx = 0; qx < 2; qx++) {
+                        const lit = 0.5 + Math.sin(phase + qx * 1.4 + qy * 2.1) * 0.5;
+                        const colour = PARTY_COLORS[(tx + ty + qx * 2 + qy) % PARTY_COLORS.length];
+                        ctx.fillStyle = colour;
+                        ctx.globalAlpha = 0.1 + lit * 0.26;
+                        ctx.fillRect(sx + qx * half, sy + qy * half, half, half);
+                    }
+                }
+                ctx.globalAlpha = 1;
+                break;
+            }
 
             case TILE.LADDER: {
                 // Stone shaft backing
@@ -2438,11 +2739,12 @@ class World {
 
     // The cached map layer is rebuilt only when the drawing would actually
     // change: a zone becomes known, the Worldtree burns or regrows, the Green
-    // Knight's castle rises.
+    // Knight's castle rises - or turns into the Clubhouse.
     mapSignature() {
         const st = this.skyTree;
         return [
             this.greenCastleBuilt ? 1 : 0,
+            this.clubhouse ? 1 : 0,
             st ? st.state : "-",
             st && st.regrown ? 1 : 0,
             this.isZoneRevealed("worldtree") ? 1 : 0,
@@ -2481,9 +2783,11 @@ class World {
         });
 
         if (this.greenKnightCastle) {
+            const club = !!this.clubhouse;
             marks.push({
                 x: this.greenKnightCastle.x, y: this.greenKnightCastle.y,
-                shape: "crown", colour: "#4cd964", label: "Green Castle", size: 6, always: true, priority: 3,
+                shape: "crown", colour: club ? "#ff5f9e" : "#4cd964",
+                label: club ? "The Clubhouse" : "Green Castle", size: 6, always: true, priority: 3,
             });
         }
 

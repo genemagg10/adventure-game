@@ -31,6 +31,18 @@ class Animal {
         this.deathTimer = 0;
         this.followIndex = 0;
 
+        // The Clubhouse. `dancing` replaces every other behaviour for as long
+        // as it is set: nothing gets hunted, nothing gets followed, the animal
+        // just has a good time. `danceHome` is the floor it circles when it has
+        // no-one to dance around, and `partyGuest` marks an animal that came for
+        // the party rather than one Ingoizer tamed.
+        this.dancing = false;
+        this.partyGuest = false;
+        this.danceHome = null;
+        this.danceSpot = null;
+        this.danceTimer = randFloat(1200, 5200);
+        this.danceSeed = Math.random() * Math.PI * 2;
+
         // AI / animation state
         this.facing = { x: 0, y: 1 };
         this.state = "idle";
@@ -105,7 +117,11 @@ class Animal {
         const hits = [];
         let moveX = 0, moveY = 0;
 
-        if (this.tamed) {
+        if (this.dancing) {
+            const move = this.danceStep(dt, player);
+            moveX = move.x;
+            moveY = move.y;
+        } else if (this.tamed) {
             const move = this.updateCompanion(dt, player, hostiles, combat, hits);
             moveX = move.x;
             moveY = move.y;
@@ -131,7 +147,7 @@ class Animal {
         // A companion that is trying to walk and getting nowhere has found a
         // piece of landscape it cannot solve. Give it a moment, then let it
         // scamper up rather than losing it behind a hedge for ever.
-        if (this.tamed) {
+        if (this.tamed && !this.dancing) {
             const trying = Math.abs(moveX) + Math.abs(moveY) > 0.35;
             this.stuckTimer = trying && gained < 0.2 ? this.stuckTimer + dt : 0;
             const behind = dist(this.x, this.y, player.x, player.y);
@@ -223,6 +239,51 @@ class Animal {
         this.knockbackVx = 0;
         this.knockbackVy = 0;
         this.tameGlow = 420;   // a small puff, so it reads as arriving
+    }
+
+    // Dancing. The pack circles Ingoizer - slowly, so it reads as a ring going
+    // round him rather than five animals orbiting a post - and the guests take
+    // the rest of the floor, picking a new patch of it every few seconds.
+    danceStep(dt, player) {
+        this.hopPhase += dt * 0.013;
+        this.danceTimer -= dt;
+
+        let spot = this.danceSpot;
+        if (this.tamed && player) {
+            const a = (this.followIndex / ANIMAL_CONFIG.maxCompanions) * Math.PI * 2 + this.hopPhase * 0.22;
+            spot = { x: player.x + Math.cos(a) * 36, y: player.y + Math.sin(a) * 36 };
+        } else if (this.danceHome) {
+            if (!spot || this.danceTimer <= 0) {
+                this.danceTimer = randFloat(3200, 7000);
+                const a = Math.random() * Math.PI * 2;
+                const r = Math.sqrt(Math.random()) * this.danceHome.r;
+                spot = { x: this.danceHome.x + Math.cos(a) * r, y: this.danceHome.y + Math.sin(a) * r };
+                this.danceSpot = spot;
+            }
+        } else if (!spot) {
+            spot = { x: this.x, y: this.y };
+            this.danceSpot = spot;
+        }
+
+        const beat = this.hopPhase + this.danceSeed;
+        // Side to side, and a smaller wobble the other way.
+        let mx = Math.cos(beat * 1.7) * 1.0;
+        let my = Math.sin(beat * 2.6) * 0.55;
+
+        // ...while drifting back to wherever it means to be dancing.
+        const d = dist(this.x, this.y, spot.x, spot.y);
+        if (d > 4) {
+            const back = normalize(spot.x - this.x, spot.y - this.y);
+            const pull = Math.min(d * 0.06, this.speed);
+            mx += back.x * pull;
+            my += back.y * pull;
+        }
+
+        // Facing flips with the beat, which is what makes it look like dancing
+        // rather than walking.
+        this.facing = { x: Math.cos(beat * 1.7) >= 0 ? 1 : -1, y: 0 };
+        this.target = null;
+        return { x: mx, y: my };
     }
 
     updateCompanion(dt, player, hostiles, combat, hits) {
@@ -406,7 +467,11 @@ class Animal {
             ctx.globalCompositeOperation = "lighter";
         }
 
-        this.renderBody(ctx, sx, sy, time);
+        if (this.dancing) {
+            this.renderDancing(ctx, sx, sy, time);
+        } else {
+            this.renderBody(ctx, sx, sy, time);
+        }
         ctx.globalCompositeOperation = "source-over";
 
         // Freshly tamed sparkle
@@ -435,6 +500,31 @@ class Animal {
             ctx.fillRect(barX, barY, barW * (this.hp / this.maxHp), 3);
         }
 
+        ctx.restore();
+    }
+
+    // The same animal, but leaning into it: a sway from the feet up, a note or
+    // two over its head, and the floor lights catching its back.
+    renderDancing(ctx, sx, sy, time) {
+        const beat = this.hopPhase + this.danceSeed;
+        const tilt = Math.sin(beat * 1.7) * 0.22;
+
+        ctx.save();
+        ctx.translate(sx, sy + this.size * 0.6);
+        ctx.rotate(tilt);
+        ctx.translate(-sx, -(sy + this.size * 0.6));
+        this.renderBody(ctx, sx, sy, time);
+        ctx.restore();
+
+        // A music note, on the beat, in whatever colour the floor is doing.
+        const notePhase = (beat * 0.55) % 1;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 0.85 - notePhase);
+        ctx.fillStyle = PARTY_COLORS[Math.floor(beat) % PARTY_COLORS.length];
+        ctx.font = "10px serif";
+        ctx.textAlign = "center";
+        ctx.fillText(Math.floor(beat) % 2 === 0 ? "\u266a" : "\u266b",
+            sx + Math.sin(beat * 2) * 5, sy - this.size - 8 - notePhase * 14);
         ctx.restore();
     }
 
@@ -493,6 +583,7 @@ class Animal {
 
     // Small vertical hop used by the ground critters
     hopOffset(amount) {
+        if (this.dancing) return -Math.abs(Math.sin(this.hopPhase * 2)) * amount * 1.6;
         const moving = this.walkTimer > 0 || this.state === "wander" || this.tamed;
         if (!moving) return 0;
         return -Math.abs(Math.sin(this.hopPhase * 2)) * amount;

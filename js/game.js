@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 42104)
+Total output lines: 3710
+
 // ============================================
 // Ingoizer's World - Main Game Engine
 // ============================================
@@ -34,10 +37,15 @@ class Game {
         });
 
         this.running = false;
+        this.frameRequestId = null;
+        this.loopGeneration = 0;
         this.paused = false;
         this.lastTime = 0;
         this.time = 0;
         this.engagedPlayTime = 0;
+        this.lastMinimapRender = 0;
+        this.minimapDirty = true;
+        this.minimapStateSignature = "";
 
         // Input
         this.keys = {
@@ -209,6 +217,7 @@ class Game {
         TILES_X = Math.ceil(CANVAS_W / TILE_SIZE) + 2;
         this.canvas.width = CANVAS_W;
         this.canvas.height = CANVAS_H;
+        this.minimapDirty = true;
         applyViewSight();
 
         // Ground that just came into view should chart on the next frame, not
@@ -336,6 +345,9 @@ class Game {
     // predates a feature simply inherit that feature's fresh defaults.
     resetState(gemSeed) {
         this.state = "playing";
+        this.minimapDirty = true;
+        this.lastMinimapRender = 0;
+        this.minimapStateSignature = "";
         this.engagedPlayTime = 0;
         this.sound.init();
         this.resizeViewport();
@@ -463,9 +475,20 @@ class Game {
     }
 
     beginLoop() {
+        this.stopLoop();
         this.running = true;
+        const generation = ++this.loopGeneration;
         this.lastTime = performance.now();
-        requestAnimationFrame((t) => this.gameLoop(t));
+        this.frameRequestId = requestAnimationFrame((t) => this.gameLoop(t, generation));
+    }
+
+    stopLoop() {
+        this.running = false;
+        this.loopGeneration++;
+        if (this.frameRequestId !== null) {
+            cancelAnimationFrame(this.frameRequestId);
+            this.frameRequestId = null;
+        }
     }
 
     // ============================================
@@ -489,7 +512,7 @@ class Game {
             return false;
         }
 
-        this.running = false;
+        this.stopLoop();
         this.ui.hideBossHealth();
         this.ui.closeMenus();
         GameAnalytics.track("game-load");
@@ -512,7 +535,7 @@ class Game {
     }
 
     restart() {
-        this.running = false;
+        this.stopLoop();
         this.ui.closeMenus();
         this.ui.hideBossHealth();
         this.ui.hideHud();
@@ -954,8 +977,9 @@ class Game {
         else this.sound.stopClubMusic();
     }
 
-    gameLoop(timestamp) {
-        if (!this.running) return;
+    gameLoop(timestamp, generation) {
+        if (!this.running || generation !== this.loopGeneration) return;
+        this.frameRequestId = null;
 
         const dt = Math.min(timestamp - this.lastTime, 50); // Cap delta
         this.lastTime = timestamp;
@@ -993,7 +1017,9 @@ class Game {
         // Clear just-pressed keys
         this.keyJustPressed = {};
 
-        requestAnimationFrame((t) => this.gameLoop(t));
+        if (this.running && generation === this.loopGeneration) {
+            this.frameRequestId = requestAnimationFrame((t) => this.gameLoop(t, generation));
+        }
     }
 
     update(dt) {
@@ -1416,1059 +1442,7 @@ class Game {
             if (this.world.updateSkyTree(dt)) this.onWorldtreeBurned();
             if (this.world.updateSapling(dt)) this.onWorldtreeGrown();
             if (this.skyTreeHintCooldown > 0) this.skyTreeHintCooldown -= dt;
-            this.checkWorldtreeApproach();
-            this.checkWaitingGroundApproach();
-        }
-        if (this.inSky) {
-            this.checkZeusPeaceMeeting();
-            this.checkOlympianTrigger();
-            this.checkAmbrosia();
-        }
-        this.drainCombatWorldEvents();
-
-        // Check fountain proximity
-        this.checkFountainProximity();
-
-        // Check hidden base treasure (surface only)
-        if (this.onSurface) {
-            this.checkHiddenBaseTreasure();
-        }
-
-        // The Clubhouse: earning it, walking into it, and the party inside
-        this.updateClubhouse(dt);
-
-        // Update HUD
-        this.ui.updateHud(this.player);
-    }
-
-    respawnPlayer() {
-        this.sound.playerDeath();
-
-        // Gold penalty: lose 100, or everything if under 100
-        const goldLost = Math.min(100, this.player.gold);
-        this.player.gold -= goldLost;
-
-        // If the player died in a cave or up in the Cloudlands, return them to the surface
-        this.inCave = false;
-        this.activeCaveId = null;
-        this.caveBoss = null;
-        this.inSky = false;
-
-        // The Olympian resets to his first face so the whole cycle can be fought again
-        if (this.olympianSpawned && !this.olympianDefeated) {
-            this.olympianSpawned = false;
-            this.olympianBoss = null;
-        }
-
-        // Reset any undefeated boss encounter so it can be triggered again
-        if (this.bossSpawned && !this.bossDefeated) {
-            this.bossSpawned = false;
-            this.boss = new Boss(this.world.bossSpawnPoint.x, this.world.bossSpawnPoint.y);
-        }
-        if (this.greenKnightSpawned && !this.greenKnightDefeated) {
-            this.greenKnightSpawned = false;
-            this.greenKnight = null;
-        }
-        for (const id of Object.keys(this.caveBossSpawned)) {
-            if (this.caveBossSpawned[id] && !this.caveBossDefeated[id]) {
-                this.caveBossSpawned[id] = false;
-            }
-        }
-        this.ui.hideBossHealth();
-
-        // Respawn at the game's starting position with full health
-        const startPos = tileToWorld(10, 15);
-        this.player.x = startPos.x;
-        this.player.y = startPos.y;
-        this.player.hp = this.player.maxHp;
-        this.player.knockbackVx = 0;
-        this.player.knockbackVy = 0;
-
-        // Brief grace period so nearby monsters can't chain-kill on respawn
-        this.player.invincible = true;
-        this.player.invincibleTimer = 2000;
-
-        // Companions are lost on death; the player can tame a new pack with apples
-        this.nearAnimal = null;
-        this.companions = [];
-        this.setInsideClubhouse(false);
-
-        // Repopulate roaming animals so a respawn also refreshes the living world
-        this.wildAnimals = [];
-        this.animalSpawnTimer = 0;
-        this.spawnInitialAnimals();
-
-        // Snap the camera to the respawn point instead of panning across the map
-        this.camera.x = clamp(this.player.x - CANVAS_W / 2, 0, WORLD_W * TILE_SIZE - CANVAS_W);
-        this.camera.y = clamp(this.player.y - CANVAS_H / 2, 0, WORLD_H * TILE_SIZE - CANVAS_H);
-        this.currentZone = "meadow";
-        this.zoneDisplayTimer = 3000;
-
-        if (goldLost > 0) {
-            this.ui.showNotification(`You fell in battle! -${goldLost} gold`);
-            this.ui.showDialog(`Ingoizer has fallen... You awaken back in the Green Meadow, ${goldLost} gold lighter.`);
-        } else {
-            this.ui.showNotification("You fell in battle!");
-            this.ui.showDialog("Ingoizer has fallen... You awaken back in the Green Meadow.");
-        }
-    }
-
-    onEntityKilled(entity, isBoss) {
-        // The Olympian killed - only possible once Zeus is back in his true form
-        if (isBoss && entity === this.olympianBoss) {
-            this.onOlympianDefeated();
-            return;
-        }
-
-        // Cave Boss killed
-        if (isBoss && entity === this.caveBoss && this.inCave) {
-            const caveId = this.activeCaveId;
-            this.caveBossDefeated[caveId] = true;
-            GameAnalytics.track("first-cave-completed");
-            this.ui.hideBossHealth();
-            this.sound.bossDefeat();
-            const caveWorld = this.caveWorlds[caveId];
-            setTimeout(() => {
-                this.sound.victoryFanfare();
-                if (caveWorld.difficulty === 3) {
-                    // NW cave boss drops purple gem of attack
-                    this.player.purpleGemAttack = true;
-                    this.ui.showNotification(`${PURPLE_GEMS.attack.icon} ${PURPLE_GEMS.attack.name} obtained! (+${PURPLE_GEMS.attack.bonus} DMG)`);
-                    this.ui.showDialog(`The warden crumbles, and the chest he had been standing over all this time falls open. Inside is the ${PURPLE_GEMS.attack.name}!`, () => {
-                        this.ui.showDialog(`All your weapons deal +${PURPLE_GEMS.attack.bonus} additional damage!`);
-                    });
-                } else if (caveWorld.difficulty === 4) {
-                    // NE cave boss drops purple gem of armor + Titan's Gauntlet
-                    this.player.purpleGemArmor = true;
-                    this.player.hasGauntlet = true;
-                    this.ui.showNotification(`${PURPLE_GEMS.armor.icon} ${PURPLE_GEMS.armor.name} obtained! (+${PURPLE_GEMS.armor.bonus} DEF)`);
-                    this.ui.showDialog(`The titan crumbles, and the chest at the back of his lair falls open. Inside is the ${PURPLE_GEMS.armor.name}!`, () => {
-                        this.ui.showDialog(`All your armor gains +${PURPLE_GEMS.armor.bonus} additional defense!`, () => {
-                            this.ui.showNotification(`${CAVE_GAUNTLET.icon} ${CAVE_GAUNTLET.name} obtained! (+${CAVE_GAUNTLET.damageBonus} DMG)`);
-                            this.ui.showDialog(`Among the shards you find the ${CAVE_GAUNTLET.name}! All your weapons deal +${CAVE_GAUNTLET.damageBonus} additional damage.`);
-                        });
-                    });
-                }
-            }, 2000);
-            return;
-        }
-
-        // Green Knight killed
-        if (isBoss && entity === this.greenKnight) {
-            this.greenKnightDefeated = true;
-            GameAnalytics.track("green-knight-defeated");
-            this.ui.hideBossHealth();
-            this.sound.bossDefeat();
-            // Drop Magic Charm
-            this.player.hasMagicCharm = true;
-            setTimeout(() => {
-                this.ui.showNotification(`${MAGIC_CHARM.icon} ${MAGIC_CHARM.name} obtained! (+${MAGIC_CHARM.damageBonus} DMG all weapons)`);
-                this.ui.showDialog("The Green Knight crumbles and drops a shimmering Magic Charm!", () => {
-                    this.ui.showDialog(`The ${MAGIC_CHARM.name} empowers all your weapons with +${MAGIC_CHARM.damageBonus} attack damage!`, () => {
-                        // The castle behind him is empty now, and the animals have noticed.
-                        const pack = this.aliveCompanionCount();
-                        const notice = pack >= CLUBHOUSE.companionsNeeded
-                            ? "Behind you the castle stands empty, and every animal at your heel is looking at it and not at you."
-                            : `Behind you the castle stands empty. The animals that walk with you keep looking at it - and there are only ${pack} of them. `
-                              + `A full pack is ${CLUBHOUSE.companionsNeeded}.`;
-                        this.ui.showDialog(notice, () => {
-                            this.ui.showGameOver(true,
-                                "The Green Knight has been vanquished, and the realm is free of him. It is a strange kind of victory: " +
-                                "the man in the green armour was your cousin, fighting for a father who walked out on the family " +
-                                "long before either of you was born. Two Ingoizers have fallen to a third, and the name outlives all of them. " +
-                                `Monsters defeated: ${this.player.monstersKilled}. ` +
-                                "You may continue exploring with all your gear!"
-                            );
-                        });
-                    });
-                });
-            }, 2000);
-            return;
-        }
-
-        // Black Knight killed
-        if (isBoss && entity === this.boss) {
-            this.bossDefeated = true;
-            GameAnalytics.track("black-knight-defeated");
-            this.ui.hideBossHealth();
-            this.sound.bossDefeat();
-            // Drop Dark Knight's Crest
-            this.player.hasDarkCrest = true;
-            this.player.maxHp += DARK_CREST.maxHpBonus;
-            this.player.hp = Math.min(this.player.hp + DARK_CREST.maxHpBonus, this.player.maxHp);
-            setTimeout(() => {
-                this.sound.victoryFanfare();
-                this.ui.showNotification(`${DARK_CREST.icon} ${DARK_CREST.name} obtained! (+${DARK_CREST.maxHpBonus} Max HP)`);
-                // Unlock greenlands
-                this.greenlandsUnlocked = true;
-                this.world.unlockGreenlands();
-                // Spawn green monster types
-                this.spawnGreenMonsters();
-                this.ui.showDialog(`The Black Knight drops the ${DARK_CREST.name}! Your max HP increases by ${DARK_CREST.maxHpBonus}!`, () => {
-                    this.ui.showDialog("The shroud over Ing Castle thins and lifts. Somewhere inside the great hall, something heavy slides off a rail and hits the floor.", () => {
-                        this.ui.showDialog("Go into the castle. There is a tapestry on the north wall of the great hall that he kept covered, and it is yours to read now.", () => {
-                            this.ui.showDialog("A mysterious green domain has appeared to the south! Legends speak of the Green Knight and powerful Green Gems within.", () => {
-                                this.ui.showDialog("Find the two Green Gems - one grants attack power, the other grants defense. Collect both to challenge the Green Knight!");
-                                this.ui.showNotification("Green Knight's Domain unlocked!");
-                            });
-                        });
-                    });
-                });
-            }, 3000);
-            return;
-        }
-
-        this.sound.monsterDeath();
-        this.player.monstersKilled++;
-
-        // Cloudlands keepers count toward summoning the Olympian
-        if (entity.isSkyMonster) {
-            this.onSkyMonsterSlain();
-        }
-
-        // Check if this was the sheath guardian troll
-        if (entity.isSheathGuardian) {
-            this.player.hasSheath = true;
-            // The guardian can be found and beaten before the Lady is ever
-            // met, and it does not come back. Whatever order it happened in,
-            // holding the sheath means the errand is done.
-            if (this.ladyQuestState !== "complete") {
-                this.ladyQuestState = "sheath_acquired";
-            }
-            this.ui.showNotification("Jewel-encrusted Sheath obtained! (+2 weapon damage)");
-            this.ui.showDialog("The troll falls and drops a magnificent sheath encrusted with jewels. It radiates power!", () => {
-                this.ui.showDialog("The sheath empowers your weapons! Return to the Lady of the Lake to claim Excalibur.");
-            });
-        }
-
-        const drops = entity.getDrops();
-
-        // Arrow drops (1-3 arrows per kill)
-        const arrowDrop = randInt(1, 3);
-        this.player.arrows += arrowDrop;
-
-        // Gold
-        this.player.gold += drops.gold;
-        this.sound.goldCollect();
-        this.ui.showNotification(`+${drops.gold} gold  +${arrowDrop} arrows`);
-
-        // Weapon drop
-        if (drops.weapon) {
-            if (this.player.addWeapon(drops.weapon)) {
-                const w = WEAPONS[drops.weapon];
-                this.sound.weaponPickup();
-                this.ui.showNotification(`Found ${w.name}!`);
-                this.ui.showDialog(`You picked up a ${w.name}! ${w.description}. Open inventory (I) to equip it.`);
-            }
-        }
-
-        // Armor drop
-        if (drops.armor) {
-            if (this.player.addArmor(drops.armor)) {
-                const a = ARMOR[drops.armor];
-                this.sound.weaponPickup();
-                this.ui.showNotification(`Found ${a.name}! (DEF +${a.defense})`);
-                this.ui.showDialog(`You picked up ${a.name}! ${a.description}. DEF: ${a.defense}. Open inventory (I) to equip it.`);
-            }
-        }
-
-        // Gem drop
-        if (drops.gem && this.monsterGemDrops < this.maxMonsterGemDrops && this.player.blueGems < 5) {
-            this.monsterGemDrops++;
-            const elem = this.player.collectGem();
-            this.trackGemProgress();
-            this.sound.gemCollect();
-            this.ui.showNotification(`Blue Gem found! (${this.player.blueGems}/5)`);
-            if (elem) this.announceElementUnlock(elem, "resonates");
-            if (this.player.blueGems >= 5) {
-                this.ui.showDialog("You have all 5 Blue Gems! Journey to Ing Castle - a dark presence awaits outside its gates...");
-            }
-        }
-    }
-
-    trackGemProgress() {
-        if (this.player.blueGems >= 1) GameAnalytics.track("first-blue-gem");
-        if (this.player.blueGems >= 5) GameAnalytics.track("five-blue-gems");
-    }
-
-    // A Blue Gem has handed over a new power. One place decides what happens
-    // and how it is explained, so keyboard and touch players get instructions
-    // that match the controls actually in front of them.
-    announceElementUnlock(elem, verb) {
-        const name = ELEMENTS[elem].name;
-        const keyNumber = this.player.nextElementIndex;
-
-        // The first power a player earns is the only one they own, so there is
-        // nothing to choose between - select it for them. On touch there is no
-        // number row to press, which made this easy to miss entirely.
-        const autoSelected = !this.player.activeElement;
-        if (autoSelected) this.player.activeElement = elem;
-
-        const touch = this.touchControls && this.touchControls.active;
-        let howToUse;
-        if (autoSelected) {
-            howToUse = touch
-                ? "It is selected and ready - the power button on the right now shows its symbol; tap it to use."
-                : "It is selected and ready - press Q to use it.";
-        } else {
-            howToUse = touch
-                ? "Tap its icon in the power bar to select it - the power button takes its symbol, and casts it."
-                : `Press ${keyNumber} to select it, Q to use.`;
-        }
-
-        this.ui.showDialog(`The Blue Gem ${verb} with ${name} energy! You gained the power of ${name}! ${howToUse}`);
-        this.onElementUnlocked(elem);
-    }
-
-    // Unlocking Fire gives the player a deliberately vague memory of the tree
-    // without revealing its name, location, map marker, or solution.
-    onElementUnlocked(elem) {
-        if (elem !== "fire" || this.skyTreeHintGiven) return;
-        if (!this.world.skyTree || this.world.skyTree.state !== "intact") return;
-        this.skyTreeHintGiven = true;
-        this.ui.showDialog("As the fire touches your hand it jogs a memory, \"something about a giant tree, somewhere, uncharted.\"");
-    }
-
-    // A quiet nudge the first time the player wanders into the northeast corner
-    checkWorldtreeApproach() {
-        if (this.skyTreeApproachSeen) return;
-        const st = this.world.skyTree;
-        if (!st || st.state !== "intact") return;
-        if (dist(this.player.x, this.player.y, st.x, st.y) > 420) return;
-        this.skyTreeApproachSeen = true;
-        st.discovered = true;
-        // Finding the tree also names the country it grows in - the Worldtree
-        // Reach stops reading as blank wilderness on both maps.
-        this.world.invalidateMapCache();
-        this.ui.showNotification("🌳 An enormous, ancient tree stands ahead - the Worldtree Reach is on your map");
-    }
-
-    // Walking into the Waiting Ground names it and puts it on the chart. This
-    // is the reward for exploring the emptiest corner of the map, and it works
-    // whether or not the seed is in hand - a player who found the plot early
-    // will recognise it the moment the Worldtree burns.
-    checkWaitingGroundApproach() {
-        const plot = this.world.worldtreePlot;
-        if (!plot || plot.discovered) return;
-        if (dist(this.player.x, this.player.y, plot.x, plot.y) > WORLDTREE_PLOT.noticeRange) return;
-
-        plot.discovered = true;
-        this.sound.secretDiscovery();
-        this.ui.showNotification(`\ud83c\udf31 ${WORLDTREE_PLOT.name} - it is on your map`);
-        this.ui.showDialog(
-            "Bare brown earth, turned and level, in the middle of an acre of plain grass. No tree stands near it. " +
-            "No road comes within a long walk of it. Nothing has ever been built on it and nothing has ever been " +
-            "sown in it \u2014 and somebody, for a very long time, has been keeping it that way."
-        );
-    }
-
-    checkProximity() {
-        // Check nearby shop
-        this.nearShop = null;
-        for (const shop of this.world.shops) {
-            if (dist(this.player.x, this.player.y, shop.worldX, shop.worldY) < 50) {
-                this.nearShop = shop;
-                break;
-            }
-        }
-
-        // Check nearby gems
-        this.nearGem = null;
-        for (const gem of this.world.gems) {
-            if (gem.collected) continue;
-            if (dist(this.player.x, this.player.y, gem.x, gem.y) < 30) {
-                this.nearGem = gem;
-                break;
-            }
-        }
-
-        // Auto-collect gem on contact
-        if (this.nearGem) {
-            this.collectWorldGem(this.nearGem);
-        }
-
-        // Check Lady of the Lake
-        this.nearLady = false;
-        const lady = this.world.ladyOfLake;
-        if (lady && this.ladyQuestState !== "complete") {
-            if (dist(this.player.x, this.player.y, lady.x, lady.y) < LADY_OF_LAKE.interactRange) {
-                this.nearLady = true;
-            }
-        }
-
-        // Check Merlin
-        this.nearMerlin = false;
-        const merlin = this.world.merlin;
-        if (merlin) {
-            if (dist(this.player.x, this.player.y, merlin.x, merlin.y) < MERLIN.interactRange) {
-                this.nearMerlin = true;
-            }
-        }
-
-        // Check Merlin's wand at hut (auto-collect on proximity)
-        if (this.merlinQuestState === "given" && this.world.merlinHut && !this.world.merlinHut.wandCollected) {
-            const hut = this.world.merlinHut;
-            if (dist(this.player.x, this.player.y, hut.x, hut.y) < 50) {
-                this.collectMerlinWand();
-            }
-        }
-
-        // Check green gems (auto-collect on proximity)
-        if (this.greenlandsUnlocked && this.world.greenGems) {
-            for (const gem of this.world.greenGems) {
-                if (gem.collected) continue;
-                if (dist(this.player.x, this.player.y, gem.x, gem.y) < 30) {
-                    this.collectGreenGem(gem);
-                }
-            }
-        }
-
-        // Check coins (auto-collect on proximity)
-        for (const coin of this.world.coins) {
-            if (coin.collected) continue;
-            if (dist(this.player.x, this.player.y, coin.x, coin.y) < COIN_CONFIG.collectRange) {
-                coin.collected = true;
-                coin.respawnTimer = COIN_CONFIG.respawnTime;
-                this.player.gold += coin.value;
-                this.sound.goldCollect();
-                this.ui.showNotification(`+${coin.value} gold`);
-            }
-        }
-
-        // Check apples (auto-collect on proximity)
-        for (const apple of this.world.apples) {
-            if (apple.collected) continue;
-            if (dist(this.player.x, this.player.y, apple.x, apple.y) < APPLE_CONFIG.collectRange) {
-                if (!this.player.addApples(1)) continue;
-                apple.collected = true;
-                apple.respawnTimer = APPLE_CONFIG.respawnTime;
-                this.sound.applePickup();
-                this.ui.showNotification(`${APPLE_ITEM.icon} Apple collected (${this.player.apples})`);
-            }
-        }
-
-        // Check for a nearby wild animal to tame
-        this.nearAnimal = null;
-        if (this.aliveCompanionCount() < ANIMAL_CONFIG.maxCompanions) {
-            let closest = Infinity;
-            for (const animal of this.wildAnimals) {
-                if (!animal.alive || animal.tamed) continue;
-                const d = dist(this.player.x, this.player.y, animal.x, animal.y);
-                if (d < ANIMAL_CONFIG.tameRange && d < closest) {
-                    closest = d;
-                    this.nearAnimal = animal;
-                }
-            }
-        }
-
-        // A planting that never took can always be lifted out again. While it is
-        // still a shoot there is no ladder in it yet, so E digs it up; once it
-        // is a grown Worldtree E belongs to the climb and P does the digging.
-        this.nearSapling = null;
-        this.nearUprootable = null;
-        const sap = this.world.sapling;
-        if (sap && !sap.rooted && dist(this.player.x, this.player.y, sap.x, sap.y) < SKY_TREE.ladderRange) {
-            this.nearUprootable = sap;
-            if (!sap.grown) this.nearSapling = sap;
-        }
-
-        // Check the great hall tapestry - only once the Black Knight is gone
-        this.nearTapestry = false;
-        const tapestry = this.world.castleTapestry;
-        if (tapestry && this.bossDefeated) {
-            if (!tapestry.uncovered) tapestry.uncovered = true;
-            if (dist(this.player.x, this.player.y, tapestry.x, tapestry.y) < CASTLE_TAPESTRY.interactRange) {
-                this.nearTapestry = true;
-            }
-        }
-
-        // Check Merlin's Hut (for lore access)
-        this.nearMerlinHut = false;
-        if (this.world.merlinHut) {
-            const hut = this.world.merlinHut;
-            if (dist(this.player.x, this.player.y, hut.x, hut.y) < MERLIN_HUT_INTERACT_RANGE) {
-                this.nearMerlinHut = true;
-            }
-        }
-    }
-
-    collectWorldGem(gem) {
-        gem.collected = true;
-        const elem = this.player.collectGem();
-        this.trackGemProgress();
-        this.sound.gemCollect();
-        this.ui.showNotification(`Blue Gem found! (${this.player.blueGems}/5)`);
-        if (elem) this.announceElementUnlock(elem, "pulses");
-        if (this.player.blueGems >= 5) {
-            this.ui.showDialog("You have all 5 Blue Gems! Journey to Ing Castle - a dark presence awaits outside its gates...");
-        }
-    }
-
-    // What the ACT button would do if it were pressed right now: the symbol it
-    // wears and how to describe it. handleInteraction() decides which context
-    // wins, so this walks the same checks in the same order - the symbol on the
-    // button is always the thing that will actually happen. Returns null when
-    // there is nothing in reach to act on.
-    interactContext() {
-        // A dialog swallows every other interaction until it is finished.
-        if (this.ui.dialogActive) {
-            return { icon: "💬", short: "continue", long: "continue" };
-        }
-        if (this.nearMakersHollow && this.onSurface) {
-            return { icon: "🪜", short: "climb down the ladder", long: "climb down the ladder" };
-        }
-        if (this.nearCaveEntrance && !this.inCave) {
-            return { icon: "🕳️", short: "enter cave", long: "enter cave" };
-        }
-        if (this.nearCaveExit && this.inCave) {
-            return { icon: "⬆️", short: "climb out", long: "climb out" };
-        }
-        if (this.nearSkyLadder && this.onSurface) {
-            return { icon: "☁️", short: "climb to the Cloudlands", long: "climb to the Cloudlands" };
-        }
-        if (this.nearSkyExit && this.inSky) {
-            return { icon: "⬇️", short: "climb down", long: "climb back down" };
-        }
-        if (!this.onSurface) return null;
-
-        if (this.nearFountain) {
-            return { icon: "⛲", short: "use the Fountain", long: "use the Fountain of Youth" };
-        }
-        if (this.nearShop) {
-            return { icon: "🏪", short: "enter shop", long: "enter shop" };
-        }
-        if (this.nearSapling) {
-            return { icon: "🌱", short: "dig up the seed", long: "dig up the Worldtree Seed" };
-        }
-        if (this.nearTapestry) {
-            return { icon: "📜", short: "read the tapestry", long: "read the tapestry" };
-        }
-        if (this.nearLady) {
-            return { icon: "💬", short: "speak with the Lady", long: "speak with the Lady of the Lake" };
-        }
-        if (this.nearMerlin) {
-            return { icon: "💬", short: "speak with Merlin", long: "speak with Merlin" };
-        }
-        if (this.nearMerlinHut) {
-            return { icon: "📖", short: "enter hut", long: "read ancient lore" };
-        }
-        if (this.nearAnimal) {
-            // The apple is the whole interaction, so it is the whole symbol; a
-            // paw stands in when there is no apple left to offer.
-            const fed = this.player.apples > 0;
-            const short = fed
-                ? `feed an apple to the ${this.nearAnimal.name} (${this.player.apples} left)`
-                : `tame the ${this.nearAnimal.name} - you need an apple!`;
-            const long = fed
-                ? `feed an apple to the ${this.nearAnimal.name} (${APPLE_ITEM.icon} ${this.player.apples})`
-                : short;
-            return { icon: fed ? APPLE_ITEM.icon : "🐾", short, long };
-        }
-        return null;
-    }
-
-    handleInteraction() {
-        // The ladder down to the Maker's Hollow
-        if (this.nearMakersHollow && this.onSurface) {
-            this.enterMakersHollow();
-            return;
-        }
-
-        // Cave entrance/exit interaction
-        if (this.nearCaveEntrance && !this.inCave) {
-            this.enterCave(this.nearCaveEntrance);
-            return;
-        }
-        if (this.nearCaveExit && this.inCave) {
-            this.exitCave(this.nearCaveExit);
-            return;
-        }
-
-        // Sky ladder up / down
-        if (this.nearSkyLadder && this.onSurface) {
-            this.enterSky();
-            return;
-        }
-        if (this.nearSkyExit && this.inSky) {
-            this.exitSky();
-            return;
-        }
-
-        // Don't allow surface interactions from another realm
-        if (!this.onSurface) return;
-
-        // Fountain of Youth interaction
-        if (this.nearFountain) {
-            this.startFountainRiddles();
-            return;
-        }
-
-        // Shop interaction
-        if (this.nearShop) {
-            this.sound.menuSelect();
-            this.ui.openShop(this.nearShop, this.player);
-            return;
-        }
-
-        // Dig a rootless sapling back up for its seed
-        if (this.nearSapling) {
-            this.uprootSapling();
-            return;
-        }
-
-        // The family tapestry in Ing Castle's great hall
-        if (this.nearTapestry) {
-            this.readCastleTapestry();
-            return;
-        }
-
-        // Lady of the Lake interaction
-        if (this.nearLady) {
-            this.startLadyQuest();
-            return;
-        }
-
-        // Merlin interaction
-        if (this.nearMerlin) {
-            this.startMerlinQuest();
-            return;
-        }
-
-        // Merlin's Hut lore interaction
-        if (this.nearMerlinHut) {
-            this.sound.menuSelect();
-            this.ui.openLore();
-            return;
-        }
-
-        // Tame a nearby wild animal with an apple
-        if (this.nearAnimal) {
-            this.tameNearbyAnimal();
-        }
-    }
-
-    startLadyQuest() {
-        // What the player is actually carrying outranks the quest bookkeeping.
-        // Beating the guardian first used to leave her blind to the sheath in
-        // his hands while asking him to go and fetch it - and the troll was
-        // already gone, so there was no way out of it.
-        const unaskedFor = !this.ladyQuestAsked;
-        if (this.player.hasSheath && this.ladyQuestState !== "complete") {
-            this.ladyQuestState = "sheath_acquired";
-        }
-
-        if (this.ladyQuestState === "none") {
-            // First meeting - give the quest
-            this.ui.showDialog("\"I am the Lady of the Lake. I hold Excalibur, the mightiest blade ever forged.\"", () => {
-                this.ui.showDialog("\"But before I entrust it to you, brave Ingoizer, you must prove your valor.\"", () => {
-                    this.ui.showDialog("\"A fearsome troll guards the jewel-encrusted sheath of Excalibur deep in the Dark Forest.\"", () => {
-                        this.ui.showDialog("\"Defeat the troll and bring the sheath back to me. Only then shall the sword be yours.\"", () => {
-                            this.ladyQuestState = "given";
-                            this.ladyQuestAsked = true;
-                            this.ui.showNotification("Quest: Defeat the Sheath Guardian!");
-                        });
-                    });
-                });
-            });
-        } else if (this.ladyQuestState === "given") {
-            // Quest given but sheath not yet acquired
-            this.ui.showDialog("\"The troll still guards the sheath in the Dark Forest. Seek it out and prove your strength, Ingoizer.\"");
-        } else if (this.ladyQuestState === "sheath_acquired") {
-            // Player has the sheath - give Excalibur
-            this.sound.excaliburReveal();
-            this.world.ladyOfLake.excaliburGiven = true;
-            this.player.addWeapon("excalibur");
-            this.player.equipWeapon("excalibur");
-            this.ladyQuestState = "complete";
-            const greeting = unaskedFor
-                ? "\"I am the Lady of the Lake - and you come to me already carrying the sheath of Excalibur. You went and took it from the guardian without being asked.\""
-                : "\"You have defeated the guardian and recovered the sheath! You are truly worthy, Ingoizer.\"";
-            this.ui.showDialog(greeting, () => {
-                this.ui.showDialog("\"Take Excalibur - the legendary sword of kings! Together with its sheath, you shall be unstoppable.\"");
-                this.ui.showNotification("Excalibur obtained!");
-            });
-        } else if (this.ladyQuestState === "complete") {
-            this.ui.showDialog("\"Go forth with Excalibur, brave Ingoizer. The realm depends on you.\"");
-        }
-    }
-
-    spawnSheathTroll() {
-        const cfg = SHEATH_TROLL;
-        const pos = tileToWorld(cfg.spawnTile.x, cfg.spawnTile.y);
-        this.sheathTroll = new Monster("troll", pos.x, pos.y);
-        // Override stats with guardian-specific values
-        this.sheathTroll.name = cfg.name;
-        this.sheathTroll.hp = cfg.hp;
-        this.sheathTroll.maxHp = cfg.hp;
-        this.sheathTroll.damage = cfg.damage;
-        this.sheathTroll.speed = cfg.speed;
-        this.sheathTroll.size = cfg.size;
-        this.sheathTroll.color = cfg.color;
-        this.sheathTroll.xp = cfg.xp;
-        this.sheathTroll.goldDrop = cfg.goldDrop;
-        this.sheathTroll.aggroRange = cfg.aggroRange;
-        this.sheathTroll.leashRange = cfg.leashRange;
-        this.sheathTroll.isSheathGuardian = true;
-        this.sheathTroll.weaponDrop = null;
-        this.sheathTroll.gemDrop = false;
-        this.monsters.push(this.sheathTroll);
-    }
-
-    spawnGreenMonsters() {
-        for (const [type, def] of Object.entries(GREEN_MONSTER_TYPES)) {
-            const zone = ZONES.greenlands;
-            if (!zone) continue;
-            const count = randInt(4, MAX_MONSTERS_PER_ZONE);
-            for (let i = 0; i < count; i++) {
-                let attempts = 0;
-                while (attempts < 20) {
-                    const tx = zone.x + randInt(2, zone.w - 3);
-                    const ty = zone.y + randInt(2, zone.h - 3);
-                    if (!this.world.blocksMonster(tx, ty)) {
-                        const pos = tileToWorld(tx, ty);
-                        const m = new Monster("goblin", pos.x, pos.y);
-                        // Override with green monster stats
-                        m.type = type;
-                        m.name = def.name;
-                        m.hp = def.hp;
-                        m.maxHp = def.hp;
-                        m.damage = def.damage;
-                        m.speed = def.speed;
-                        m.xp = def.xp;
-                        m.goldDrop = def.goldDrop;
-                        m.color = def.color;
-                        m.size = def.size;
-                        m.weaponDrop = def.weaponDrop;
-                        m.gemDrop = def.gemDrop;
-                        this.monsters.push(m);
-                        break;
-                    }
-                    attempts++;
-                }
-            }
-        }
-    }
-
-    startMerlinQuest() {
-        if (this.merlinQuestState === "none") {
-            this.ui.showDialog("\"Ah, Ingoizer! I am Merlin, the great wizard of these swamps.\"", () => {
-                this.ui.showDialog("\"I have lost my wand, you see. Without it, my powers are... diminished.\"", () => {
-                    this.ui.showDialog("\"I left it in my old hut, near the gates of Ing Castle. Could you retrieve it for me?\"", () => {
-                        this.ui.showDialog("\"Bring my wand back and I shall reward you with my Enchanter's Mallet - a tool of great power!\"", () => {
-                            this.merlinQuestState = "given";
-                            this.world.merlinHut.showWand = true;
-                            this.ui.showNotification("Quest: Retrieve Merlin's Wand!");
-                        });
-                    });
-                });
-            });
-        } else if (this.merlinQuestState === "given") {
-            this.ui.showDialog("\"My wand is in my old hut, near Ing Castle. Please hurry, Ingoizer!\"");
-        } else if (this.merlinQuestState === "wand_acquired") {
-            // Player has the wand - give reward
-            this.merlinQuestState = "complete";
-            this.player.hasMallet = true;
-            this.player.hasMerlinWand = false;
-            this.ui.showDialog("\"You found my wand! Splendid! Thank you, brave Ingoizer!\"", () => {
-                this.ui.showDialog("\"As promised, take this Enchanter's Mallet. With it, you can enchant a weapon AND armor with elemental power!\"", () => {
-                    this.ui.showDialog("\"Open your inventory and use the mallet to imbue your gear with fire, water, ice, or lightning.\"");
-                    this.ui.showNotification("Enchanter's Mallet obtained!");
-                });
-            });
-        } else if (this.merlinQuestState === "complete") {
-            if (this.player.hasMallet && (!this.player.malletUsedWeapon || !this.player.malletUsedArmor)) {
-                this.ui.showDialog("\"Remember to use the Enchanter's Mallet from your inventory, Ingoizer!\"");
-            } else {
-                this.ui.showDialog("\"May the enchantment serve you well on your quest, Ingoizer!\"");
-            }
-        }
-    }
-
-    collectGreenGem(gem) {
-        gem.collected = true;
-        this.sound.gemCollect();
-        if (gem.type === "attack") {
-            this.player.greenGemAttack = true;
-            this.ui.showNotification(`${GREEN_GEM_ATTACK.icon} ${GREEN_GEM_ATTACK.name} found! (+${GREEN_GEM_ATTACK.bonus} ATK)`);
-            this.ui.showDialog(`You found the ${GREEN_GEM_ATTACK.name}! It adds +${GREEN_GEM_ATTACK.bonus} attack damage to all your weapons.`);
-        } else {
-            this.player.greenGemDefense = true;
-            this.ui.showNotification(`${GREEN_GEM_DEFENSE.icon} ${GREEN_GEM_DEFENSE.name} found! (+${GREEN_GEM_DEFENSE.bonus} DEF)`);
-            this.ui.showDialog(`You found the ${GREEN_GEM_DEFENSE.name}! It adds +${GREEN_GEM_DEFENSE.bonus} defense to all your armor.`);
-        }
-        // Check if both gems collected
-        if (this.player.greenGemAttack && this.player.greenGemDefense) {
-            this.ui.showDialog("You have both Green Gems! Journey to the Green Knight's Castle to face the champion!");
-        }
-    }
-
-    collectMerlinWand() {
-        this.world.merlinHut.wandCollected = true;
-        this.player.hasMerlinWand = true;
-        this.merlinQuestState = "wand_acquired";
-        this.sound.gemCollect();
-        this.ui.showNotification("Merlin's Wand collected! Return to Merlin.");
-        this.ui.showDialog("You found Merlin's wand! It hums with arcane energy. Return it to Merlin in the swamp.");
-    }
-
-    updateBurningTrees(dt) {
-        // Check for burning trees and damage nearby monsters
-        const playerTile = worldToTile(this.player.x, this.player.y);
-        const checkRadius = 10; // tiles around player to check
-
-        for (let ty = playerTile.y - checkRadius; ty <= playerTile.y + checkRadius; ty++) {
-            for (let tx = playerTile.x - checkRadius; tx <= playerTile.x + checkRadius; tx++) {
-                if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
-                if (this.world.tiles[ty][tx] !== TILE.BURNING_TREE) continue;
-
-                const treeWorldX = tx * TILE_SIZE + TILE_SIZE / 2;
-                const treeWorldY = ty * TILE_SIZE + TILE_SIZE / 2;
-
-                // Update burn timer
-                if (!this.world.burningTrees) this.world.burningTrees = {};
-                const key = `${tx},${ty}`;
-                if (!this.world.burningTrees[key]) {
-                    this.world.burningTrees[key] = { timer: 8000 }; // burns for 8 seconds
-                }
-                this.world.burningTrees[key].timer -= dt;
-
-                // Fire is out - turn to path/ash
-                if (this.world.burningTrees[key].timer <= 0) {
-                    this.world.tiles[ty][tx] = TILE.PATH;
-                    delete this.world.burningTrees[key];
-                    continue;
-                }
-
-                // Damage monsters that touch the burning tree
-                const damageRange = TILE_SIZE * 1.2;
-                for (const m of this.monsters) {
-                    if (!m.alive) continue;
-                    if (dist(m.x, m.y, treeWorldX, treeWorldY) < damageRange) {
-                        if (!m._lastBurnTime || Date.now() - m._lastBurnTime > 500) {
-                            m._lastBurnTime = Date.now();
-                            const fireDmg = 8;
-                            const killed = m.takeDamage(fireDmg, treeWorldX, treeWorldY);
-                            this.combat.addDamageNumber(m.x, m.y, fireDmg, false);
-                            this.combat.spawnHitParticles(m.x, m.y, "#ff6600", 3);
-                            if (killed) {
-                                this.onEntityKilled(m, false);
-                            }
-                        }
-                    }
-                }
-
-                // Also damage Green Knight
-                if (this.greenKnight && this.greenKnight.alive && this.greenKnight.spawned) {
-                    if (dist(this.greenKnight.x, this.greenKnight.y, treeWorldX, treeWorldY) < damageRange) {
-                        if (!this.greenKnight._lastBurnTime || Date.now() - this.greenKnight._lastBurnTime > 500) {
-                            this.greenKnight._lastBurnTime = Date.now();
-                            const fireDmg = 8;
-                            const killed = this.greenKnight.takeDamage(fireDmg, treeWorldX, treeWorldY);
-                            this.combat.addDamageNumber(this.greenKnight.x, this.greenKnight.y, fireDmg, false);
-                            if (killed) {
-                                this.onEntityKilled(this.greenKnight, true);
-                            }
-                        }
-                    }
-                }
-
-                // Also damage boss
-                if (this.boss && this.boss.alive && this.boss.spawned) {
-                    if (dist(this.boss.x, this.boss.y, treeWorldX, treeWorldY) < damageRange) {
-                        if (!this.boss._lastBurnTime || Date.now() - this.boss._lastBurnTime > 500) {
-                            this.boss._lastBurnTime = Date.now();
-                            const fireDmg = 8;
-                            const killed = this.boss.takeDamage(fireDmg, treeWorldX, treeWorldY);
-                            this.combat.addDamageNumber(this.boss.x, this.boss.y, fireDmg, false);
-                            if (killed) {
-                                this.onEntityKilled(this.boss, true);
-                            }
-                        }
-                    }
-                }
-
-                // Damage player too
-                if (dist(this.player.x, this.player.y, treeWorldX, treeWorldY) < damageRange) {
-                    this.player.takeDamage(5, treeWorldX, treeWorldY);
-                }
-
-                // Spawn fire particles for visual effect
-                this.combat.particles.push({
-                    x: treeWorldX + randFloat(-8, 8),
-                    y: treeWorldY + randFloat(-16, 0),
-                    vx: randFloat(-0.3, 0.3),
-                    vy: randFloat(-1.5, -0.5),
-                    life: 300,
-                    maxLife: 300,
-                    size: randFloat(2, 5),
-                    color: choose(["#ff4400", "#ff8800", "#ffaa00", "#ffcc00"]),
-                });
-            }
-        }
-    }
-
-    // ============================================
-    // Cave System Methods
-    // ============================================
-
-    spawnCaveMonstersForCave(caveWorld) {
-        this.caveMonsters = [];
-        for (const [type, def] of Object.entries(CAVE_MONSTER_TYPES)) {
-            const count = randInt(3, 6);
-            for (let i = 0; i < count; i++) {
-                let attempts = 0;
-                while (attempts < 30) {
-                    const tx = randInt(5, CAVE_W - 6);
-                    const ty = randInt(5, CAVE_H - 6);
-                    if (!caveWorld.isSolid(tx, ty)) {
-                        const exit = caveWorld.exit;
-                        if (exit && Math.abs(tx - exit.x) <= 3 && Math.abs(ty - exit.y) <= 3) { attempts++; continue; }
-                        const pos = tileToWorld(tx, ty);
-                        const m = new Monster("goblin", pos.x, pos.y);
-                        m.type = type; m.name = def.name; m.hp = def.hp; m.maxHp = def.hp;
-                        m.damage = def.damage; m.speed = def.speed; m.xp = def.xp;
-                        m.goldDrop = def.goldDrop; m.color = def.color; m.size = def.size;
-                        m.weaponDrop = def.weaponDrop; m.weaponDropChance = def.weaponDropChance || 0;
-                        m.gemDrop = def.gemDrop; m.armorDrop = def.armorDrop;
-                        m.armorDropChance = def.armorDropChance || 0; m.isCaveMonster = true;
-                        this.caveMonsters.push(m);
-                        break;
-                    }
-                    attempts++;
-                }
-            }
-        }
-    }
-
-    spawnCaveMonsters(dt) {
-        if (!this.inCave) return;
-        this.caveMonsterSpawnTimer += dt;
-        if (this.caveMonsterSpawnTimer < MONSTER_SPAWN_INTERVAL) return;
-        this.caveMonsterSpawnTimer = 0;
-
-        const aliveCount = this.caveMonsters.filter(m => m.alive).length;
-        if (aliveCount >= 20) return;
-
-        const caveWorld = this.caveWorlds[this.activeCaveId];
-        if (!caveWorld) return;
-
-        const types = Object.keys(CAVE_MONSTER_TYPES);
-        const type = choose(types);
-        const def = CAVE_MONSTER_TYPES[type];
-        if (Math.random() > MONSTER_SPAWN_RATE * 2) return;
-
-        let attempts = 0;
-        while (attempts < 15) {
-            const tx = randInt(5, CAVE_W - 6);
-            const ty = randInt(5, CAVE_H - 6);
-            if (!caveWorld.isSolid(tx, ty)) {
-                const pos = tileToWorld(tx, ty);
-                if (dist(pos.x, pos.y, this.player.x, this.player.y) > 200) {
-                    const m = new Monster("goblin", pos.x, pos.y);
-                    m.type = type; m.name = def.name; m.hp = def.hp; m.maxHp = def.hp;
-                    m.damage = def.damage; m.speed = def.speed; m.xp = def.xp;
-                    m.goldDrop = def.goldDrop; m.color = def.color; m.size = def.size;
-                    m.weaponDrop = def.weaponDrop; m.weaponDropChance = def.weaponDropChance || 0;
-                    m.gemDrop = def.gemDrop; m.armorDrop = def.armorDrop;
-                    m.armorDropChance = def.armorDropChance || 0; m.isCaveMonster = true;
-                    this.caveMonsters.push(m);
-                    break;
-                }
-            }
-            attempts++;
-        }
-        this.caveMonsters = this.caveMonsters.filter(m => m.alive || m.deathTimer > 0);
-    }
-
-    enterCave(entrance) {
-        this.inCave = true;
-        this.activeCaveId = entrance.id;
-        this.savedSurfacePos = { x: this.player.x, y: this.player.y };
-
-        const caveWorld = this.caveWorlds[entrance.id];
-        if (caveWorld.exit) {
-            this.player.x = caveWorld.exit.worldX;
-            this.player.y = caveWorld.exit.worldY - TILE_SIZE;
-        }
-
-        // Spawn monsters for this cave
-        this.spawnCaveMonstersForCave(caveWorld);
-        this.caveBoss = null;
-
-        // The pack climbs down with you
-        this.nearAnimal = null;
-        this.gatherCompanions();
-
-        const ce = CAVE_ENTRANCES.find(e => e.id === entrance.id);
-        this.currentZone = "cave";
-        this.zoneDisplayTimer = 3000;
-        this.sound.menuSelect();
-        this.ui.showNotification(`Entered ${ce.label}...`);
-        if (ce.difficulty <= 2) {
-            this.ui.showDialog("You descend into a dark maze. Find the treasure at the center!");
-        } else {
-            this.ui.showDialog("You descend into a dark cave. A powerful creature guards something precious within...");
-        }
-    }
-
-    exitCave(exitData) {
-        this.inCave = false;
-        this.activeCaveId = null;
-        this.caveBoss = null;
-
-        const mainEntrance = this.world.caveEntrances.find(e => e.id === exitData.id);
-        if (mainEntrance) {
-            this.player.x = mainEntrance.worldX;
-            this.player.y = mainEntrance.worldY + TILE_SIZE;
-        }
-
-        this.gatherCompanions();
-        this.sound.menuSelect();
-        this.ui.showNotification("Returned to the surface.");
-    }
-
-    // The ladder in the southwest corner. Nothing marks it; the only way to
-    // find it is to walk out to the edge of the world and look.
-    checkMakersHollow() {
-        this.nearMakersHollow = false;
-        if (!this.onSurface) return;
-        const hollow = this.world.makersHollow;
-        if (!hollow) return;
-        this.nearMakersHollow = dist(this.player.x, this.player.y, hollow.x, hollow.y) < MAKERS_HOLLOW.range;
-    }
-
-    enterMakersHollow() {
-        const hollow = this.world.makersHollow;
-        if (!hollow) return;
-        const firstTime = !hollow.discovered;
-        hollow.discovered = true;
-        if (firstTime) {
-            this.world.invalidateMapCache();
-            GameAnalytics.track("makers-hollow-found");
-            this.ui.showNotification("\u2728 You found the Maker's Hollow!");
-        }
-        this.sound.secretDiscovery();
-        this.ui.openAbout();
-    }
-
-    checkCaveProximity() {
-        if (this.inCave) {
-            this.nearCaveExit = null;
-            const caveWorld = this.caveWorlds[this.activeCaveId];
-            if (!caveWorld) return;
-            // Check main exit
-            if (caveWorld.exit && dist(this.player.x, this.player.y, caveWorld.exit.worldX, caveWorld.exit.worldY) < CAVE_ENTRANCE_RANGE) {
-                this.nearCaveExit = caveWorld.exit;
-            }
-            // Check center exit (maze caves)
-            if (!this.nearCaveExit && caveWorld.centerExit && dist(this.player.x, this.player.y, caveWorld.centerExit.worldX, caveWorld.centerExit.worldY) < CAVE_ENTRANCE_RANGE) {
-                this.nearCaveExit = caveWorld.centerExit;
-            }
-        } else {
-            this.nearCaveEntrance = null;
-            if (!this.onSurface) return;
-            for (const entrance of this.world.caveEntrances) {
-                if (dist(this.player.x, this.player.y, entrance.worldX, entrance.worldY) < CAVE_ENTRANCE_RANGE) {
+        …12104 tokens truncated…worldY) < CAVE_ENTRANCE_RANGE) {
                     this.nearCaveEntrance = entrance;
                     break;
                 }
@@ -3577,15 +2551,28 @@ class Game {
             this.skyWorld.renderExitLabels(ctx, this.camera, this.time);
         }
 
-        // Render minimap
+        // The minimap is information, not the primary animation surface. Its
+        // fog, markers and terrain are comparatively expensive to compose, so
+        // cap it at 12 FPS while the game is moving and force a fresh frame
+        // after state resets or viewport changes.
         this.updateMinimapShyness();
         const mapOpts = { time: this.time };
-        if (this.inCave && this.caveWorlds[this.activeCaveId]) {
-            this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss, mapOpts);
-        } else if (this.inSky) {
-            this.skyWorld.renderMinimap(this.minimapCtx, this.player, this.skyMonsters, this.olympianBoss, mapOpts);
-        } else {
-            this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss, this.greenKnight, this.companions, mapOpts);
+        const minimapRealm = this.inCave ? `cave:${this.activeCaveId}` : (this.inSky ? "sky" : "surface");
+        const minimapState = `${minimapRealm}:${Math.floor(this.player.x / TILE_SIZE)}:${Math.floor(this.player.y / TILE_SIZE)}`;
+        if (minimapState !== this.minimapStateSignature) this.minimapDirty = true;
+        const minimapDue = this.minimapDirty
+            || (!this.paused && this.time - this.lastMinimapRender >= 1000 / 12);
+        if (minimapDue) {
+            if (this.inCave && this.caveWorlds[this.activeCaveId]) {
+                this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss, mapOpts);
+            } else if (this.inSky) {
+                this.skyWorld.renderMinimap(this.minimapCtx, this.player, this.skyMonsters, this.olympianBoss, mapOpts);
+            } else {
+                this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss, this.greenKnight, this.companions, mapOpts);
+            }
+            this.lastMinimapRender = this.time;
+            this.minimapStateSignature = minimapState;
+            this.minimapDirty = false;
         }
 
         // Render world map if open

@@ -34,10 +34,15 @@ class Game {
         });
 
         this.running = false;
+        this.frameRequestId = null;
+        this.loopGeneration = 0;
         this.paused = false;
         this.lastTime = 0;
         this.time = 0;
         this.engagedPlayTime = 0;
+        this.lastMinimapRender = 0;
+        this.minimapDirty = true;
+        this.minimapStateSignature = "";
 
         // Input
         this.keys = {
@@ -209,6 +214,7 @@ class Game {
         TILES_X = Math.ceil(CANVAS_W / TILE_SIZE) + 2;
         this.canvas.width = CANVAS_W;
         this.canvas.height = CANVAS_H;
+        this.minimapDirty = true;
         applyViewSight();
 
         // Ground that just came into view should chart on the next frame, not
@@ -336,6 +342,9 @@ class Game {
     // predates a feature simply inherit that feature's fresh defaults.
     resetState(gemSeed) {
         this.state = "playing";
+        this.minimapDirty = true;
+        this.lastMinimapRender = 0;
+        this.minimapStateSignature = "";
         this.engagedPlayTime = 0;
         this.sound.init();
         this.resizeViewport();
@@ -463,9 +472,20 @@ class Game {
     }
 
     beginLoop() {
+        this.stopLoop();
         this.running = true;
+        const generation = ++this.loopGeneration;
         this.lastTime = performance.now();
-        requestAnimationFrame((t) => this.gameLoop(t));
+        this.frameRequestId = requestAnimationFrame((t) => this.gameLoop(t, generation));
+    }
+
+    stopLoop() {
+        this.running = false;
+        this.loopGeneration++;
+        if (this.frameRequestId !== null) {
+            cancelAnimationFrame(this.frameRequestId);
+            this.frameRequestId = null;
+        }
     }
 
     // ============================================
@@ -489,7 +509,7 @@ class Game {
             return false;
         }
 
-        this.running = false;
+        this.stopLoop();
         this.ui.hideBossHealth();
         this.ui.closeMenus();
         GameAnalytics.track("game-load");
@@ -512,7 +532,7 @@ class Game {
     }
 
     restart() {
-        this.running = false;
+        this.stopLoop();
         this.ui.closeMenus();
         this.ui.hideBossHealth();
         this.ui.hideHud();
@@ -954,8 +974,9 @@ class Game {
         else this.sound.stopClubMusic();
     }
 
-    gameLoop(timestamp) {
-        if (!this.running) return;
+    gameLoop(timestamp, generation) {
+        if (!this.running || generation !== this.loopGeneration) return;
+        this.frameRequestId = null;
 
         const dt = Math.min(timestamp - this.lastTime, 50); // Cap delta
         this.lastTime = timestamp;
@@ -993,7 +1014,9 @@ class Game {
         // Clear just-pressed keys
         this.keyJustPressed = {};
 
-        requestAnimationFrame((t) => this.gameLoop(t));
+        if (this.running && generation === this.loopGeneration) {
+            this.frameRequestId = requestAnimationFrame((t) => this.gameLoop(t, generation));
+        }
     }
 
     update(dt) {
@@ -3577,15 +3600,28 @@ class Game {
             this.skyWorld.renderExitLabels(ctx, this.camera, this.time);
         }
 
-        // Render minimap
+        // The minimap is information, not the primary animation surface. Its
+        // fog, markers and terrain are comparatively expensive to compose, so
+        // cap it at 12 FPS while the game is moving and force a fresh frame
+        // after state resets or viewport changes.
         this.updateMinimapShyness();
         const mapOpts = { time: this.time };
-        if (this.inCave && this.caveWorlds[this.activeCaveId]) {
-            this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss, mapOpts);
-        } else if (this.inSky) {
-            this.skyWorld.renderMinimap(this.minimapCtx, this.player, this.skyMonsters, this.olympianBoss, mapOpts);
-        } else {
-            this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss, this.greenKnight, this.companions, mapOpts);
+        const minimapRealm = this.inCave ? `cave:${this.activeCaveId}` : (this.inSky ? "sky" : "surface");
+        const minimapState = `${minimapRealm}:${Math.floor(this.player.x / TILE_SIZE)}:${Math.floor(this.player.y / TILE_SIZE)}`;
+        if (minimapState !== this.minimapStateSignature) this.minimapDirty = true;
+        const minimapDue = this.minimapDirty
+            || (!this.paused && this.time - this.lastMinimapRender >= 1000 / 12);
+        if (minimapDue) {
+            if (this.inCave && this.caveWorlds[this.activeCaveId]) {
+                this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss, mapOpts);
+            } else if (this.inSky) {
+                this.skyWorld.renderMinimap(this.minimapCtx, this.player, this.skyMonsters, this.olympianBoss, mapOpts);
+            } else {
+                this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss, this.greenKnight, this.companions, mapOpts);
+            }
+            this.lastMinimapRender = this.time;
+            this.minimapStateSignature = minimapState;
+            this.minimapDirty = false;
         }
 
         // Render world map if open

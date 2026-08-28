@@ -36,6 +36,16 @@ class UIManager {
         this.invWeapons = document.getElementById("inventory-weapons");
         this.invGems = document.getElementById("inventory-gems");
         this.arrowCount = document.getElementById("arrow-count");
+        this.arrowIcon = document.getElementById("arrow-icon");
+        this.greenGemCounter = document.getElementById("green-gem-counter");
+        this.greenGemCount = document.getElementById("green-gem-count");
+        this.skyCounter = document.getElementById("sky-counter");
+        this.skyKillCount = document.getElementById("sky-kill-count");
+        this.potionCount = document.getElementById("potion-count");
+        this.appleCount = document.getElementById("apple-count");
+        this.companionCounter = document.getElementById("companion-counter");
+        this.companionCount = document.getElementById("companion-count");
+        this.questItems = document.getElementById("quest-items");
         this.invBows = document.getElementById("inventory-bows");
         this.invArmor = document.getElementById("inventory-armor");
         this.invCompanions = document.getElementById("inventory-companions");
@@ -75,6 +85,7 @@ class UIManager {
             lightning: document.getElementById("elem-lightning"),
             earth: document.getElementById("elem-earth"),
         };
+        this._hudSignature = null;
 
         this.setupButtons();
     }
@@ -182,6 +193,7 @@ class UIManager {
     }
 
     showHud() {
+        this._hudSignature = null;
         this.hud.classList.remove("hidden");
     }
 
@@ -190,6 +202,28 @@ class UIManager {
     }
 
     updateHud(player) {
+        const following = this.game.aliveCompanionCount ? this.game.aliveCompanionCount() : 0;
+        const weapon = player.getWeapon();
+        const bow = player.getBow();
+        const armor = player.getArmor();
+        const elementState = Object.keys(this.elemSlots)
+            .map(key => `${key}:${player.elements[key] ? 1 : 0}:${player.activeElement === key ? 1 : 0}`)
+            .join(",");
+        const signature = [
+            Math.ceil(player.hp), player.maxHp, player.blueGems,
+            this.game.greenlandsUnlocked, player.greenGemAttack, player.greenGemDefense,
+            player.gold, player.arrows, player.hasZeusBolts,
+            this.game.inSky, this.game.olympianSummoned, this.game.olympianDefeated,
+            this.game.zeusAppeased, this.game.skyMonsterKills,
+            player.healthPotions, player.greaterHealthPotions, player.apples, following,
+            weapon.name, weapon.damage, bow.name, bow.damage, armor.name, armor.defense,
+            player.hasMerlinWand, player.hasSheath, player.hasWorldtreeSeed,
+            this.game.ladyQuestState, this.game.touchControls && this.game.touchControls.active,
+            elementState,
+        ].join("|");
+        if (signature === this._hudSignature) return false;
+        this._hudSignature = signature;
+
         // Health
         const hpPercent = (player.hp / player.maxHp) * 100;
         this.healthFill.style.width = hpPercent + "%";
@@ -208,12 +242,12 @@ class UIManager {
         this.gemCount.textContent = player.blueGems;
 
         // Green gems (show after Black Knight defeated)
-        const greenGemEl = document.getElementById("green-gem-counter");
+        const greenGemEl = this.greenGemCounter;
         if (greenGemEl) {
             if (this.game.greenlandsUnlocked) {
                 greenGemEl.classList.remove("hidden");
                 const count = (player.greenGemAttack ? 1 : 0) + (player.greenGemDefense ? 1 : 0);
-                document.getElementById("green-gem-count").textContent = count;
+                this.greenGemCount.textContent = count;
             } else {
                 greenGemEl.classList.add("hidden");
             }
@@ -224,7 +258,7 @@ class UIManager {
 
         // Arrows - once Zeus falls, every arrow in the quiver is one of his bolts
         this.arrowCount.textContent = player.arrows;
-        const arrowIcon = document.getElementById("arrow-icon");
+        const arrowIcon = this.arrowIcon;
         if (arrowIcon) {
             const wantIcon = player.hasZeusBolts ? ZEUS_BOLT.icon : "🏹";
             if (arrowIcon.textContent !== wantIcon) {
@@ -236,50 +270,46 @@ class UIManager {
         }
 
         // Cloudlands keeper counter (only while up in the sky, before the summon)
-        const skyEl = document.getElementById("sky-counter");
+        const skyEl = this.skyCounter;
         if (skyEl) {
             if (this.game.inSky && !this.game.olympianSummoned && !this.game.olympianDefeated && !this.game.zeusAppeased) {
                 skyEl.classList.remove("hidden");
-                document.getElementById("sky-kill-count").textContent = this.game.skyMonsterKills;
+                this.skyKillCount.textContent = this.game.skyMonsterKills;
             } else {
                 skyEl.classList.add("hidden");
             }
         }
 
         // Health potions
-        const potionEl = document.getElementById("potion-count");
+        const potionEl = this.potionCount;
         if (potionEl) {
             potionEl.textContent = player.healthPotions + player.greaterHealthPotions;
         }
 
         // Apples
-        const appleEl = document.getElementById("apple-count");
+        const appleEl = this.appleCount;
         if (appleEl) {
             appleEl.textContent = player.apples;
         }
 
         // Animal companions (only shown once you have one)
-        const companionWrap = document.getElementById("companion-counter");
+        const companionWrap = this.companionCounter;
         if (companionWrap) {
-            const following = this.game.aliveCompanionCount ? this.game.aliveCompanionCount() : 0;
             if (following > 0) {
                 companionWrap.classList.remove("hidden");
-                document.getElementById("companion-count").textContent = following;
+                this.companionCount.textContent = following;
             } else {
                 companionWrap.classList.add("hidden");
             }
         }
 
         // Weapon & Armor
-        const weapon = player.getWeapon();
-        const bow = player.getBow();
-        const armor = player.getArmor();
         const defText = armor.defense > 0 ? `  |  ${armor.icon} DEF: ${armor.defense}` : "";
         this.weaponDisplay.textContent = `${weapon.icon} ${weapon.name}  |  ${bow.icon} ${bow.name}${defText}`;
 
         // Carried quest items sit at the end of the counter row: a small
         // gold-edged chip each, with the errand in its tooltip.
-        const questEl = document.getElementById("quest-items");
+        const questEl = this.questItems;
         if (questEl) {
             const touch = this.game.touchControls && this.game.touchControls.active;
             const carrying = [];
@@ -321,6 +351,7 @@ class UIManager {
                 slot.classList.add("active");
             }
         }
+        return true;
     }
 
     // Zone name display

@@ -36,9 +36,21 @@ async function openTitle(page) {
  */
 async function startNewGame(page) {
     await openTitle(page);
-    await page.click("#startBtn");
+    await chooseCharacterAndBegin(page);
     await page.waitForFunction(() => window.game.state === "playing");
     await dismissDialogs(page);
+}
+
+/**
+ * From the title screen, open character selection, pick a sibling, and begin.
+ * Defaults to the first sibling; pass an id to pick a specific one.
+ */
+async function chooseCharacterAndBegin(page, siblingId) {
+    await page.click("#startBtn");
+    await page.waitForSelector("#character-screen:not(.hidden)");
+    const card = siblingId ? `.char-card[data-id="${siblingId}"]` : ".char-card";
+    await page.click(card);
+    await page.click("#charBeginBtn");
 }
 
 async function dismissDialogs(page) {
@@ -162,6 +174,6 @@ function readState(page) {
 
 module.exports = {
     slotRow, slotChoose, slotConfirm, slotCancel, slotDelete,
-    openTitle, startNewGame, dismissDialogs, walkAround, seedRun,
+    openTitle, startNewGame, chooseCharacterAndBegin, dismissDialogs, walkAround, seedRun,
     openPause, saveToSlot, waitForRunningGame, readState,
 };

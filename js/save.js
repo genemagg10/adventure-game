@@ -36,6 +36,7 @@ const SaveSystem = {
         "greenGemAttack", "greenGemDefense", "hasMagicCharm", "hasDarkCrest", "hasGauntlet",
         "purpleGemHealth", "purpleGemAttack", "purpleGemArmor", "hasRainbowGem", "hasZeusBolts",
         "hasWorldtreeSeed", "healthPotions", "greaterHealthPotions", "apples", "monstersKilled",
+        "siblingId",
     ],
 
     // Progress flags on the Game object itself. Note what is absent: the

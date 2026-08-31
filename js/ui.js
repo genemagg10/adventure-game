@@ -11,6 +11,12 @@ class UIManager {
 
         // DOM references
         this.titleScreen = document.getElementById("title-screen");
+        this.characterScreen = document.getElementById("character-screen");
+        this.characterGrid = document.getElementById("character-grid");
+        this.charBeginBtn = document.getElementById("charBeginBtn");
+        this.charHint = document.getElementById("char-hint");
+        this.selectedSiblingId = null;
+        this.charScreenBuilt = false;
         this.controlsScreen = document.getElementById("controls-screen");
         this.hud = document.getElementById("hud");
         this.healthFill = document.getElementById("health-fill");
@@ -92,8 +98,21 @@ class UIManager {
 
     setupButtons() {
         document.getElementById("startBtn").addEventListener("click", () => {
-            this.titleScreen.classList.add("hidden");
-            this.game.startGame();
+            this.openCharacterSelect();
+        });
+
+        document.getElementById("charBackBtn").addEventListener("click", () => {
+            this.closeCharacterSelect();
+        });
+
+        document.getElementById("charControlsBtn").addEventListener("click", () => {
+            this.openControls("character");
+        });
+
+        this.charBeginBtn.addEventListener("click", () => {
+            if (!this.selectedSiblingId) return;
+            this.characterScreen.classList.add("hidden");
+            this.game.startGame(this.selectedSiblingId);
         });
 
         document.getElementById("continueBtn").addEventListener("click", () => {
@@ -423,10 +442,89 @@ class UIManager {
     }
 
     // Controls
+    // ============================================
+    // Character selection - the Ingoizer siblings
+    // ============================================
+
+    openCharacterSelect() {
+        this.game.sound.menuSelect();
+        if (typeof SiblingPortrait !== "undefined") SiblingPortrait.preload();
+        this.buildCharacterGrid();
+        this.titleScreen.classList.add("hidden");
+        this.characterScreen.classList.remove("hidden");
+    }
+
+    closeCharacterSelect() {
+        this.game.sound.menuSelect();
+        this.characterScreen.classList.add("hidden");
+        this.titleScreen.classList.remove("hidden");
+    }
+
+    isCharacterSelectOpen() {
+        return !this.characterScreen.classList.contains("hidden");
+    }
+
+    // Build the hero cards once, then reuse them. Each card is a portrait from
+    // the game's own character concept art on a dark plate; selecting one arms
+    // the Begin button and names the hero in the caption below the row.
+    buildCharacterGrid() {
+        if (this.charScreenBuilt || typeof INGOIZER_SIBLINGS === "undefined") return;
+
+        this.characterGrid.innerHTML = "";
+        for (const sib of INGOIZER_SIBLINGS) {
+            const card = document.createElement("button");
+            card.type = "button";
+            card.className = "char-card";
+            card.setAttribute("role", "radio");
+            card.setAttribute("aria-checked", "false");
+            card.setAttribute("aria-label", `${sib.name}, ${sib.epithet}`);
+            card.dataset.id = sib.id;
+
+            const img = document.createElement("img");
+            img.className = "char-portrait";
+            img.src = SiblingPortrait.imageSrc(sib);
+            img.alt = "";
+            img.draggable = false;
+            card.appendChild(img);
+
+            const tag = document.createElement("span");
+            tag.className = "char-card-name";
+            tag.textContent = sib.name;
+            card.appendChild(tag);
+
+            card.addEventListener("click", () => this.selectSibling(sib.id));
+            card.addEventListener("dblclick", () => {
+                this.selectSibling(sib.id);
+                this.charBeginBtn.click();
+            });
+
+            this.characterGrid.appendChild(card);
+        }
+        this.charScreenBuilt = true;
+    }
+
+    selectSibling(id) {
+        this.game.sound.menuSelect();
+        this.selectedSiblingId = id;
+        const sib = SiblingPortrait.byId(id);
+        for (const card of this.characterGrid.querySelectorAll(".char-card")) {
+            const chosen = card.dataset.id === id;
+            card.classList.toggle("selected", chosen);
+            card.setAttribute("aria-checked", chosen ? "true" : "false");
+        }
+        this.charBeginBtn.disabled = false;
+        if (sib && this.charHint) {
+            const kin = sib.gender === "girl" ? "Sister" : "Brother";
+            this.charHint.innerHTML =
+                `<strong>${sib.name}</strong> · <em>${sib.epithet}</em> · ${kin} of the Ingoizer line`;
+        }
+    }
+
     openControls(returnTo) {
         this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
         this.controlsReturnTo = returnTo;
         if (returnTo === "pause") this.pauseOverlay.classList.add("hidden");
+        else if (returnTo === "character") this.characterScreen.classList.add("hidden");
         else this.titleScreen.classList.add("hidden");
         this.controlsScreen.classList.remove("hidden");
     }
@@ -435,6 +533,7 @@ class UIManager {
         this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
         this.controlsScreen.classList.add("hidden");
         if (this.controlsReturnTo === "pause") this.pauseOverlay.classList.remove("hidden");
+        else if (this.controlsReturnTo === "character") this.characterScreen.classList.remove("hidden");
         else this.titleScreen.classList.remove("hidden");
     }
 
@@ -1062,7 +1161,8 @@ class UIManager {
         ctx.fillRect(62, 161, 56, 2);
 
         if (typeof IngoizerSprite !== "undefined") {
-            const sprite = IngoizerSprite.get("down", 0);
+            const tint = typeof player.getSiblingTint === "function" ? player.getSiblingTint() : null;
+            const sprite = IngoizerSprite.get("down", 0, tint);
             ctx.drawImage(sprite, 0, 0, sprite.width, sprite.height, 34, 22, 112, 136);
         }
 

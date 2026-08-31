@@ -182,10 +182,19 @@ const IngoizerSprite = {
         return facing.y < 0 ? "up" : "down";
     },
 
-    _build(dir, frame) {
+    // A chosen sibling recolours the armour's gilt trim (g/o/r) with their
+    // house colour, so their identity carries into the world. The palette is
+    // merged over the default; anything the tint omits keeps its base colour.
+    _paletteFor(tint) {
+        if (!tint) return INGOIZER_PALETTE;
+        return { ...INGOIZER_PALETTE, ...tint };
+    },
+
+    _build(dir, frame, tint) {
         const source = dir === "left" ? "right" : dir;
         const mapKey = source === "right" ? "side" : source;
         const rows = INGOIZER_TORSO[mapKey].concat(INGOIZER_LEGS[mapKey][frame]);
+        const palette = this._paletteFor(tint);
 
         const canvas = document.createElement("canvas");
         canvas.width = INGOIZER_SPRITE_W * INGOIZER_SCALE;
@@ -195,7 +204,7 @@ const IngoizerSprite = {
         for (let row = 0; row < rows.length; row++) {
             const line = rows[row];
             for (let col = 0; col < line.length; col++) {
-                const color = INGOIZER_PALETTE[line[col]];
+                const color = palette[line[col]];
                 if (!color) continue;
                 c.fillStyle = color;
                 c.fillRect(col * INGOIZER_SCALE, row * INGOIZER_SCALE, INGOIZER_SCALE, INGOIZER_SCALE);
@@ -215,17 +224,18 @@ const IngoizerSprite = {
         return canvas;
     },
 
-    get(dir, frame) {
-        const key = dir + frame;
+    get(dir, frame, tint) {
+        const key = dir + frame + (tint ? ":" + tint.id : "");
         if (!this._cache[key]) {
-            this._cache[key] = this._build(dir, frame);
+            this._cache[key] = this._build(dir, frame, tint);
         }
         return this._cache[key];
     },
 
     // Draw centred horizontally on cx, with the feet resting at cy + footOffset.
-    draw(ctx, dir, frame, cx, cy) {
-        const sprite = this.get(dir, frame);
+    // An optional tint recolours the armour trim to the chosen sibling's house.
+    draw(ctx, dir, frame, cx, cy, tint) {
+        const sprite = this.get(dir, frame, tint);
         ctx.drawImage(
             sprite,
             Math.round(cx - this.width / 2),

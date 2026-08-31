@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Ingoizer's World</title>
-    <link rel="stylesheet" href="css/style.css?v=20260821-iconbtns3">
+    <link rel="stylesheet" href="css/style.css?v=20260831-charselect2">
     <script data-goatcounter="https://genemaggio.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
 </head>
@@ -50,6 +50,39 @@
                 <p id="start-note" class="menu-note">Your journey begins in Green Meadow</p>
             </div>
             <p class="title-version">A world of gems, magic, and glory</p>
+        </div>
+        <div id="character-screen" class="hidden">
+            <div class="char-atmosphere" aria-hidden="true"></div>
+            <div class="title-lockup char-lockup">
+                <div class="title-crest" aria-hidden="true">
+                    <span class="crest-sword crest-sword-left">⚔</span>
+                    <span class="crest-crown">♛</span>
+                    <span class="crest-sword crest-sword-right">⚔</span>
+                </div>
+                <h1 aria-label="Ingoizer's World">
+                    <img class="title-logo-image" src="assets/images/game-title-logo.png?v=20260818-texture" alt="" aria-hidden="true">
+                </h1>
+                <div class="subtitle-row">
+                    <span class="subtitle-rule" aria-hidden="true"></span>
+                    <p class="subtitle">A Tale of Gems and Glory</p>
+                    <span class="subtitle-rule" aria-hidden="true"></span>
+                </div>
+            </div>
+            <section class="char-panel" aria-labelledby="char-title">
+                <header class="char-panel-header">
+                    <span class="char-shield" aria-hidden="true">&#x1F6E1;</span>
+                    <h2 id="char-title">Choose Your Hero</h2>
+                    <span class="char-shield" aria-hidden="true">&#x1F6E1;</span>
+                </header>
+                <div class="char-panel-rule" aria-hidden="true"></div>
+                <div id="character-grid" role="radiogroup" aria-label="The Ingoizer siblings"></div>
+            </section>
+            <p id="char-hint" class="char-caption" aria-live="polite">Pick the hero whose tale you will tell.</p>
+            <div class="char-actions">
+                <button id="charBeginBtn" class="menu-btn menu-btn-primary" disabled>Begin Adventure</button>
+                <button id="charControlsBtn" class="menu-btn">Controls</button>
+                <button id="charBackBtn" class="menu-btn">Back</button>
+            </div>
         </div>
         <div id="controls-screen" class="hidden">
             <h2>Controls</h2>
@@ -294,6 +327,7 @@
     <script src="js/map.js"></script>
     <script src="js/analytics.js?v=20260818-launch"></script>
     <script src="js/sprites.js"></script>
+    <script src="js/characters.js"></script>
     <script src="js/monster-sprites.js"></script>
     <script src="js/world.js"></script>
     <script src="js/entities.js"></script>

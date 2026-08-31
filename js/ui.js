@@ -105,6 +105,10 @@ class UIManager {
             this.closeCharacterSelect();
         });
 
+        document.getElementById("charControlsBtn").addEventListener("click", () => {
+            this.openControls("character");
+        });
+
         this.charBeginBtn.addEventListener("click", () => {
             if (!this.selectedSiblingId) return;
             this.characterScreen.classList.add("hidden");
@@ -444,6 +448,7 @@ class UIManager {
 
     openCharacterSelect() {
         this.game.sound.menuSelect();
+        if (typeof SiblingPortrait !== "undefined") SiblingPortrait.preload();
         this.buildCharacterGrid();
         this.titleScreen.classList.add("hidden");
         this.characterScreen.classList.remove("hidden");
@@ -459,9 +464,9 @@ class UIManager {
         return !this.characterScreen.classList.contains("hidden");
     }
 
-    // Build the six sibling cards once, then reuse them. Each card carries a
-    // portrait drawn from the shared pixel language, the sibling's name, their
-    // house colour and an epithet. Selecting a card arms the Begin button.
+    // Build the hero cards once, then reuse them. Each card is a portrait from
+    // the game's own character concept art on a dark plate; selecting one arms
+    // the Begin button and names the hero in the caption below the row.
     buildCharacterGrid() {
         if (this.charScreenBuilt || typeof INGOIZER_SIBLINGS === "undefined") return;
 
@@ -469,31 +474,23 @@ class UIManager {
         for (const sib of INGOIZER_SIBLINGS) {
             const card = document.createElement("button");
             card.type = "button";
-            card.className = `char-card char-card-${sib.color}`;
+            card.className = "char-card";
             card.setAttribute("role", "radio");
             card.setAttribute("aria-checked", "false");
+            card.setAttribute("aria-label", `${sib.name}, ${sib.epithet}`);
             card.dataset.id = sib.id;
 
-            const stage = document.createElement("div");
-            stage.className = "char-portrait-stage";
-            const canvas = document.createElement("canvas");
-            canvas.width = 96;
-            canvas.height = 132;
-            canvas.className = "char-portrait";
-            stage.appendChild(canvas);
+            const img = document.createElement("img");
+            img.className = "char-portrait";
+            img.src = SiblingPortrait.imageSrc(sib);
+            img.alt = "";
+            img.draggable = false;
+            card.appendChild(img);
 
-            const meta = document.createElement("div");
-            meta.className = "char-meta";
-            const badge = sib.gender === "girl" ? "Sister" : "Brother";
-            meta.innerHTML =
-                `<strong class="char-name">${sib.name}</strong>` +
-                `<span class="char-epithet">${sib.epithet}</span>` +
-                `<span class="char-badge">${badge} of the ${sib.color[0].toUpperCase() + sib.color.slice(1)} House</span>`;
-
-            card.appendChild(stage);
-            card.appendChild(meta);
-
-            SiblingPortrait.render(canvas, sib);
+            const tag = document.createElement("span");
+            tag.className = "char-card-name";
+            tag.textContent = sib.name;
+            card.appendChild(tag);
 
             card.addEventListener("click", () => this.selectSibling(sib.id));
             card.addEventListener("dblclick", () => {
@@ -517,7 +514,9 @@ class UIManager {
         }
         this.charBeginBtn.disabled = false;
         if (sib && this.charHint) {
-            this.charHint.textContent = `${sib.name}, ${sib.epithet} — ready to answer the realm's call.`;
+            const kin = sib.gender === "girl" ? "Sister" : "Brother";
+            this.charHint.innerHTML =
+                `<strong>${sib.name}</strong> · <em>${sib.epithet}</em> · ${kin} of the Ingoizer line`;
         }
     }
 
@@ -525,6 +524,7 @@ class UIManager {
         this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
         this.controlsReturnTo = returnTo;
         if (returnTo === "pause") this.pauseOverlay.classList.add("hidden");
+        else if (returnTo === "character") this.characterScreen.classList.add("hidden");
         else this.titleScreen.classList.add("hidden");
         this.controlsScreen.classList.remove("hidden");
     }
@@ -533,6 +533,7 @@ class UIManager {
         this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
         this.controlsScreen.classList.add("hidden");
         if (this.controlsReturnTo === "pause") this.pauseOverlay.classList.remove("hidden");
+        else if (this.controlsReturnTo === "character") this.characterScreen.classList.remove("hidden");
         else this.titleScreen.classList.remove("hidden");
     }
 

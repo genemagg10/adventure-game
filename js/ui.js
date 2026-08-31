@@ -11,6 +11,12 @@ class UIManager {
 
         // DOM references
         this.titleScreen = document.getElementById("title-screen");
+        this.characterScreen = document.getElementById("character-screen");
+        this.characterGrid = document.getElementById("character-grid");
+        this.charBeginBtn = document.getElementById("charBeginBtn");
+        this.charHint = document.getElementById("char-hint");
+        this.selectedSiblingId = null;
+        this.charScreenBuilt = false;
         this.controlsScreen = document.getElementById("controls-screen");
         this.hud = document.getElementById("hud");
         this.healthFill = document.getElementById("health-fill");
@@ -92,8 +98,17 @@ class UIManager {
 
     setupButtons() {
         document.getElementById("startBtn").addEventListener("click", () => {
-            this.titleScreen.classList.add("hidden");
-            this.game.startGame();
+            this.openCharacterSelect();
+        });
+
+        document.getElementById("charBackBtn").addEventListener("click", () => {
+            this.closeCharacterSelect();
+        });
+
+        this.charBeginBtn.addEventListener("click", () => {
+            if (!this.selectedSiblingId) return;
+            this.characterScreen.classList.add("hidden");
+            this.game.startGame(this.selectedSiblingId);
         });
 
         document.getElementById("continueBtn").addEventListener("click", () => {
@@ -423,6 +438,89 @@ class UIManager {
     }
 
     // Controls
+    // ============================================
+    // Character selection - the Ingoizer siblings
+    // ============================================
+
+    openCharacterSelect() {
+        this.game.sound.menuSelect();
+        this.buildCharacterGrid();
+        this.titleScreen.classList.add("hidden");
+        this.characterScreen.classList.remove("hidden");
+    }
+
+    closeCharacterSelect() {
+        this.game.sound.menuSelect();
+        this.characterScreen.classList.add("hidden");
+        this.titleScreen.classList.remove("hidden");
+    }
+
+    isCharacterSelectOpen() {
+        return !this.characterScreen.classList.contains("hidden");
+    }
+
+    // Build the six sibling cards once, then reuse them. Each card carries a
+    // portrait drawn from the shared pixel language, the sibling's name, their
+    // house colour and an epithet. Selecting a card arms the Begin button.
+    buildCharacterGrid() {
+        if (this.charScreenBuilt || typeof INGOIZER_SIBLINGS === "undefined") return;
+
+        this.characterGrid.innerHTML = "";
+        for (const sib of INGOIZER_SIBLINGS) {
+            const card = document.createElement("button");
+            card.type = "button";
+            card.className = `char-card char-card-${sib.color}`;
+            card.setAttribute("role", "radio");
+            card.setAttribute("aria-checked", "false");
+            card.dataset.id = sib.id;
+
+            const stage = document.createElement("div");
+            stage.className = "char-portrait-stage";
+            const canvas = document.createElement("canvas");
+            canvas.width = 96;
+            canvas.height = 132;
+            canvas.className = "char-portrait";
+            stage.appendChild(canvas);
+
+            const meta = document.createElement("div");
+            meta.className = "char-meta";
+            const badge = sib.gender === "girl" ? "Sister" : "Brother";
+            meta.innerHTML =
+                `<strong class="char-name">${sib.name}</strong>` +
+                `<span class="char-epithet">${sib.epithet}</span>` +
+                `<span class="char-badge">${badge} of the ${sib.color[0].toUpperCase() + sib.color.slice(1)} House</span>`;
+
+            card.appendChild(stage);
+            card.appendChild(meta);
+
+            SiblingPortrait.render(canvas, sib);
+
+            card.addEventListener("click", () => this.selectSibling(sib.id));
+            card.addEventListener("dblclick", () => {
+                this.selectSibling(sib.id);
+                this.charBeginBtn.click();
+            });
+
+            this.characterGrid.appendChild(card);
+        }
+        this.charScreenBuilt = true;
+    }
+
+    selectSibling(id) {
+        this.game.sound.menuSelect();
+        this.selectedSiblingId = id;
+        const sib = SiblingPortrait.byId(id);
+        for (const card of this.characterGrid.querySelectorAll(".char-card")) {
+            const chosen = card.dataset.id === id;
+            card.classList.toggle("selected", chosen);
+            card.setAttribute("aria-checked", chosen ? "true" : "false");
+        }
+        this.charBeginBtn.disabled = false;
+        if (sib && this.charHint) {
+            this.charHint.textContent = `${sib.name}, ${sib.epithet} — ready to answer the realm's call.`;
+        }
+    }
+
     openControls(returnTo) {
         this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
         this.controlsReturnTo = returnTo;
@@ -1062,7 +1160,8 @@ class UIManager {
         ctx.fillRect(62, 161, 56, 2);
 
         if (typeof IngoizerSprite !== "undefined") {
-            const sprite = IngoizerSprite.get("down", 0);
+            const tint = typeof player.getSiblingTint === "function" ? player.getSiblingTint() : null;
+            const sprite = IngoizerSprite.get("down", 0, tint);
             ctx.drawImage(sprite, 0, 0, sprite.width, sprite.height, 34, 22, 112, 136);
         }
 

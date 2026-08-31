@@ -408,6 +408,311 @@ body {
     font-family: monospace;
 }
 
+/* ============================================
+   Character Selection - The Ingoizer Siblings
+   ============================================ */
+#character-screen {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    isolation: isolate;
+    overflow: hidden;
+    background-color: #050b17;
+    background-image:
+        linear-gradient(rgba(4, 9, 20, 0.82), rgba(3, 7, 16, 0.92)),
+        url("../assets/images/title-screen-background.png");
+    background-position: center;
+    background-size: cover;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 2vh, 20px);
+    padding: clamp(14px, 3vh, 30px) clamp(16px, 4vw, 46px);
+    z-index: 100;
+}
+
+#character-screen::after {
+    content: "";
+    position: absolute;
+    inset: 10px;
+    z-index: 4;
+    pointer-events: none;
+    border: 1px solid rgba(229, 169, 53, 0.72);
+    box-shadow:
+        inset 0 0 0 3px rgba(7, 13, 25, 0.75),
+        inset 0 0 0 5px rgba(177, 120, 28, 0.42),
+        inset 0 0 38px rgba(0, 0, 0, 0.72);
+}
+
+.char-atmosphere {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 16% 22%, rgba(139, 83, 212, 0.16) 0 2px, transparent 6px),
+        radial-gradient(circle at 84% 28%, rgba(63, 123, 214, 0.16) 0 2px, transparent 6px),
+        radial-gradient(circle at 78% 74%, rgba(210, 66, 66, 0.14) 0 2px, transparent 6px),
+        radial-gradient(ellipse at 50% 40%, rgba(52, 83, 133, 0.08) 0%, rgba(3, 9, 22, 0.5) 80%);
+}
+
+.char-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: none;
+    filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.8));
+}
+
+.char-crest {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 26px;
+    color: #e7af3f;
+    text-shadow: 0 2px 0 #5a330c, 0 0 10px rgba(244, 179, 54, 0.5);
+}
+
+#char-title {
+    margin: 2px 0 0;
+    color: #efbc55;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(22px, 4vw, 34px);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: 0 3px 0 #5d360d, 0 7px 12px #000;
+}
+
+.char-header .subtitle-row {
+    margin-top: 8px;
+}
+
+#character-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(8px, 1.6vw, 16px);
+    width: min(880px, 94%);
+    flex: 0 1 auto;
+    min-height: 0;
+}
+
+.char-card {
+    --house: #cb8b25;
+    --house-deep: #6b4410;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: clamp(8px, 1.4vw, 14px);
+    padding: clamp(8px, 1.4vh, 14px) clamp(10px, 1.4vw, 16px);
+    background:
+        linear-gradient(180deg, rgba(12, 21, 40, 0.96), rgba(5, 11, 24, 0.98));
+    border: 2px solid color-mix(in srgb, var(--house) 55%, #3a2a14);
+    clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
+    box-shadow:
+        inset 0 0 0 2px #0c131f,
+        inset 0 0 0 3px color-mix(in srgb, var(--house) 26%, transparent),
+        0 8px 18px rgba(0, 0, 0, 0.6);
+    color: #f5eddc;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, filter 0.16s ease;
+}
+
+.char-card-purple { --house: #a877e6; --house-deep: #5a2f9c; }
+.char-card-red    { --house: #e56b5a; --house-deep: #8f2626; }
+.char-card-blue   { --house: #5f9be6; --house-deep: #254f96; }
+
+.char-card:hover,
+.char-card:focus-visible {
+    outline: none;
+    transform: translateY(-3px);
+    border-color: var(--house);
+    box-shadow:
+        inset 0 0 0 2px #0c131f,
+        inset 0 0 0 3px color-mix(in srgb, var(--house) 45%, transparent),
+        0 10px 22px rgba(0, 0, 0, 0.66),
+        0 0 22px color-mix(in srgb, var(--house) 45%, transparent);
+}
+
+.char-card.selected {
+    border-color: var(--house);
+    transform: translateY(-3px);
+    box-shadow:
+        inset 0 0 0 2px #0c131f,
+        inset 0 0 0 3px color-mix(in srgb, var(--house) 70%, transparent),
+        0 0 0 2px color-mix(in srgb, var(--house) 60%, transparent),
+        0 10px 26px rgba(0, 0, 0, 0.7),
+        0 0 30px color-mix(in srgb, var(--house) 60%, transparent);
+}
+
+.char-card.selected::after {
+    content: "✓";
+    position: absolute;
+    top: 6px;
+    right: 9px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--house);
+    color: #0c1120;
+    font-size: 13px;
+    font-weight: 900;
+    box-shadow: 0 0 10px color-mix(in srgb, var(--house) 70%, transparent);
+}
+
+.char-portrait-stage {
+    position: relative;
+    flex: none;
+    width: 84px;
+    height: 116px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    border-radius: 6px;
+    background:
+        radial-gradient(ellipse at 50% 34%, color-mix(in srgb, var(--house) 34%, transparent) 0%, transparent 62%),
+        linear-gradient(180deg, rgba(4, 9, 20, 0.5), rgba(3, 7, 16, 0.85));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--house) 30%, transparent);
+    overflow: hidden;
+}
+
+.char-portrait {
+    display: block;
+    width: 96px;
+    height: 132px;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.6));
+}
+
+.char-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.char-name {
+    color: #fff8e7;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(17px, 2.2vw, 22px);
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-shadow: 0 2px 3px #000;
+}
+
+.char-epithet {
+    color: color-mix(in srgb, var(--house) 72%, #ffffff);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(12px, 1.5vw, 14px);
+    font-style: italic;
+    text-shadow: 0 1px 2px #000;
+}
+
+.char-badge {
+    margin-top: 2px;
+    color: #93a2bd;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(10px, 1.2vw, 12px);
+    letter-spacing: 0.4px;
+}
+
+.char-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: none;
+    gap: 4px;
+}
+
+.char-footer .menu-note {
+    margin-top: 0;
+    min-height: 1.2em;
+}
+
+.char-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.menu-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(0.3);
+    transform: none;
+}
+
+.menu-btn:disabled:hover {
+    transform: none;
+    filter: grayscale(0.3);
+    box-shadow:
+        inset 0 0 0 2px #17110a,
+        inset 0 0 0 3px rgba(238, 180, 67, 0.38),
+        0 5px 0 #090705,
+        0 7px 12px rgba(0, 0, 0, 0.6);
+}
+
+/* Short-screen tuning (landscape phones, brief windows): keep the compact
+   row layout so each card stays short, and shrink the chrome enough that both
+   rows, the heading and the footer all fit without the grid being clipped. */
+@media (max-height: 620px) {
+    #character-screen {
+        gap: 6px;
+        padding: 8px clamp(14px, 4vw, 40px);
+    }
+    .char-crest {
+        height: 18px;
+        gap: 8px;
+    }
+    #char-title {
+        font-size: clamp(18px, 3.6vw, 26px);
+    }
+    .char-header .subtitle-row {
+        margin-top: 4px;
+    }
+    #character-grid {
+        gap: 8px;
+        width: min(880px, 98%);
+    }
+    .char-card {
+        gap: 8px;
+        padding: 6px 9px;
+    }
+    .char-portrait-stage {
+        width: 64px;
+        height: 82px;
+    }
+    .char-portrait {
+        width: 58px;
+        height: 80px;
+    }
+    .char-name {
+        font-size: 15px;
+    }
+    .char-epithet {
+        font-size: 11px;
+    }
+    .char-badge {
+        font-size: 9px;
+    }
+    .char-footer .menu-note {
+        font-size: 10px;
+    }
+    .char-actions .menu-btn {
+        min-width: 120px;
+        margin: 2px;
+        padding: 8px 18px;
+        font-size: 14px;
+    }
+}
+
 /* HUD */
 #hud {
     position: absolute;

@@ -16,6 +16,11 @@ class Player {
         this.blueGems = 0;
         this.totalGemsNeeded = 5;
 
+        // Which of the Ingoizer siblings the player chose at the start screen.
+        // Their house colour tints the hero's armour trim in the world.
+        this.siblingId = null;
+        this._siblingTintCache = { id: null, tint: null };
+
         // Weapons
         this.weapons = ["rusty_sword"];
         this.currentWeapon = "rusty_sword";
@@ -440,6 +445,19 @@ class Player {
         this.hp = Math.min(this.maxHp, this.hp + amount);
     }
 
+    // The armour-trim tint for the chosen sibling, resolved lazily from the id
+    // (which is what saves restore) and cached until the id changes.
+    getSiblingTint() {
+        if (!this.siblingId || typeof SiblingPortrait === "undefined") return null;
+        if (this._siblingTintCache.id !== this.siblingId) {
+            this._siblingTintCache = {
+                id: this.siblingId,
+                tint: SiblingPortrait.trimTintFor(this.siblingId),
+            };
+        }
+        return this._siblingTintCache.tint;
+    }
+
     render(ctx, camera, time) {
         const sx = Math.round(this.x - camera.x);
         const sy = Math.round(this.y - camera.y);
@@ -478,7 +496,7 @@ class Player {
             this.renderQuiver(ctx, sx, sy + bobY, dir);
         }
 
-        IngoizerSprite.draw(ctx, dir, this.walkFrame, sx, sy + bobY);
+        IngoizerSprite.draw(ctx, dir, this.walkFrame, sx, sy + bobY, this.getSiblingTint());
 
         if (facingAway) {
             this.renderQuiver(ctx, sx, sy + bobY, dir);

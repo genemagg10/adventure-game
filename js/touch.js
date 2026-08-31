@@ -320,7 +320,7 @@ class TouchControls {
     isOnUIOverlay(target) {
         // Check if the touch target is within a UI overlay that should handle its own events
         const overlayIds = ["shop-overlay", "inventory-overlay", "riddle-overlay",
-                           "map-overlay", "title-screen", "controls-screen",
+                           "map-overlay", "title-screen", "character-screen", "controls-screen",
                            "game-over-screen", "lore-overlay", "enchant-overlay",
                            "pause-overlay", "slots-overlay"];
         for (const id of overlayIds) {

@@ -453,14 +453,23 @@ class Game {
         this.ui.showHud();
     }
 
-    startGame() {
+    startGame(siblingId) {
         GameAnalytics.track("game-start");
         this.sound.menuSelect();
         this.resetState();
+        this.selectedSiblingId = siblingId || null;
+        this.player.siblingId = this.selectedSiblingId;
         this.beginLoop();
 
-        // Welcome dialog
-        this.ui.showDialog("Welcome, Ingoizer! You awaken in the Green Meadow with a rusty sword and bow.");
+        // Welcome dialog - greet the chosen sibling by name when there is one.
+        const sib = (typeof SiblingPortrait !== "undefined" && siblingId)
+            ? SiblingPortrait.byId(siblingId)
+            : null;
+        if (sib) {
+            this.ui.showDialog(`Welcome, ${sib.name} of the Ingoizer line, ${sib.epithet}! You awaken in the Green Meadow with a rusty sword and bow.`);
+        } else {
+            this.ui.showDialog("Welcome, Ingoizer! You awaken in the Green Meadow with a rusty sword and bow.");
+        }
         this.ui.showDialog("Seek the 5 Blue Gems scattered across the land. Defeat monsters and explore to find them.");
         this.ui.showDialog("Once you have all 5 gems, journey to Ing Castle where a dark foe awaits...");
         if (this.touchControls.active) {

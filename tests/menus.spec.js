@@ -1,6 +1,6 @@
 const { test, expect } = require("@playwright/test");
 const {
-    startNewGame, seedRun, saveToSlot, openPause, waitForRunningGame, slotChoose,
+    startNewGame, chooseCharacterAndBegin, seedRun, saveToSlot, openPause, waitForRunningGame, slotChoose,
 } = require("./helpers");
 
 // The menus that reach saving. Escape has to back out one layer at a time
@@ -128,7 +128,7 @@ test.describe.serial("the title screen", () => {
     test("starting a new game does not disturb the saves", async () => {
         await openPause(page);
         await page.click("#pause-quit");
-        await page.click("#startBtn");
+        await chooseCharacterAndBegin(page);
         await page.waitForFunction(() => window.game.state === "playing");
 
         expect(await page.evaluate(() => SaveSystem.meta(2).gold)).toBe(777);

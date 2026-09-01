@@ -2085,6 +2085,7 @@ class Game {
         // his hands while asking him to go and fetch it - and the troll was
         // already gone, so there was no way out of it.
         const unaskedFor = !this.ladyQuestAsked;
+        const addr = this.heroAddress();
         if (this.player.hasSheath && this.ladyQuestState !== "complete") {
             this.ladyQuestState = "sheath_acquired";
         }
@@ -2092,7 +2093,7 @@ class Game {
         if (this.ladyQuestState === "none") {
             // First meeting - give the quest
             this.ui.showDialog("\"I am the Lady of the Lake. I hold Excalibur, the mightiest blade ever forged.\"", () => {
-                this.ui.showDialog("\"But before I entrust it to you, brave Ingoizer, you must prove your valor.\"", () => {
+                this.ui.showDialog(`"But before I entrust it to you, brave ${addr}, you must prove your valor."`, () => {
                     this.ui.showDialog("\"A fearsome troll guards the jewel-encrusted sheath of Excalibur deep in the Dark Forest.\"", () => {
                         this.ui.showDialog("\"Defeat the troll and bring the sheath back to me. Only then shall the sword be yours.\"", () => {
                             this.ladyQuestState = "given";
@@ -2104,7 +2105,7 @@ class Game {
             });
         } else if (this.ladyQuestState === "given") {
             // Quest given but sheath not yet acquired
-            this.ui.showDialog("\"The troll still guards the sheath in the Dark Forest. Seek it out and prove your strength, Ingoizer.\"");
+            this.ui.showDialog(`"The troll still guards the sheath in the Dark Forest. Seek it out and prove your strength, ${addr}."`);
         } else if (this.ladyQuestState === "sheath_acquired") {
             // Player has the sheath - give Excalibur
             this.sound.excaliburReveal();
@@ -2114,13 +2115,13 @@ class Game {
             this.ladyQuestState = "complete";
             const greeting = unaskedFor
                 ? "\"I am the Lady of the Lake - and you come to me already carrying the sheath of Excalibur. You went and took it from the guardian without being asked.\""
-                : "\"You have defeated the guardian and recovered the sheath! You are truly worthy, Ingoizer.\"";
+                : `"You have defeated the guardian and recovered the sheath! You are truly worthy, ${addr}."`;
             this.ui.showDialog(greeting, () => {
                 this.ui.showDialog("\"Take Excalibur - the legendary sword of kings! Together with its sheath, you shall be unstoppable.\"");
                 this.ui.showNotification("Excalibur obtained!");
             });
         } else if (this.ladyQuestState === "complete") {
-            this.ui.showDialog("\"Go forth with Excalibur, brave Ingoizer. The realm depends on you.\"");
+            this.ui.showDialog(`"Go forth with Excalibur, brave ${addr}. The realm depends on you."`);
         }
     }
 
@@ -2182,8 +2183,9 @@ class Game {
     }
 
     startMerlinQuest() {
+        const addr = this.heroAddress();
         if (this.merlinQuestState === "none") {
-            this.ui.showDialog("\"Ah, Ingoizer! I am Merlin, the great wizard of these swamps.\"", () => {
+            this.ui.showDialog(`"Ah, ${addr}! I am Merlin, the great wizard of these swamps."`, () => {
                 this.ui.showDialog("\"I have lost my wand, you see. Without it, my powers are... diminished.\"", () => {
                     this.ui.showDialog("\"I left it in my old hut, near the gates of Ing Castle. Could you retrieve it for me?\"", () => {
                         this.ui.showDialog("\"Bring my wand back and I shall reward you with my Enchanter's Mallet - a tool of great power!\"", () => {
@@ -2195,13 +2197,13 @@ class Game {
                 });
             });
         } else if (this.merlinQuestState === "given") {
-            this.ui.showDialog("\"My wand is in my old hut, near Ing Castle. Please hurry, Ingoizer!\"");
+            this.ui.showDialog(`"My wand is in my old hut, near Ing Castle. Please hurry, ${addr}!"`);
         } else if (this.merlinQuestState === "wand_acquired") {
             // Player has the wand - give reward
             this.merlinQuestState = "complete";
             this.player.hasMallet = true;
             this.player.hasMerlinWand = false;
-            this.ui.showDialog("\"You found my wand! Splendid! Thank you, brave Ingoizer!\"", () => {
+            this.ui.showDialog(`"You found my wand! Splendid! Thank you, brave ${addr}!"`, () => {
                 this.ui.showDialog("\"As promised, take this Enchanter's Mallet. With it, you can enchant a weapon AND armor with elemental power!\"", () => {
                     this.ui.showDialog("\"Open your inventory and use the mallet to imbue your gear with fire, water, ice, or lightning.\"");
                     this.ui.showNotification("Enchanter's Mallet obtained!");
@@ -2209,9 +2211,9 @@ class Game {
             });
         } else if (this.merlinQuestState === "complete") {
             if (this.player.hasMallet && (!this.player.malletUsedWeapon || !this.player.malletUsedArmor)) {
-                this.ui.showDialog("\"Remember to use the Enchanter's Mallet from your inventory, Ingoizer!\"");
+                this.ui.showDialog(`"Remember to use the Enchanter's Mallet from your inventory, ${addr}!"`);
             } else {
-                this.ui.showDialog("\"May the enchantment serve you well on your quest, Ingoizer!\"");
+                this.ui.showDialog(`"May the enchantment serve you well on your quest, ${addr}!"`);
             }
         }
     }
@@ -2865,6 +2867,9 @@ class Game {
     onWorldtreeRegrown() {
         this.worldtreeRestored = true;
         this.sound.divineChime();
+        // Making peace, Zeus honours the hero with their full name - the one
+        // mark of respect the quarrelling, Olympian-fight path never earns.
+        const addr = this.heroAddress();
         this.ui.showNotification("\ud83c\udf33 The Worldtree stands again!");
         this.ui.showDialog(
             "The Worldtree takes. It is young and thin and it does not stop at the clouds \u2014 it goes through them, out of " +
@@ -2889,12 +2894,12 @@ class Game {
                     () => {
                         this.ui.showDialog(
                             "\"Not where I put it.\" A pause, and the weather thinks about it. \"No matter. A Worldtree is not a fencepost, " +
-                            "mortal, it is a knot \u2014 and a knot holds wherever it is tied.\""
+                            `${addr}, it is a knot \u2014 and a knot holds wherever it is tied.\"`
                         );
                         this.ui.showDialog(
                             "\"I had two quarrels with you. That you burned the boundary stone between my country and yours, " +
                             "and that you had no business standing in mine. You have answered the first. The second dies with it \u2014 " +
-                            "a man who mends a Worldtree has business anywhere it grows.\"",
+                            "one who mends a Worldtree has business anywhere it grows.\"",
                             () => {
                                 if (!this.player.hasZeusBolts) {
                                     this.player.hasZeusBolts = true;
@@ -3157,6 +3162,7 @@ class Game {
         this.zeusMetInPeace = true;
         GameAnalytics.track("olympus-peace");
         this.sound.divineChime();
+        const addr = this.heroAddress();
         this.ui.showDialog(
             "The temple doors stand open and nothing comes out of them at a run. Zeus is sitting on the steps " +
             "with his chin on his fist, watching a green shoot come up through the clouds away in the south of the world.",
@@ -3166,7 +3172,7 @@ class Game {
                     "having already given it back.\"",
                     () => {
                         this.ui.showDialog(
-                            "\"Keep the bolts. Keep the Cloudlands, for as long as you can stand the walk. And when that tree " +
+                            `"Keep the bolts, ${addr}. Keep the Cloudlands, for as long as you can stand the walk. And when that tree ` +
                             "in the south is tall enough to hold the sky apart on its own, come up and tell me.\"",
                             () => {
                                 this.ui.showGameOver(true,
@@ -3371,6 +3377,17 @@ class Game {
         });
     }
 
+    // How a character addresses the hero. Every hero is an Ingoizer, so the
+    // chosen sibling is addressed by their given name and the family name -
+    // "Roland Ingoizer" - which keeps the dynasty lore intact. Pre-selection
+    // saves, or a run with no sibling, fall back to plain "Ingoizer".
+    heroAddress() {
+        const sib = (typeof SiblingPortrait !== "undefined" && this.player && this.player.siblingId)
+            ? SiblingPortrait.byId(this.player.siblingId)
+            : null;
+        return sib ? `${sib.name} Ingoizer` : "Ingoizer";
+    }
+
     checkBossTrigger() {
         // Boss spawns when player approaches castle with all gems
         const bossPoint = this.world.bossSpawnPoint;
@@ -3380,7 +3397,7 @@ class Game {
             this.sound.bossRoar();
 
             this.ui.showDialog("A dark figure emerges from the shadows of Ing Castle...");
-            this.ui.showDialog("\"I am The Black Knight! Those gems belong to me, Ingoizer. Prepare to die!\"");
+            this.ui.showDialog(`"I am The Black Knight! Those gems belong to me, ${this.heroAddress()}. Prepare to die!"`);
             this.ui.showDialog("The battle for the realm begins! Defeat The Black Knight!");
         }
     }
@@ -3395,7 +3412,7 @@ class Game {
             this.sound.bossRoar();
 
             this.ui.showDialog("The ground trembles as a towering figure in green armor emerges...");
-            this.ui.showDialog("\"I am The Green Knight. I know your name, Ingoizer. I have known it my whole life.\"");
+            this.ui.showDialog(`"I am The Green Knight. I know your name, ${this.heroAddress()}. I have known it my whole life."`);
             this.ui.showDialog("\"The man you cut down at Ing Castle was my father. He gave up a house and a destiny to raise us out of sight of it, and you walked into his hall and took him from us in an afternoon.\"");
             this.ui.showDialog("\"I do not want the realm. I do not want the gems. I want you. Prepare yourself.\"");
             this.ui.showDialog("The battle for the Green Knight's Domain begins!");

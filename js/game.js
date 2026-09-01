@@ -2085,6 +2085,7 @@ class Game {
         // his hands while asking him to go and fetch it - and the troll was
         // already gone, so there was no way out of it.
         const unaskedFor = !this.ladyQuestAsked;
+        const addr = this.heroAddress();
         if (this.player.hasSheath && this.ladyQuestState !== "complete") {
             this.ladyQuestState = "sheath_acquired";
         }
@@ -2092,7 +2093,7 @@ class Game {
         if (this.ladyQuestState === "none") {
             // First meeting - give the quest
             this.ui.showDialog("\"I am the Lady of the Lake. I hold Excalibur, the mightiest blade ever forged.\"", () => {
-                this.ui.showDialog("\"But before I entrust it to you, brave Ingoizer, you must prove your valor.\"", () => {
+                this.ui.showDialog(`"But before I entrust it to you, brave ${addr}, you must prove your valor."`, () => {
                     this.ui.showDialog("\"A fearsome troll guards the jewel-encrusted sheath of Excalibur deep in the Dark Forest.\"", () => {
                         this.ui.showDialog("\"Defeat the troll and bring the sheath back to me. Only then shall the sword be yours.\"", () => {
                             this.ladyQuestState = "given";
@@ -2104,7 +2105,7 @@ class Game {
             });
         } else if (this.ladyQuestState === "given") {
             // Quest given but sheath not yet acquired
-            this.ui.showDialog("\"The troll still guards the sheath in the Dark Forest. Seek it out and prove your strength, Ingoizer.\"");
+            this.ui.showDialog(`"The troll still guards the sheath in the Dark Forest. Seek it out and prove your strength, ${addr}."`);
         } else if (this.ladyQuestState === "sheath_acquired") {
             // Player has the sheath - give Excalibur
             this.sound.excaliburReveal();
@@ -2114,13 +2115,13 @@ class Game {
             this.ladyQuestState = "complete";
             const greeting = unaskedFor
                 ? "\"I am the Lady of the Lake - and you come to me already carrying the sheath of Excalibur. You went and took it from the guardian without being asked.\""
-                : "\"You have defeated the guardian and recovered the sheath! You are truly worthy, Ingoizer.\"";
+                : `"You have defeated the guardian and recovered the sheath! You are truly worthy, ${addr}."`;
             this.ui.showDialog(greeting, () => {
                 this.ui.showDialog("\"Take Excalibur - the legendary sword of kings! Together with its sheath, you shall be unstoppable.\"");
                 this.ui.showNotification("Excalibur obtained!");
             });
         } else if (this.ladyQuestState === "complete") {
-            this.ui.showDialog("\"Go forth with Excalibur, brave Ingoizer. The realm depends on you.\"");
+            this.ui.showDialog(`"Go forth with Excalibur, brave ${addr}. The realm depends on you."`);
         }
     }
 
@@ -2182,8 +2183,9 @@ class Game {
     }
 
     startMerlinQuest() {
+        const addr = this.heroAddress();
         if (this.merlinQuestState === "none") {
-            this.ui.showDialog("\"Ah, Ingoizer! I am Merlin, the great wizard of these swamps.\"", () => {
+            this.ui.showDialog(`"Ah, ${addr}! I am Merlin, the great wizard of these swamps."`, () => {
                 this.ui.showDialog("\"I have lost my wand, you see. Without it, my powers are... diminished.\"", () => {
                     this.ui.showDialog("\"I left it in my old hut, near the gates of Ing Castle. Could you retrieve it for me?\"", () => {
                         this.ui.showDialog("\"Bring my wand back and I shall reward you with my Enchanter's Mallet - a tool of great power!\"", () => {
@@ -2195,13 +2197,13 @@ class Game {
                 });
             });
         } else if (this.merlinQuestState === "given") {
-            this.ui.showDialog("\"My wand is in my old hut, near Ing Castle. Please hurry, Ingoizer!\"");
+            this.ui.showDialog(`"My wand is in my old hut, near Ing Castle. Please hurry, ${addr}!"`);
         } else if (this.merlinQuestState === "wand_acquired") {
             // Player has the wand - give reward
             this.merlinQuestState = "complete";
             this.player.hasMallet = true;
             this.player.hasMerlinWand = false;
-            this.ui.showDialog("\"You found my wand! Splendid! Thank you, brave Ingoizer!\"", () => {
+            this.ui.showDialog(`"You found my wand! Splendid! Thank you, brave ${addr}!"`, () => {
                 this.ui.showDialog("\"As promised, take this Enchanter's Mallet. With it, you can enchant a weapon AND armor with elemental power!\"", () => {
                     this.ui.showDialog("\"Open your inventory and use the mallet to imbue your gear with fire, water, ice, or lightning.\"");
                     this.ui.showNotification("Enchanter's Mallet obtained!");
@@ -2209,9 +2211,9 @@ class Game {
             });
         } else if (this.merlinQuestState === "complete") {
             if (this.player.hasMallet && (!this.player.malletUsedWeapon || !this.player.malletUsedArmor)) {
-                this.ui.showDialog("\"Remember to use the Enchanter's Mallet from your inventory, Ingoizer!\"");
+                this.ui.showDialog(`"Remember to use the Enchanter's Mallet from your inventory, ${addr}!"`);
             } else {
-                this.ui.showDialog("\"May the enchantment serve you well on your quest, Ingoizer!\"");
+                this.ui.showDialog(`"May the enchantment serve you well on your quest, ${addr}!"`);
             }
         }
     }

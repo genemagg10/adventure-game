@@ -121,4 +121,42 @@ test.describe.serial("characters name the chosen hero", () => {
         expect(texts.some((t) => t.includes("Zeus"))).toBe(true);
         expect(texts.some((t) => t.includes("Elara Ingoizer")), "no full-name courtesy in the fight").toBe(false);
     });
+
+    test("the Lady of the Lake greets the hero by name", async () => {
+        const texts = await page.evaluate(() => {
+            const g = window.game;
+            g.ui.dialogQueue = [];
+            g.ui.dialogActive = false;
+            g.ladyQuestState = "none";
+            g.ladyQuestAsked = false;
+            g.player.hasSheath = false;
+            g.startLadyQuest();
+            const seen = [];
+            let guard = 0;
+            while (g.ui.dialogActive && guard++ < 60) {
+                seen.push(document.getElementById("dialog-text").textContent);
+                g.ui.advanceDialog();
+            }
+            return seen;
+        });
+        expect(texts.some((t) => t.includes("Elara Ingoizer"))).toBe(true);
+    });
+
+    test("Merlin greets the hero by name", async () => {
+        const texts = await page.evaluate(() => {
+            const g = window.game;
+            g.ui.dialogQueue = [];
+            g.ui.dialogActive = false;
+            g.merlinQuestState = "none";
+            g.startMerlinQuest();
+            const seen = [];
+            let guard = 0;
+            while (g.ui.dialogActive && guard++ < 60) {
+                seen.push(document.getElementById("dialog-text").textContent);
+                g.ui.advanceDialog();
+            }
+            return seen;
+        });
+        expect(texts.some((t) => t.includes("Elara Ingoizer"))).toBe(true);
+    });
 });

@@ -14,7 +14,7 @@ function dialogTexts(page) {
     });
 }
 
-test.describe.serial("the knights name the chosen hero", () => {
+test.describe.serial("characters name the chosen hero", () => {
     let page;
 
     test.beforeAll(async ({ browser }) => {
@@ -67,5 +67,58 @@ test.describe.serial("the knights name the chosen hero", () => {
         const texts = await dialogTexts(page);
         expect(texts.some((t) => t.includes("Green Knight"))).toBe(true);
         expect(texts.some((t) => t.includes("Elara Ingoizer"))).toBe(true);
+    });
+
+    // Zeus names the hero in full when the Worldtree is planted correctly and
+    // the quarrel is settled without a fight. His lines are nested in dialog
+    // callbacks, so we advance through the whole chain to collect them.
+    test("Zeus names the hero in full when the Worldtree is replanted", async () => {
+        const texts = await page.evaluate(() => {
+            const g = window.game;
+            g.ui.dialogQueue = [];
+            g.ui.dialogActive = false;
+            g.olympianSpawned = false;
+            g.olympianDefeated = false;
+            g.player.hasZeusBolts = false;
+            g.onWorldtreeRegrown();
+            const seen = [];
+            let guard = 0;
+            while (g.ui.dialogActive && guard++ < 60) {
+                seen.push(document.getElementById("dialog-text").textContent);
+                g.ui.advanceDialog();
+            }
+            return seen;
+        });
+        expect(texts.some((t) => t.includes("Elara Ingoizer"))).toBe(true);
+    });
+
+    // But when he rises to fight - the Worldtree left burned - he does not:
+    // the full-name courtesy is reserved for the peace.
+    test("Zeus withholds the full name when he rises to fight", async () => {
+        const hasSpawn = await page.evaluate(() => !!window.game.skyWorld.bossSpawnTile);
+        test.skip(!hasSpawn, "no Olympian spawn tile in this world");
+        const texts = await page.evaluate(() => {
+            const g = window.game;
+            g.ui.dialogQueue = [];
+            g.ui.dialogActive = false;
+            g.zeusAppeased = false;
+            g.olympianSummoned = true;
+            g.olympianSpawned = false;
+            g.olympianDefeated = false;
+            const t = g.skyWorld.bossSpawnTile;
+            const pos = tileToWorld(t.x, t.y);
+            g.player.x = pos.x;
+            g.player.y = pos.y;
+            g.checkOlympianTrigger();
+            const seen = [];
+            let guard = 0;
+            while (g.ui.dialogActive && guard++ < 60) {
+                seen.push(document.getElementById("dialog-text").textContent);
+                g.ui.advanceDialog();
+            }
+            return seen;
+        });
+        expect(texts.some((t) => t.includes("Zeus"))).toBe(true);
+        expect(texts.some((t) => t.includes("Elara Ingoizer")), "no full-name courtesy in the fight").toBe(false);
     });
 });

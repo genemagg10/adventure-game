@@ -2865,6 +2865,9 @@ class Game {
     onWorldtreeRegrown() {
         this.worldtreeRestored = true;
         this.sound.divineChime();
+        // Making peace, Zeus honours the hero with their full name - the one
+        // mark of respect the quarrelling, Olympian-fight path never earns.
+        const addr = this.heroAddress();
         this.ui.showNotification("\ud83c\udf33 The Worldtree stands again!");
         this.ui.showDialog(
             "The Worldtree takes. It is young and thin and it does not stop at the clouds \u2014 it goes through them, out of " +
@@ -2889,12 +2892,12 @@ class Game {
                     () => {
                         this.ui.showDialog(
                             "\"Not where I put it.\" A pause, and the weather thinks about it. \"No matter. A Worldtree is not a fencepost, " +
-                            "mortal, it is a knot \u2014 and a knot holds wherever it is tied.\""
+                            `${addr}, it is a knot \u2014 and a knot holds wherever it is tied.\"`
                         );
                         this.ui.showDialog(
                             "\"I had two quarrels with you. That you burned the boundary stone between my country and yours, " +
                             "and that you had no business standing in mine. You have answered the first. The second dies with it \u2014 " +
-                            "a man who mends a Worldtree has business anywhere it grows.\"",
+                            "one who mends a Worldtree has business anywhere it grows.\"",
                             () => {
                                 if (!this.player.hasZeusBolts) {
                                     this.player.hasZeusBolts = true;
@@ -3157,6 +3160,7 @@ class Game {
         this.zeusMetInPeace = true;
         GameAnalytics.track("olympus-peace");
         this.sound.divineChime();
+        const addr = this.heroAddress();
         this.ui.showDialog(
             "The temple doors stand open and nothing comes out of them at a run. Zeus is sitting on the steps " +
             "with his chin on his fist, watching a green shoot come up through the clouds away in the south of the world.",
@@ -3166,7 +3170,7 @@ class Game {
                     "having already given it back.\"",
                     () => {
                         this.ui.showDialog(
-                            "\"Keep the bolts. Keep the Cloudlands, for as long as you can stand the walk. And when that tree " +
+                            `"Keep the bolts, ${addr}. Keep the Cloudlands, for as long as you can stand the walk. And when that tree ` +
                             "in the south is tall enough to hold the sky apart on its own, come up and tell me.\"",
                             () => {
                                 this.ui.showGameOver(true,

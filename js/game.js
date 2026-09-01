@@ -3371,6 +3371,17 @@ class Game {
         });
     }
 
+    // How a character addresses the hero. Every hero is an Ingoizer, so the
+    // chosen sibling is addressed by their given name and the family name -
+    // "Roland Ingoizer" - which keeps the dynasty lore intact. Pre-selection
+    // saves, or a run with no sibling, fall back to plain "Ingoizer".
+    heroAddress() {
+        const sib = (typeof SiblingPortrait !== "undefined" && this.player && this.player.siblingId)
+            ? SiblingPortrait.byId(this.player.siblingId)
+            : null;
+        return sib ? `${sib.name} Ingoizer` : "Ingoizer";
+    }
+
     checkBossTrigger() {
         // Boss spawns when player approaches castle with all gems
         const bossPoint = this.world.bossSpawnPoint;
@@ -3380,7 +3391,7 @@ class Game {
             this.sound.bossRoar();
 
             this.ui.showDialog("A dark figure emerges from the shadows of Ing Castle...");
-            this.ui.showDialog("\"I am The Black Knight! Those gems belong to me, Ingoizer. Prepare to die!\"");
+            this.ui.showDialog(`"I am The Black Knight! Those gems belong to me, ${this.heroAddress()}. Prepare to die!"`);
             this.ui.showDialog("The battle for the realm begins! Defeat The Black Knight!");
         }
     }
@@ -3395,7 +3406,7 @@ class Game {
             this.sound.bossRoar();
 
             this.ui.showDialog("The ground trembles as a towering figure in green armor emerges...");
-            this.ui.showDialog("\"I am The Green Knight. I know your name, Ingoizer. I have known it my whole life.\"");
+            this.ui.showDialog(`"I am The Green Knight. I know your name, ${this.heroAddress()}. I have known it my whole life."`);
             this.ui.showDialog("\"The man you cut down at Ing Castle was my father. He gave up a house and a destiny to raise us out of sight of it, and you walked into his hall and took him from us in an afternoon.\"");
             this.ui.showDialog("\"I do not want the realm. I do not want the gems. I want you. Prepare yourself.\"");
             this.ui.showDialog("The battle for the Green Knight's Domain begins!");

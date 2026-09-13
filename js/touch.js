@@ -96,7 +96,6 @@ class TouchControls {
                     <button class="touch-btn touch-btn-shoot" data-action="shoot" aria-label="Shoot arrow">🏹</button>
                     <button class="touch-btn touch-btn-element" data-action="element" aria-label="Use elemental power">✨</button>
                     <button class="touch-btn touch-btn-interact" data-action="interact" aria-label="Interact">✋</button>
-                    <button class="touch-btn touch-btn-sprint" data-action="sprint" aria-label="Sprint">👟</button>
                 </div>
             </div>
             <div id="touch-buttons-top">
@@ -120,7 +119,7 @@ class TouchControls {
         // next to. Each caches what was last written to it so the per-frame
         // sync only touches the DOM when something has actually changed.
         this.faces = {};
-        for (const action of ["potion", "attack", "shoot", "element", "interact", "sprint"]) {
+        for (const action of ["potion", "attack", "shoot", "element", "interact"]) {
             const el = overlay.querySelector(`[data-action="${action}"]`);
             if (el) this.faces[action] = { el, icon: el.textContent, label: el.getAttribute("aria-label"), idle: null };
         }
@@ -172,23 +171,25 @@ class TouchControls {
             element ? `Use ${element.name} power` : "No power selected",
             !element);
 
-        // The interact button does the nearest thing; with nothing around, it
-        // eats an apple to refill energy - so it wears an apple then, matching
-        // what E does on the keyboard.
+        // The one action button changes its job with the moment, so there is
+        // no extra control to reach for:
+        //   - something in reach (a shop, an animal, a ladder) -> tap to do it;
+        //   - nothing in reach and energy left -> hold to sprint;
+        //   - nothing in reach and the bar run dry -> tap to eat an apple.
         const act = this.game.interactContext();
-        const canEat = player.apples > 0 && player.energy < player.maxEnergy;
         if (act) {
+            this.interactMode = "interact";
             this.setFace("interact", act.icon, act.short, false);
-        } else if (canEat) {
-            this.setFace("interact", APPLE_ITEM.icon, `Eat an apple (${player.apples})`, false);
+        } else if (player.energy <= 0) {
+            this.interactMode = "eat";
+            const canEat = player.apples > 0;
+            this.setFace("interact", APPLE_ITEM.icon,
+                canEat ? `Eat an apple (${player.apples})` : "No apples to eat",
+                !canEat);
         } else {
-            this.setFace("interact", "✋", "Nothing to interact with", true);
+            this.interactMode = "sprint";
+            this.setFace("interact", "🏃", "Sprint (hold)", false);
         }
-
-        // Sprint boot: lit while there is energy to burn, dimmed when empty.
-        this.setFace("sprint", "👟",
-            player.energy > 0 ? "Sprint (hold)" : "No energy - eat an apple",
-            player.energy <= 0);
     }
 
     bindEvents() {
@@ -336,7 +337,7 @@ class TouchControls {
         const overlayIds = ["shop-overlay", "inventory-overlay", "riddle-overlay",
                            "map-overlay", "title-screen", "character-screen", "controls-screen",
                            "game-over-screen", "lore-overlay", "enchant-overlay",
-                           "pause-overlay", "slots-overlay"];
+                           "pause-overlay", "slots-overlay", "about-overlay"];
         for (const id of overlayIds) {
             const el = document.getElementById(id);
             if (el && !el.classList.contains("hidden") && el.contains(target)) {
@@ -420,12 +421,29 @@ class TouchControls {
 
     onButtonPress(action) {
         this.game.sound.ensureContext();
+        // The action button holds to sprint when it is wearing the runner. We
+        // remember that this particular press started a sprint, so the matching
+        // release lifts the boot even if the button's job changed mid-hold (for
+        // instance, the bar draining to empty flips it to "eat").
+        if (action === "interact" && this.interactMode === "sprint") {
+            this._interactSprinting = true;
+            this.game.keys.sprint = true;
+            this.buttonStates.sprint = true;
+            return;
+        }
+        this._interactSprinting = false;
         this.game.keyJustPressed[action] = true;
         this.game.keys[action] = true;
         this.buttonStates[action] = true;
     }
 
     onButtonRelease(action) {
+        if (action === "interact" && this._interactSprinting) {
+            this._interactSprinting = false;
+            this.game.keys.sprint = false;
+            this.buttonStates.sprint = false;
+            return;
+        }
         this.game.keys[action] = false;
         this.buttonStates[action] = false;
     }

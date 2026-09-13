@@ -36,7 +36,7 @@ Current features include:
 | Space | Melee attack |
 | R | Shoot an arrow |
 | F | Sprint — hold to run faster while energy lasts |
-| E | Interact, enter, shop, tame an animal, or eat an apple to restore energy |
+| E | Interact, enter, shop, tame an animal, or eat an apple once the energy bar is empty |
 | M | Toggle map (or click the mini map) |
 | 1-5 | Select an unlocked elemental power |
 | Q | Use the selected elemental power |
@@ -45,7 +45,7 @@ Current features include:
 | P | Plant the Worldtree Seed, or lift a Worldtree that never took back out |
 | Esc | Pause menu — save, load, controls, quit |
 
-Touch controls appear automatically on supported phones and tablets. Hold the device sideways for the best view — the game fills the whole screen, so a wide phone puts the joystick and the action buttons out at the edges where the thumbs already are. The action buttons wear symbols rather than labels, and the symbols are the things themselves: the sword or axe you have equipped, your bow, the elemental power you have selected, a boot you hold down to sprint, and — on the interact button — whatever is in reach, an apple for an animal waiting to be tamed, a shop front, a speech bubble for someone with something to say. Out in the open, with nothing else nearby, that same button wears an apple and eats one to refill your energy. A button with nothing to do — no potions left, no arrows, no power chosen, no energy to spend, nothing within reach — fades until it does. The mini map is the map button: tap it to open the world map, and tap anywhere to close it again. The menu button beside the pack opens the pause menu, which is where saving and loading live. The first elemental power a Blue Gem gives is selected automatically, so it is ready to use straight away.
+Touch controls appear automatically on supported phones and tablets. Hold the device sideways for the best view — the game fills the whole screen, so a wide phone puts the joystick and the action buttons out at the edges where the thumbs already are. The action buttons wear symbols rather than labels, and the symbols are the things themselves: the sword or axe you have equipped, your bow, and the elemental power you have selected. The last button is the one that changes its job with the moment: it shows whatever is in reach and taps to use it — a shop front, a speech bubble for someone with something to say, an apple for an animal waiting to be tamed; with nothing in reach it becomes a runner you hold down to sprint; and once the energy bar is empty it wears an apple, so a tap eats one and refuels. A button with nothing to do — no potions left, no arrows, no power chosen — fades until it does. The mini map is the map button: tap it to open the world map, and tap anywhere to close it again. The menu button beside the pack opens the pause menu, which is where saving and loading live. The first elemental power a Blue Gem gives is selected automatically, so it is ready to use straight away.
 
 ## Run locally
 

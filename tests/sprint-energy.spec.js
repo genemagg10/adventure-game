@@ -85,38 +85,36 @@ test.describe("sprint and energy", () => {
         await expect(page.locator("#energy-bar")).toHaveClass(/empty/);
     });
 
-    test("pressing E out in the open eats an apple to refill a quarter bar", async ({ page }) => {
+    test("pressing E on an empty bar eats an apple to refill a quarter", async ({ page }) => {
         const result = await page.evaluate(async () => {
             const g = window.game;
             g.player.apples = 3;
-            g.player.energy = 10;             // room to fill
+            g.player.energy = 0;              // bar spent, so E feeds
             const applesBefore = g.player.apples;
-            const energyBefore = g.player.energy;
-            g.keyJustPressed.interact = true; // nothing is near, so E eats
+            g.keyJustPressed.interact = true; // nothing is near
             g.update(16);
             return {
-                applesBefore, energyBefore,
+                applesBefore,
                 applesAfter: g.player.apples,
                 energyAfter: g.player.energy,
                 gain: ENERGY_CONFIG.appleGain,
             };
         });
         expect(result.applesAfter).toBe(result.applesBefore - 1);
-        expect(result.energyAfter).toBe(result.energyBefore + result.gain);
+        expect(result.energyAfter).toBe(result.gain);
     });
 
-    test("an apple never overfills the bar and taming still wins near an animal", async ({ page }) => {
-        // At (near) full energy, eating tops out at the cap rather than wasting fruit.
-        const capped = await page.evaluate(async () => {
+    test("E does not eat an apple while there is still energy left", async ({ page }) => {
+        const result = await page.evaluate(async () => {
             const g = window.game;
             g.player.apples = 2;
-            g.player.energy = g.player.maxEnergy - 5;
+            g.player.energy = 40;             // not empty -> no nibbling
             g.keyJustPressed.interact = true;
             g.update(16);
-            return { energy: g.player.energy, max: g.player.maxEnergy, apples: g.player.apples };
+            return { energy: g.player.energy, apples: g.player.apples };
         });
-        expect(capped.energy).toBe(capped.max);
-        expect(capped.apples).toBe(1);
+        expect(result.apples).toBe(2);       // apple saved
+        expect(result.energy).toBe(40);      // untouched
     });
 });
 

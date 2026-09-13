@@ -447,7 +447,43 @@ class UIManager {
     // The Maker's Hollow
     openAbout() {
         this.aboutOverlay = this.aboutOverlay || document.getElementById("about-overlay");
+        this.renderHollowDoorways();
         this.aboutOverlay.classList.remove("hidden");
+    }
+
+    // Fill the Hollow's wall of doorways from the places the player has found.
+    // Rebuilt each time the room is opened, so newly discovered landmarks show
+    // up without a reload.
+    renderHollowDoorways() {
+        const container = document.getElementById("hollow-doorways");
+        if (!container) return;
+        container.innerHTML = "";
+        const dests = this.game.hollowDestinations ? this.game.hollowDestinations() : [];
+        if (!dests.length) {
+            const none = document.createElement("p");
+            none.className = "hollow-hint";
+            none.textContent = "The doorways are dark - explore the realm and they will open.";
+            container.appendChild(none);
+            return;
+        }
+        for (const d of dests) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "hollow-door";
+            btn.setAttribute("aria-label", `Travel to ${d.label}`);
+            const glyph = document.createElement("span");
+            glyph.className = "hollow-door-glyph";
+            glyph.setAttribute("aria-hidden", "true");
+            glyph.textContent = d.glyph;
+            const name = document.createElement("span");
+            name.textContent = d.label;
+            btn.appendChild(glyph);
+            btn.appendChild(name);
+            btn.addEventListener("click", () => {
+                this.game.teleportFromHollow(d.x, d.y, d.label);
+            });
+            container.appendChild(btn);
+        }
     }
 
     closeAbout() {

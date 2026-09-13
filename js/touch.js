@@ -96,6 +96,7 @@ class TouchControls {
                     <button class="touch-btn touch-btn-shoot" data-action="shoot" aria-label="Shoot arrow">🏹</button>
                     <button class="touch-btn touch-btn-element" data-action="element" aria-label="Use elemental power">✨</button>
                     <button class="touch-btn touch-btn-interact" data-action="interact" aria-label="Interact">✋</button>
+                    <button class="touch-btn touch-btn-sprint" data-action="sprint" aria-label="Sprint">👟</button>
                 </div>
             </div>
             <div id="touch-buttons-top">
@@ -119,7 +120,7 @@ class TouchControls {
         // next to. Each caches what was last written to it so the per-frame
         // sync only touches the DOM when something has actually changed.
         this.faces = {};
-        for (const action of ["potion", "attack", "shoot", "element", "interact"]) {
+        for (const action of ["potion", "attack", "shoot", "element", "interact", "sprint"]) {
             const el = overlay.querySelector(`[data-action="${action}"]`);
             if (el) this.faces[action] = { el, icon: el.textContent, label: el.getAttribute("aria-label"), idle: null };
         }
@@ -171,10 +172,23 @@ class TouchControls {
             element ? `Use ${element.name} power` : "No power selected",
             !element);
 
+        // The interact button does the nearest thing; with nothing around, it
+        // eats an apple to refill energy - so it wears an apple then, matching
+        // what E does on the keyboard.
         const act = this.game.interactContext();
-        this.setFace("interact", act ? act.icon : "✋",
-            act ? act.short : "Nothing to interact with",
-            !act);
+        const canEat = player.apples > 0 && player.energy < player.maxEnergy;
+        if (act) {
+            this.setFace("interact", act.icon, act.short, false);
+        } else if (canEat) {
+            this.setFace("interact", APPLE_ITEM.icon, `Eat an apple (${player.apples})`, false);
+        } else {
+            this.setFace("interact", "✋", "Nothing to interact with", true);
+        }
+
+        // Sprint boot: lit while there is energy to burn, dimmed when empty.
+        this.setFace("sprint", "👟",
+            player.energy > 0 ? "Sprint (hold)" : "No energy - eat an apple",
+            player.energy <= 0);
     }
 
     bindEvents() {

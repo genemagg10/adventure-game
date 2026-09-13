@@ -49,6 +49,9 @@ class UIManager {
         this.skyKillCount = document.getElementById("sky-kill-count");
         this.potionCount = document.getElementById("potion-count");
         this.appleCount = document.getElementById("apple-count");
+        this.energyBar = document.getElementById("energy-bar");
+        this.energyFill = document.getElementById("energy-fill");
+        this.energyText = document.getElementById("energy-text");
         this.companionCounter = document.getElementById("companion-counter");
         this.companionCount = document.getElementById("companion-count");
         this.questItems = document.getElementById("quest-items");
@@ -235,6 +238,7 @@ class UIManager {
             this.game.inSky, this.game.olympianSummoned, this.game.olympianDefeated,
             this.game.zeusAppeased, this.game.skyMonsterKills,
             player.healthPotions, player.greaterHealthPotions, player.apples, following,
+            Math.ceil(player.energy), player.maxEnergy, player.sprinting,
             weapon.name, weapon.damage, bow.name, bow.damage, armor.name, armor.defense,
             player.hasMerlinWand, player.hasSheath, player.hasWorldtreeSeed,
             this.game.ladyQuestState, this.game.touchControls && this.game.touchControls.active,
@@ -255,6 +259,21 @@ class UIManager {
             this.healthFill.style.background = "linear-gradient(180deg, #ff9800 0%, #e65100 100%)";
         } else {
             this.healthFill.style.background = "linear-gradient(180deg, #f44336 0%, #b71c1c 100%)";
+        }
+
+        // Energy - fills on apples, drains on sprint. The bar goes bright and
+        // pulses while sprinting, and greys out when there is nothing left.
+        if (this.energyFill) {
+            const maxEnergy = player.maxEnergy || ENERGY_CONFIG.max;
+            const energyPercent = clamp((player.energy / maxEnergy) * 100, 0, 100);
+            this.energyFill.style.width = energyPercent + "%";
+            if (this.energyText) {
+                this.energyText.textContent = `${Math.ceil(player.energy)}/${maxEnergy}`;
+            }
+            if (this.energyBar) {
+                this.energyBar.classList.toggle("sprinting", !!player.sprinting);
+                this.energyBar.classList.toggle("empty", player.energy <= 0);
+            }
         }
 
         // Gems

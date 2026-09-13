@@ -47,7 +47,7 @@ class Game {
         // Input
         this.keys = {
             up: false, down: false, left: false, right: false,
-            attack: false, interact: false, map: false,
+            attack: false, interact: false, map: false, sprint: false,
         };
         this.keyJustPressed = {};
 
@@ -286,6 +286,7 @@ class Game {
             "ArrowRight": "right", "KeyD": "right",
             "Space": "attack",
             "KeyE": "interact",
+            "KeyF": "sprint",
             "KeyM": "map",
             "KeyQ": "element",
             "KeyR": "shoot",
@@ -1195,9 +1196,15 @@ class Game {
             }
         }
 
-        // Interaction check
+        // Interaction check. When there is something to interact with (a shop,
+        // an animal, a ladder...) E does that; otherwise it eats an apple to
+        // top up the energy bar, so the same key feeds you out in the open.
         if (this.keyJustPressed.interact) {
-            this.handleInteraction();
+            if (this.interactContext()) {
+                this.handleInteraction();
+            } else {
+                this.tryEatApple();
+            }
         }
 
         // Update monsters (surface or cave). Monsters hunt the pack as well as
@@ -1513,6 +1520,7 @@ class Game {
         this.player.x = startPos.x;
         this.player.y = startPos.y;
         this.player.hp = this.player.maxHp;
+        this.player.energy = this.player.maxEnergy;
         this.player.knockbackVx = 0;
         this.player.knockbackVy = 0;
 
@@ -2076,6 +2084,20 @@ class Game {
         // Tame a nearby wild animal with an apple
         if (this.nearAnimal) {
             this.tameNearbyAnimal();
+        }
+    }
+
+    // Eat an apple to restore energy. Bound to E / the interact button when
+    // there is nothing else nearby to interact with, so it works in any realm.
+    tryEatApple() {
+        const result = this.player.eatApple();
+        if (result.ok) {
+            this.sound.applePickup();
+            this.ui.showNotification(`Ate an apple! +${result.gained} energy`);
+        } else if (result.reason === "full") {
+            this.ui.showNotification("Energy is full!");
+        } else {
+            this.ui.showNotification("No apples to eat! Gather some fruit.");
         }
     }
 

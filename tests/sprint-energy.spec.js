@@ -85,7 +85,7 @@ test.describe("sprint and energy", () => {
         await expect(page.locator("#energy-bar")).toHaveClass(/empty/);
     });
 
-    test("pressing E on an empty bar eats an apple to refill a quarter", async ({ page }) => {
+    test("pressing E on an empty bar eats an apple to refill the whole bar", async ({ page }) => {
         const result = await page.evaluate(async () => {
             const g = window.game;
             g.player.apples = 3;

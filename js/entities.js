@@ -417,7 +417,7 @@ class Player {
         return true;
     }
 
-    // Eat an apple to restore a quarter of the energy bar. Returns why it
+    // Eat an apple to refill the whole energy bar. Returns why it
     // failed ("none" / "full") so the caller can say the right thing, or the
     // amount gained on success.
     eatApple() {

@@ -601,14 +601,14 @@ const APPLE_CONFIG = {
 };
 
 // Stamina. Eating an apple (E / the interact button when nothing else is
-// near) fills a quarter of the bar; holding sprint (F / the sprint button)
+// near) refills the whole bar; holding sprint (F / the sprint button)
 // spends it to run faster. Energy comes only from apples - it never trickles
 // back on its own, so the fruit you gather is worth keeping.
 const ENERGY_CONFIG = {
     max: 100,                // full bar
-    appleGain: 25,           // a quarter of the bar per apple eaten
+    appleGain: 100,          // a full bar per apple eaten
     sprintMultiplier: 1.7,   // how much faster you move while sprinting
-    drainPerMs: 0.014,       // energy spent per ms of sprinting (~7s on a full bar)
+    drainPerMs: 0.01176,     // energy spent per ms of sprinting (~8.5s on a full bar)
 };
 
 // Green Knight's Domain monster types

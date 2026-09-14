@@ -47,7 +47,7 @@ class Game {
         // Input
         this.keys = {
             up: false, down: false, left: false, right: false,
-            attack: false, interact: false, map: false,
+            attack: false, interact: false, map: false, sprint: false,
         };
         this.keyJustPressed = {};
 
@@ -286,6 +286,7 @@ class Game {
             "ArrowRight": "right", "KeyD": "right",
             "Space": "attack",
             "KeyE": "interact",
+            "KeyF": "sprint",
             "KeyM": "map",
             "KeyQ": "element",
             "KeyR": "shoot",
@@ -1195,9 +1196,16 @@ class Game {
             }
         }
 
-        // Interaction check
+        // Interaction check. When there is something to interact with (a shop,
+        // an animal, a ladder...) E does that. With nothing in reach it eats an
+        // apple to refuel - but only once the energy bar is fully spent, so a
+        // stray press never nibbles away a saved apple.
         if (this.keyJustPressed.interact) {
-            this.handleInteraction();
+            if (this.interactContext()) {
+                this.handleInteraction();
+            } else if (this.player.energy <= 0) {
+                this.tryEatApple();
+            }
         }
 
         // Update monsters (surface or cave). Monsters hunt the pack as well as
@@ -1513,6 +1521,7 @@ class Game {
         this.player.x = startPos.x;
         this.player.y = startPos.y;
         this.player.hp = this.player.maxHp;
+        this.player.energy = this.player.maxEnergy;
         this.player.knockbackVx = 0;
         this.player.knockbackVy = 0;
 
@@ -2079,6 +2088,20 @@ class Game {
         }
     }
 
+    // Eat an apple to restore energy. Bound to E / the interact button when
+    // there is nothing else nearby to interact with, so it works in any realm.
+    tryEatApple() {
+        const result = this.player.eatApple();
+        if (result.ok) {
+            this.sound.applePickup();
+            this.ui.showNotification(`Ate an apple! +${result.gained} energy`);
+        } else if (result.reason === "full") {
+            this.ui.showNotification("Energy is full!");
+        } else {
+            this.ui.showNotification("No apples to eat! Gather some fruit.");
+        }
+    }
+
     startLadyQuest() {
         // What the player is actually carrying outranks the quest bookkeeping.
         // Beating the guardian first used to leave her blind to the sheath in
@@ -2483,6 +2506,91 @@ class Game {
         }
         this.sound.secretDiscovery();
         this.ui.openAbout();
+    }
+
+    // The doorways that line the Maker's Hollow: every landmark the player has
+    // already found, plus the meadow they started in, offered as a place to
+    // travel to. A place has to be known - the doorways never spoil a spot the
+    // player has not seen for themselves.
+    hollowDestinations() {
+        const world = this.world;
+        if (!world) return [];
+        const out = [];
+        const seen = new Set();
+
+        // Home base is always on offer, even before anything else is charted.
+        const home = tileToWorld(10, 15);
+        out.push({ label: "Green Meadow (start)", x: home.x, y: home.y, glyph: "🌿" });
+        seen.add("Green Meadow (start)");
+
+        for (const m of world.mapLandmarks()) {
+            if (!m.label) continue;
+            if (m.label === MAKERS_HOLLOW.name) continue; // no door back into this room
+            if (!m.always && !world.fog.isWorldSeen(m.x, m.y)) continue;
+            if (seen.has(m.label)) continue;
+            seen.add(m.label);
+            out.push({ label: m.label, x: m.x, y: m.y, glyph: this.landmarkGlyph(m) });
+        }
+        return out;
+    }
+
+    // A little icon for each doorway, so the wall of destinations reads at a
+    // glance. Label first (the shapes are shared between very different
+    // places), then the marker shape as a fallback.
+    landmarkGlyph(m) {
+        const label = (m.label || "").toLowerCase();
+        if (label.includes("clubhouse")) return "🎉";
+        if (label.includes("castle")) return "🏰";
+        if (label.includes("lady")) return "💧";
+        if (label.includes("hut")) return "📖";
+        if (label.includes("merlin")) return "🧙";
+        if (label.includes("fountain")) return "⛲";
+        if (label.includes("worldtree") || label.includes("sapling") || label.includes("ash")) return "🌳";
+        switch (m.shape) {
+            case "crown": return "🏰";
+            case "arch": return "🕳️";
+            case "square": return "🏪";
+            default: return "🚪";
+        }
+    }
+
+    // Step through a doorway: leave the Hollow and reappear on solid ground at
+    // the chosen landmark. Only ever called from the surface, where the Hollow
+    // is, so the player stays in the surface realm.
+    teleportFromHollow(worldX, worldY, label) {
+        const spot = this.findSafeSurfaceSpot(worldX, worldY);
+        this.player.x = spot.x;
+        this.player.y = spot.y;
+        this.player.knockbackVx = 0;
+        this.player.knockbackVy = 0;
+        this.player.invincible = true;
+        this.player.invincibleTimer = 800; // a breath of grace on arrival
+        this.ui.closeAbout();
+        if (this.sound.divineChime) this.sound.divineChime();
+        else this.sound.secretDiscovery();
+        this.ui.showNotification(`✨ Stepped through to ${label}`);
+    }
+
+    // Find a walkable surface tile at or near a target, spiralling outward so a
+    // landmark sitting on a wall (a castle keep, a shop front) still drops the
+    // player somewhere they can stand rather than inside stone.
+    findSafeSurfaceSpot(worldX, worldY) {
+        const world = this.world;
+        const base = worldToTile(worldX, worldY);
+        const worldW = world.tiles[0] ? world.tiles[0].length : WORLD_W;
+        const worldH = world.tiles.length || WORLD_H;
+        for (let r = 0; r <= 10; r++) {
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    // Only the outer ring at each radius, so nearer tiles win.
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+                    const tx = base.x + dx, ty = base.y + dy;
+                    if (tx < 0 || ty < 0 || tx >= worldW || ty >= worldH) continue;
+                    if (!world.isSolid(tx, ty)) return tileToWorld(tx, ty);
+                }
+            }
+        }
+        return tileToWorld(base.x, base.y);
     }
 
     checkCaveProximity() {

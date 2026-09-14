@@ -24,6 +24,7 @@ Current features include:
 - Fountain of Youth riddles.
 - The Clubhouse: beat the Green Knight, walk back to his castle with a full pack of five animals, and the place stops being a fortress. Warded against monsters, permanently worth +30 max HP the first time the player walks in, and full of music and dancing animals.
 - Friendly wild animals that can be tamed with apples and accompany the player. A companion fights what threatens Ingoizer, and monsters fight back: they hunt the pack as readily as the hero, and an animal that bites one has its attention until the grudge wears off.
+- A sprint that runs on energy. Hold the sprint key to move faster, watching the energy bar drain as you go; when it runs dry you drop back to a walk. Energy comes only from eating apples — each one you eat fills a quarter of the bar — so the fruit you gather in the wild is worth keeping.
 - Keyboard and touch controls, mobile landscape play, sound, inventory, shops, a mini map, and a world map.
 - An announcement, with a tune of its own, for charting every last cell of the surface map.
 
@@ -34,7 +35,8 @@ Current features include:
 | WASD / Arrow keys | Move |
 | Space | Melee attack |
 | R | Shoot an arrow |
-| E | Interact, enter, shop, or tame an animal |
+| F | Sprint — hold to run faster while energy lasts |
+| E | Interact, enter, shop, tame an animal, or eat an apple once the energy bar is empty |
 | M | Toggle map (or click the mini map) |
 | 1-5 | Select an unlocked elemental power |
 | Q | Use the selected elemental power |
@@ -43,7 +45,7 @@ Current features include:
 | P | Plant the Worldtree Seed, or lift a Worldtree that never took back out |
 | Esc | Pause menu — save, load, controls, quit |
 
-Touch controls appear automatically on supported phones and tablets. Hold the device sideways for the best view — the game fills the whole screen, so a wide phone puts the joystick and the action buttons out at the edges where the thumbs already are. The action buttons wear symbols rather than labels, and the symbols are the things themselves: the sword or axe you have equipped, your bow, the elemental power you have selected, and — on the last button — whatever is in reach, an apple for an animal waiting to be tamed, a shop front, a speech bubble for someone with something to say. A button with nothing to do — no potions left, no arrows, no power chosen, nothing within reach — fades until it does. The mini map is the map button: tap it to open the world map, and tap anywhere to close it again. The menu button beside the pack opens the pause menu, which is where saving and loading live. The first elemental power a Blue Gem gives is selected automatically, so it is ready to use straight away.
+Touch controls appear automatically on supported phones and tablets. Hold the device sideways for the best view — the game fills the whole screen, so a wide phone puts the joystick and the action buttons out at the edges where the thumbs already are. The action buttons wear symbols rather than labels, and the symbols are the things themselves: the sword or axe you have equipped, your bow, and the elemental power you have selected. The last button is the one that changes its job with the moment: it shows whatever is in reach and taps to use it — a shop front, a speech bubble for someone with something to say, an apple for an animal waiting to be tamed; with nothing in reach it becomes a runner you hold down to sprint; and once the energy bar is empty it wears an apple, so a tap eats one and refuels. A button with nothing to do — no potions left, no arrows, no power chosen — fades until it does. The mini map is the map button: tap it to open the world map, and tap anywhere to close it again. The menu button beside the pack opens the pause menu, which is where saving and loading live. The first elemental power a Blue Gem gives is selected automatically, so it is ready to use straight away.
 
 ## Run locally
 

@@ -102,8 +102,14 @@ class Player {
         this.healthPotions = 0;        // regular potions (heal 40)
         this.greaterHealthPotions = 0; // greater potions (heal 80)
 
-        // Apples - spent to tame wild animals
+        // Apples - spent to tame wild animals, or eaten to restore energy
         this.apples = 2;
+
+        // Energy - eat apples to fill it, hold sprint to spend it. Starts full;
+        // `sprinting` is recomputed each frame in update() from the sprint key.
+        this.energy = ENERGY_CONFIG.max;
+        this.maxEnergy = ENERGY_CONFIG.max;
+        this.sprinting = false;
 
         // Stats
         this.monstersKilled = 0;
@@ -254,14 +260,28 @@ class Player {
         if (keys.left) dx -= 1;
         if (keys.right) dx += 1;
 
-        if (dx !== 0 || dy !== 0) {
+        const moving = (dx !== 0 || dy !== 0);
+
+        // Sprint: hold F / the sprint button to run faster, but only while
+        // actually moving and only while there is energy left to burn. The
+        // bar drains as long as the boot is down; when it hits zero you drop
+        // back to a walk until you eat another apple.
+        this.sprinting = false;
+        let speed = this.speed;
+        if (keys.sprint && moving && this.energy > 0) {
+            this.sprinting = true;
+            speed *= ENERGY_CONFIG.sprintMultiplier;
+            this.energy = Math.max(0, this.energy - ENERGY_CONFIG.drainPerMs * dt);
+        }
+
+        if (moving) {
             const norm = normalize(dx, dy);
             dx = norm.x;
             dy = norm.y;
             this.facing = { x: dx, y: dy };
 
-            // Walk animation
-            this.walkTimer += dt;
+            // Walk animation - the legs cycle faster while sprinting
+            this.walkTimer += dt * (this.sprinting ? 1.6 : 1);
             if (this.walkTimer > 110) {
                 this.walkFrame = (this.walkFrame + 1) % 4;
                 this.walkTimer = 0;
@@ -273,8 +293,8 @@ class Player {
         }
 
         // Apply movement with knockback
-        let moveX = dx * this.speed + this.knockbackVx;
-        let moveY = dy * this.speed + this.knockbackVy;
+        let moveX = dx * speed + this.knockbackVx;
+        let moveY = dy * speed + this.knockbackVy;
 
         // Decay knockback
         this.knockbackVx *= 0.85;
@@ -395,6 +415,18 @@ class Player {
         if (this.apples >= APPLE_ITEM.maxStack) return false;
         this.apples = Math.min(APPLE_ITEM.maxStack, this.apples + count);
         return true;
+    }
+
+    // Eat an apple to restore a quarter of the energy bar. Returns why it
+    // failed ("none" / "full") so the caller can say the right thing, or the
+    // amount gained on success.
+    eatApple() {
+        if (this.apples <= 0) return { ok: false, reason: "none" };
+        if (this.energy >= this.maxEnergy) return { ok: false, reason: "full" };
+        this.apples--;
+        const before = this.energy;
+        this.energy = Math.min(this.maxEnergy, this.energy + ENERGY_CONFIG.appleGain);
+        return { ok: true, gained: Math.round(this.energy - before) };
     }
 
     addHealthPotion(type) {

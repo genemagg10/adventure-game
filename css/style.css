@@ -728,6 +728,61 @@ body {
     text-shadow: 1px 1px 2px #000;
 }
 
+#energy-bar {
+    position: relative;
+    width: 180px;
+    height: 22px;
+    background: #333;
+    border: 2px solid #888;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+#energy-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #ffd54f 0%, #f9a825 100%);
+    transition: width 0.15s linear;
+}
+
+/* A brighter, pulsing fill while the boot is down, so the drain reads at a glance */
+#energy-bar.sprinting #energy-fill {
+    background: linear-gradient(180deg, #fff176 0%, #fbc02d 100%);
+    box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.6);
+    animation: energy-pulse 0.5s ease-in-out infinite;
+}
+
+/* Dimmed and greyed when empty - a visual cue that you can't sprint */
+#energy-bar.empty #energy-fill {
+    background: linear-gradient(180deg, #777 0%, #555 100%);
+}
+
+@keyframes energy-pulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.25); }
+}
+
+#energy-label {
+    position: absolute;
+    top: 50%;
+    left: 6px;
+    transform: translateY(-50%);
+    font-size: 13px;
+    text-shadow: 1px 1px 2px #000;
+    pointer-events: none;
+}
+
+#energy-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+}
+
 #gem-counter, #gold-counter, #arrow-counter, #green-gem-counter, #potion-counter, #sky-counter,
 #apple-counter, #companion-counter {
     color: #fff;
@@ -1118,6 +1173,54 @@ body {
     border-color: #e5b84f;
     background: rgba(255, 196, 92, 0.18);
     outline: none;
+}
+
+.hollow-doorways-intro {
+    margin: 0 0 12px;
+    color: #cbbb94;
+    font-size: clamp(11px, 2.1vw, 13px);
+    line-height: 1.6;
+}
+
+.hollow-doorways {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Each doorway is a little arched portal, gold-lipped like the rest of the
+   room. Tapping or clicking one steps the hero out to that place. */
+.hollow-door {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    color: #ffe6ad;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(11px, 2.1vw, 13px);
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    border: 1px solid #8a6a2c;
+    border-radius: 3px 3px 10px 10px;
+    background: rgba(255, 196, 92, 0.08);
+    transition: color 0.15s, border-color 0.15s, background 0.15s, transform 0.1s;
+}
+
+.hollow-door .hollow-door-glyph {
+    font-size: 1.05em;
+}
+
+.hollow-door:hover,
+.hollow-door:focus-visible {
+    color: #fff4d2;
+    border-color: #e5b84f;
+    background: rgba(255, 196, 92, 0.2);
+    outline: none;
+}
+
+.hollow-door:active {
+    transform: scale(0.95);
 }
 
 .hollow-footnote {
@@ -2865,12 +2968,15 @@ button.relic-card:hover { filter: brightness(1.18); }
         flex-wrap: wrap;
     }
 
-    #health-bar {
+    #health-bar,
+    #energy-bar {
         width: 100px;
         height: 16px;
     }
 
-    #health-text {
+    #health-text,
+    #energy-text,
+    #energy-label {
         font-size: 9px;
     }
 

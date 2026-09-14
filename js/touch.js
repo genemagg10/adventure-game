@@ -171,10 +171,25 @@ class TouchControls {
             element ? `Use ${element.name} power` : "No power selected",
             !element);
 
+        // The one action button changes its job with the moment, so there is
+        // no extra control to reach for:
+        //   - something in reach (a shop, an animal, a ladder) -> tap to do it;
+        //   - nothing in reach and energy left -> hold to sprint;
+        //   - nothing in reach and the bar run dry -> tap to eat an apple.
         const act = this.game.interactContext();
-        this.setFace("interact", act ? act.icon : "✋",
-            act ? act.short : "Nothing to interact with",
-            !act);
+        if (act) {
+            this.interactMode = "interact";
+            this.setFace("interact", act.icon, act.short, false);
+        } else if (player.energy <= 0) {
+            this.interactMode = "eat";
+            const canEat = player.apples > 0;
+            this.setFace("interact", APPLE_ITEM.icon,
+                canEat ? `Eat an apple (${player.apples})` : "No apples to eat",
+                !canEat);
+        } else {
+            this.interactMode = "sprint";
+            this.setFace("interact", "🏃", "Sprint (hold)", false);
+        }
     }
 
     bindEvents() {
@@ -322,7 +337,7 @@ class TouchControls {
         const overlayIds = ["shop-overlay", "inventory-overlay", "riddle-overlay",
                            "map-overlay", "title-screen", "character-screen", "controls-screen",
                            "game-over-screen", "lore-overlay", "enchant-overlay",
-                           "pause-overlay", "slots-overlay"];
+                           "pause-overlay", "slots-overlay", "about-overlay"];
         for (const id of overlayIds) {
             const el = document.getElementById(id);
             if (el && !el.classList.contains("hidden") && el.contains(target)) {
@@ -406,12 +421,29 @@ class TouchControls {
 
     onButtonPress(action) {
         this.game.sound.ensureContext();
+        // The action button holds to sprint when it is wearing the runner. We
+        // remember that this particular press started a sprint, so the matching
+        // release lifts the boot even if the button's job changed mid-hold (for
+        // instance, the bar draining to empty flips it to "eat").
+        if (action === "interact" && this.interactMode === "sprint") {
+            this._interactSprinting = true;
+            this.game.keys.sprint = true;
+            this.buttonStates.sprint = true;
+            return;
+        }
+        this._interactSprinting = false;
         this.game.keyJustPressed[action] = true;
         this.game.keys[action] = true;
         this.buttonStates[action] = true;
     }
 
     onButtonRelease(action) {
+        if (action === "interact" && this._interactSprinting) {
+            this._interactSprinting = false;
+            this.game.keys.sprint = false;
+            this.buttonStates.sprint = false;
+            return;
+        }
         this.game.keys[action] = false;
         this.buttonStates[action] = false;
     }

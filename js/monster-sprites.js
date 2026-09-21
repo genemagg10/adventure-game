@@ -650,6 +650,10 @@ const BossSprite = {
             this.drawCrystalTitan(ctx, boss, sx, sy, time);
             return true;
         }
+        if (boss.name === "The Giant Snapping Turtle") {
+            this.drawGiantTurtle(ctx, boss, sx, sy, time);
+            return true;
+        }
         this.drawBlackKnight(ctx, boss, sx, sy, time);
         return true;
     },
@@ -878,6 +882,80 @@ const BossSprite = {
         h.poly(ctx, "#276d3b", [[-1,12],[-4,33],[0,42],[3,33],[2,12]]);
         h.line(ctx, "#70d65e", 2, [[1,14],[-1,33],[1,38]]);
         ctx.restore();
+        ctx.restore();
+    },
+
+    // The Giant Snapping Turtle. A single dominant dome of shell, a low armoured
+    // head thrust out the front with a hooked, snapping beak, and four blunt
+    // clawed legs that shuffle under the weight. Everything about it reads as
+    // heavy and slow - and the jaws gape wide the instant it lunges.
+    drawGiantTurtle(ctx, b, sx, sy, time) {
+        const h = MonsterSprite;
+        const p = h.palette;
+        const a = this.motion(b, time);
+        const step = a.step;
+        // Jaws snap wide when it lunges; otherwise a slow, menacing working of
+        // the beak.
+        const snapping = b.charging || b.chargeWindup > 0;
+        const gape = snapping ? 7 : 2 + Math.round((Math.sin(time * 0.006) + 1) * 1.5);
+
+        ctx.save();
+        ctx.translate(Math.round(sx), Math.round(sy + a.bob));
+        ctx.imageSmoothingEnabled = false;
+
+        // Heavy, broad ground shadow.
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.beginPath(); ctx.ellipse(0, 30, 34, 9, 0, 0, Math.PI * 2); ctx.fill();
+
+        // Back legs and spiked tail, tucked behind the shell.
+        h.box(ctx, "#2f4a29", -26, 12, 12, 12);
+        h.box(ctx, "#2f4a29", 14, 12, 12, 12);
+        h.poly(ctx, "#35502e", [[-5, 20], [5, 20], [2, 34], [-2, 34]]);
+        h.line(ctx, "#22381d", 2, [[0, 22], [0, 33]]);
+
+        // Front legs, shuffling with the gait, blunt claws on each.
+        h.box(ctx, "#3c5a34", -30 - step, 6, 14, 13);
+        h.box(ctx, "#3c5a34", 16 + step, 6, 14, 13);
+        for (let i = 0; i < 3; i++) {
+            h.box(ctx, p.boneLight, -29 - step + i * 4, 17, 2, 4);
+            h.box(ctx, p.boneLight, 18 + step + i * 4, 17, 2, 4);
+        }
+
+        // Neck and head thrust out the front.
+        h.box(ctx, "#3c5a34", -7, 15, 14, 11);
+        h.poly(ctx, "#35502e", [[-9, 22], [9, 22], [11, 30], [7, 36], [-7, 36], [-11, 30]]);
+        // Upper beak - a fixed hooked plate.
+        h.poly(ctx, "#1d2e17", [[-7, 30], [7, 30], [4, 33], [-4, 33]]);
+        h.poly(ctx, p.boneLight, [[-4, 33], [4, 33], [0, 37]]);
+        // Lower beak - drops away by the gape when the jaws open.
+        ctx.save();
+        ctx.translate(0, gape);
+        h.poly(ctx, "#1d2e17", [[-6, 34], [6, 34], [3, 38], [-3, 38]]);
+        h.poly(ctx, p.boneLight, [[-3, 34], [3, 34], [0, 31]]);
+        ctx.restore();
+        // Glowing predatory eyes.
+        h.eye(ctx, -6, 25, p.bloodEye, 2);
+        h.eye(ctx, 4, 25, p.bloodEye, 2);
+
+        // The great domed shell over the top - the dominant silhouette.
+        h.poly(ctx, "#22381d", [[-30, -2], [-24, -20], [-10, -28], [10, -28], [24, -20], [30, -2], [24, 14], [-24, 14]]);
+        h.poly(ctx, "#3a5a2c", [[-25, -3], [-19, -18], [-8, -24], [8, -24], [19, -18], [25, -3], [19, 11], [-19, 11]]);
+        // Central scute and the seams radiating out to the rim divide the
+        // carapace into plates.
+        h.poly(ctx, "#4a6f37", [[0, -18], [10, -10], [7, 2], [-7, 2], [-10, -10]]);
+        h.line(ctx, "#22381d", 1, [[0, -18], [10, -10], [7, 2], [-7, 2], [-10, -10], [0, -18]]);
+        const rimPts = [[-19, -16], [0, -22], [19, -16], [24, -1], [18, 11], [-18, 11], [-24, -1]];
+        for (const [rx, ry] of rimPts) h.line(ctx, "#22381d", 1, [[0, -8], [rx, ry]]);
+        // Keel highlight along the crown of the dome.
+        h.line(ctx, "#5d8541", 2, [[-14, -18], [0, -23], [14, -18]]);
+
+        // Jagged spikes around the rim of the shell.
+        h.poly(ctx, "#2a4420", [[-4, -22], [0, -30], [4, -22]]);
+        h.poly(ctx, "#2a4420", [[-20, -16], [-27, -22], [-16, -12]]);
+        h.poly(ctx, "#2a4420", [[20, -16], [27, -22], [16, -12]]);
+        h.poly(ctx, "#2a4420", [[-25, -2], [-34, -3], [-24, 4]]);
+        h.poly(ctx, "#2a4420", [[25, -2], [34, -3], [24, 4]]);
+
         ctx.restore();
     },
 };

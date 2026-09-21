@@ -18,9 +18,10 @@ Current features include:
 - The Lady of the Lake, the Excalibur quest, and the Fountain of Youth she also keeps.
 - Merlin's wand quest, Enchanter's Mallet, and a sixteen-entry Ancient Lore library whose hidden entries stay hidden until the player earns them.
 - Black Knight and Green Knight progression arcs, and the family tapestry in Ing Castle that connects them.
+- The Giant Snapping Turtle: a huge, heavy, lumbering guardian that squats in the Fallow, south of the Black Knight's castle, on the very plot where the Worldtree Seed is meant to be planted. It is as tough as the Black Knight and makes low, menacing growls. No Worldtree takes root anywhere until it is beaten, and felling it yields Turtle Shell Armor — three points sturdier than the Knight's Armor.
 - Four caves with elemental locks, mazes or bosses, treasure chests, Purple Gems, and special rewards.
 - The Worldtree, Cloudlands, Temple of Olympus, twelve-form Olympian encounter, and Zeus reward — or the peace that replaces all of it.
-- The Worldtree Seed: burning the Worldtree takes the ladder to the Cloudlands with it, and the seed is the only way to open the way up again. Plant it anywhere for the climb; plant it in the Waiting Ground in the far southeast and Zeus grants his lightning without a fight.
+- The Worldtree Seed: burning the Worldtree takes the ladder to the Cloudlands with it, and the seed is the only way to open the way up again. Nothing takes root while the Giant Snapping Turtle still guards the Fallow — beat it first, then plant anywhere for the climb; plant it in the Waiting Ground in the far southeast and Zeus grants his lightning without a fight.
 - Fountain of Youth riddles.
 - The Clubhouse: beat the Green Knight, walk back to his castle with a full pack of five animals, and the place stops being a fortress. Warded against monsters, permanently worth +30 max HP the first time the player walks in, and full of music and dancing animals.
 - Friendly wild animals that can be tamed with apples and accompany the player. A companion fights what threatens Ingoizer, and monsters fight back: they hunt the pack as readily as the hero, and an animal that bites one has its attention until the grudge wears off.
@@ -175,7 +176,9 @@ The corner where the Worldtree grows has no name on the map until the tree is fo
 
 The old texts promise a ladder hidden inside the Worldtree's trunk, and they are right. What they leave out — because nobody who wrote them ever got that far — is that the ladder is *part of the tree*. Burn the tree and the ladder goes up with it. The fire leaves ash, one seed, and, for the first time in the history of either country, no road at all between the realm and the Cloudlands.
 
-So the seed is the way up. Push it into any ground that will take it and a Worldtree comes up in seconds with a ladder running up the inside of the trunk; press E at the trunk to climb. That much works anywhere.
+So the seed is the way up — but not while the Fallow's guardian lives. A **Giant Snapping Turtle** squats on the Waiting Ground, south of the Black Knight's castle, and as long as it breathes the seed goes cold and inert in any ground: nothing takes root anywhere in the realm. It is a boss on the Black Knight's scale — the same health pool and the same bite — only far larger, heavier and slower, and it snaps and spins rather than throwing anything. Put it down and it splits its shell into **Turtle Shell Armor** (three points of defense above the Knight's Armor), and the seed comes alive in your hand.
+
+After that the seed is the way up. Push it into any ground that will take it and a Worldtree comes up in seconds with a ladder running up the inside of the trunk; press E at the trunk to climb. That much works anywhere.
 
 What does not work anywhere is *taking*. A Worldtree cannot begin in its own ash, and it will not hold in stone, under another tree's shadow, or beside a worn road. It wants bare living earth that has never carried a tree, never been paved and never been sown, and there is exactly one plot of that left: the Waiting Ground, in the heart of the Fallow, in the far southeast corner.
 

@@ -27,11 +27,14 @@ async function drainDialogs(page, limit = 40) {
     return said;
 }
 
-/** Hand over the seed the way burning the tree does, without the archery. */
+/** Hand over the seed the way burning the tree does, without the archery. The
+ * Fallow's guardian must already be down for a seed to take anywhere, so mark
+ * the Giant Snapping Turtle defeated the way beating it would. */
 async function giveSeed(page) {
     await page.evaluate(() => {
         window.game.world.burnWorldtreeToAsh();
         window.game.player.hasWorldtreeSeed = true;
+        window.game.giantTurtleDefeated = true;
     });
     await dismissDialogs(page);
 }

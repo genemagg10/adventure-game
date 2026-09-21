@@ -213,6 +213,8 @@ test.describe.serial("corner landmarks are not hidden under the minimap", () => 
             const g = window.game;
             g.world.burnWorldtreeToAsh();
             g.player.hasWorldtreeSeed = true;
+            // The Fallow's guardian must be down before any seed will take.
+            g.giantTurtleDefeated = true;
             // As far into the corner as the world allows.
             g.player.x = (WORLD_W - 4) * TILE_SIZE;
             g.player.y = 4 * TILE_SIZE;

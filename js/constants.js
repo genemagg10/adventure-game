@@ -157,6 +157,10 @@ const ARMOR = {
     chain_mail: { name: "Chain Mail", icon: "⛓️", defense: 5, price: 130, description: "Linked metal rings" },
     iron_plate: { name: "Iron Plate", icon: "🛡️", defense: 8, price: 220, description: "Heavy but sturdy" },
     knights_armor: { name: "Knight's Armor", icon: "🏰", defense: 12, price: 350, description: "Armor of the Round Table" },
+    // Hacked from the shell of the giant snapping turtle that guards the Fallow.
+    // Three points sturdier than the Knight's Armor, and the reward for felling
+    // the beast that keeps the Waiting Ground.
+    turtle_shell_armor: { name: "Turtle Shell Armor", icon: "🐢", defense: 15, price: 0, description: "The scute-plated shell of the giant snapping turtle — heavier and sturdier than any knight's plate" },
     shadow_cloak: { name: "Shadow Cloak", icon: "🧥", defense: 10, price: 0, description: "Woven from darkness" },
     ingozer_armor: { name: "Ingozer's Armour", icon: "🛡️", defense: 20, price: 0, description: "The most defensive armour in the land, from the hidden base — blocks 20 damage" },
 };
@@ -431,6 +435,32 @@ const GREEN_KNIGHT = {
         { hpThreshold: 0.75, speed: 1.2, attackRate: 1100, pattern: "charge" },
         { hpThreshold: 0.5, speed: 1.4, attackRate: 900, pattern: "poison" },
         { hpThreshold: 0.25, speed: 1.7, attackRate: 650, pattern: "frenzy" },
+    ],
+};
+
+// The Giant Snapping Turtle. It squats in the Fallow, south of the Black
+// Knight's castle, in the same acre of bare earth where a Worldtree Seed is
+// meant to be planted - and nothing takes root while it lives. Bigger than any
+// other creature in the realm, heavy and lumbering, but it hits like the Black
+// Knight and soaks up just as much punishment: the shell shrugs off blows, and
+// when it lunges its jaws snap shut like a trap. Fell it and the shell can be
+// worn - Turtle Shell Armor, three points better than a knight's plate.
+const GIANT_TURTLE = {
+    name: "The Giant Snapping Turtle",
+    hp: 500,             // as much to grind through as the Black Knight
+    damage: 25,          // and it bites just as hard
+    speed: 0.7,          // heavy and slow - it lumbers, it does not sprint
+    size: 34,            // far larger than any other monster in the realm
+    color: "#3a5a2c",
+    armorDrop: "turtle_shell_armor",
+    // Slow on its feet in every phase, but the snapping lunges and the shell
+    // spin come faster and harder as it is worn down - the same escalation the
+    // Black Knight climbs, so it stays every bit as dangerous to finish.
+    phases: [
+        { hpThreshold: 1.0, speed: 1.0, attackRate: 1600, pattern: "chase" },
+        { hpThreshold: 0.7, speed: 1.2, attackRate: 1250, pattern: "charge" },
+        { hpThreshold: 0.4, speed: 1.4, attackRate: 950, pattern: "spin" },
+        { hpThreshold: 0.15, speed: 1.6, attackRate: 750, pattern: "frenzy" },
     ],
 };
 

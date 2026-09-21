@@ -842,6 +842,13 @@ class World {
             discovered: false,   // set the first time somebody stands in it
             charted: false,      // set when the clues give up and mark the map
         };
+
+        // The Giant Snapping Turtle squats just north of the Waiting Ground, on
+        // the clean grass the plot keeps, between the Fallow's edge and the bare
+        // earth. It guards the one plot that will take a Worldtree Seed - nothing
+        // is planted here while it lives - and anyone walking down from the Black
+        // Knight's castle meets it before ever reaching the earth.
+        this.giantTurtleSpawnPoint = tileToWorld(plot.x, plot.y - 6);
     }
 
     // True for any ground inside the clean grass margin the plot keeps. Used
@@ -2968,6 +2975,10 @@ class World {
         }
         if (boss && boss.alive && inSightOf(player, boss, sight)) {
             MapArt.marker(ctx, toX(boss.x), toY(boss.y), "crown", "#ff3b3b", { size: 4.5, lineWidth: 1 });
+        }
+        const turtle = opts.giantTurtle;
+        if (turtle && turtle.alive && turtle.spawned && inSightOf(player, turtle, sight)) {
+            MapArt.marker(ctx, toX(turtle.x), toY(turtle.y), "crown", "#4a6f37", { size: 5, lineWidth: 1 });
         }
 
         MapArt.playerMarker(ctx, toX(player.x), toY(player.y), time, 4);

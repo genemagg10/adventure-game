@@ -48,6 +48,7 @@ const SaveSystem = {
         "engagedPlayTime",
         "bossDefeated",
         "greenKnightDefeated", "greenlandsUnlocked",
+        "giantTurtleDefeated",
         "inCave", "activeCaveId", "caveBossDefeated", "caveTreasureCollected",
         "savedSurfacePos",
         "inSky", "skyMonsterKills", "olympianSummoned", "olympianDefeated",

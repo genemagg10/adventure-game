@@ -490,6 +490,44 @@ class SoundSystem {
         }
     }
 
+    // The giant snapping turtle's menacing noise: a low, wet, guttural growl
+    // that trails off into a bony beak-snap. Deliberately deeper and slower
+    // than the knights' roar - the sound of something huge and heavy.
+    turtleGrowl() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+
+        // Two detuned low growls, grinding against each other.
+        for (let i = 0; i < 2; i++) {
+            const osc = this.ctx.createOscillator();
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(55 + i * 8, t);
+            osc.frequency.linearRampToValueAtTime(70 + i * 8, t + 0.35);
+            osc.frequency.exponentialRampToValueAtTime(38, t + 1.1);
+
+            const gain = this.createGain(0.16);
+            gain.gain.setValueAtTime(0.01, t);
+            gain.gain.linearRampToValueAtTime(0.16 * this.masterVolume, t + 0.25);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
+
+            osc.connect(gain);
+            osc.start(t);
+            osc.stop(t + 1.1);
+        }
+
+        // A hard beak-snap at the tail of the growl.
+        const snap = this.ctx.createOscillator();
+        snap.type = "square";
+        snap.frequency.setValueAtTime(180, t + 0.9);
+        snap.frequency.exponentialRampToValueAtTime(60, t + 1.02);
+        const snapGain = this.createGain(0.1);
+        snapGain.gain.setValueAtTime(0.1 * this.masterVolume, t + 0.9);
+        snapGain.gain.exponentialRampToValueAtTime(0.001, t + 1.05);
+        snap.connect(snapGain);
+        snap.start(t + 0.9);
+        snap.stop(t + 1.05);
+    }
+
     bossCharge() {
         if (!this.ensureContext()) return;
         const t = this.ctx.currentTime;

@@ -1681,6 +1681,39 @@ class Boss {
     }
 }
 
+// The Giant Snapping Turtle - the guardian of the Fallow. It reuses the Black
+// Knight's fight logic (chase, charge, spin, frenzy, leash, knockback), tuned
+// through GIANT_TURTLE to be as tough as the Black Knight but far larger and
+// heavier on its feet. Where the Black Knight throws dark orbs, the turtle has
+// no ranged attack at all: every one of those beats instead becomes a snapping
+// lunge, so the threat is always the jaws and the spinning shell, never a
+// projectile a lumbering beast has no business firing.
+class GiantTurtle extends Boss {
+    constructor(x, y) {
+        super(x, y);
+        this.name = GIANT_TURTLE.name;
+        this.hp = GIANT_TURTLE.hp;
+        this.maxHp = GIANT_TURTLE.hp;
+        this.damage = GIANT_TURTLE.damage;
+        this.size = GIANT_TURTLE.size;
+        this.baseSpeed = GIANT_TURTLE.speed;
+        this.speed = GIANT_TURTLE.speed;
+        this.color = GIANT_TURTLE.color;
+        this.phases = GIANT_TURTLE.phases;
+        // A little more room to roam than the Black Knight, so it can shepherd
+        // the whole clearing around the Waiting Ground.
+        this.leashRadius = 460;
+    }
+
+    // No orbs. When the fight logic would have the boss spit a projectile, the
+    // turtle snaps instead: a short-windup lunge toward the player. Repeated
+    // calls in one frame collapse into the single lunge already being wound up.
+    fireProjectile(player, angleOffset = 0) {
+        if (this.charging || this.chargeWindup > 0) return;
+        this.chargeWindup = 500;
+    }
+}
+
 class GreenKnight {
     constructor(x, y) {
         this.x = x;

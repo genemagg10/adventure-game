@@ -70,6 +70,12 @@ class Game {
         this.greenKnightDefeated = false;
         this.greenlandsUnlocked = false;
 
+        // Giant Snapping Turtle - guardian of the Fallow / Waiting Ground
+        this.giantTurtle = null;
+        this.giantTurtleSpawned = false;
+        this.giantTurtleDefeated = false;
+        this.turtleGrowlTimer = 0;
+
         // Cave system - 4 separate caves
         this.inCave = false;
         this.activeCaveId = null;
@@ -395,6 +401,12 @@ class Game {
         this.greenKnightSpawned = false;
         this.greenKnightDefeated = false;
         this.greenlandsUnlocked = false;
+
+        // Giant Snapping Turtle - guardian of the Fallow / Waiting Ground
+        this.giantTurtle = null;
+        this.giantTurtleSpawned = false;
+        this.giantTurtleDefeated = false;
+        this.turtleGrowlTimer = 0;
 
         // Cave system - 4 separate caves
         this.inCave = false;
@@ -722,6 +734,22 @@ class Game {
                 this.wildAnimals.push(animal);
             }
         }
+    }
+
+    // The surface has two field bosses that share one combat slot: the Green
+    // Knight (south, past Ing Castle) and the Giant Snapping Turtle (the Fallow,
+    // southeast). They are far apart and never fought at once, but if both
+    // happen to be up, the one the player is standing next to is the one their
+    // blows, arrows, spells and companions should reach. Returns null when
+    // neither is up (preserving the old "no field boss" behaviour).
+    pickSurfaceFieldBoss() {
+        const up = [];
+        if (this.greenKnight && this.greenKnight.alive && this.greenKnight.spawned) up.push(this.greenKnight);
+        if (this.giantTurtle && this.giantTurtle.alive && this.giantTurtle.spawned) up.push(this.giantTurtle);
+        if (up.length === 0) return this.greenKnight;   // may be null, or spawned-but-not-yet-alive
+        if (up.length === 1) return up[0];
+        return up.reduce((a, b) =>
+            dist(this.player.x, this.player.y, a.x, a.y) <= dist(this.player.x, this.player.y, b.x, b.y) ? a : b);
     }
 
     // Everything a companion is willing to bite, in the world the player is in.
@@ -1098,7 +1126,11 @@ class Game {
         const activeWorld = activeCave || (this.inSky ? this.skyWorld : this.world);
         const activeMonsters = this.inCave ? this.caveMonsters : (this.inSky ? this.skyMonsters : this.monsters);
         const activeBoss = this.inCave ? this.caveBoss : (this.inSky ? this.olympianBoss : this.boss);
-        const activeGreenKnight = this.onSurface ? this.greenKnight : null;
+        // The surface's second boss slot is shared: the Green Knight and the
+        // Giant Snapping Turtle both ride it (they are far apart and never
+        // fought together). Whichever the player is actually beside is the one
+        // their sword, arrows, spells and companions land on.
+        const activeGreenKnight = this.onSurface ? this.pickSurfaceFieldBoss() : null;
 
         // Update player (use correct world for collision)
         this.player.update(dt, this.keys, activeWorld);
@@ -1322,6 +1354,34 @@ class Game {
             }
         }
 
+        // Update Giant Snapping Turtle (surface only). It has no ranged attack,
+        // so the only combat noises are its charge (a snapping lunge) and its
+        // shell spin - plus the slow, menacing growl it gives off on a timer.
+        if (this.onSurface && this.giantTurtle && this.giantTurtle.spawned) {
+            const prevCharging = this.giantTurtle.charging;
+            const prevSpinning = this.giantTurtle.spinning;
+            const prevPlayerHp = this.player.hp;
+            this.giantTurtle.update(dt, this.player, this.world);
+            if (this.giantTurtle.alive) {
+                this.ui.showBossHealth(this.giantTurtle, "The Giant Snapping Turtle");
+                if (!prevCharging && this.giantTurtle.charging) this.sound.bossCharge();
+                if (!prevSpinning && this.giantTurtle.spinning) this.sound.bossSpin();
+                // A low guttural growl every few seconds - the menacing noise.
+                this.turtleGrowlTimer -= dt;
+                if (this.turtleGrowlTimer <= 0) {
+                    this.sound.turtleGrowl();
+                    this.turtleGrowlTimer = 3200 + Math.random() * 1600;
+                }
+                if (this.player.hp < prevPlayerHp && this.player.lastHitArmorEnchant) {
+                    this.combat.spawnArmorDefenseEffect(
+                        this.player.lastHitArmorEnchant, this.player,
+                        this.player.lastHitFromX, this.player.lastHitFromY
+                    );
+                    this.player.lastHitArmorEnchant = null;
+                }
+            }
+        }
+
         // Update wild animals and companions
         this.updateAnimals(dt, activeWorld, activeMonsters, activeBoss, activeGreenKnight);
 
@@ -1445,6 +1505,11 @@ class Game {
             this.checkGreenKnightTrigger();
         }
 
+        // Check Giant Snapping Turtle trigger (near the Waiting Ground) - surface only
+        if (this.onSurface && !this.giantTurtleSpawned && !this.giantTurtleDefeated) {
+            this.checkGiantTurtleTrigger();
+        }
+
         // Check cave boss trigger
         if (this.inCave) {
             this.checkCaveBossTrigger();
@@ -1508,6 +1573,12 @@ class Game {
         if (this.greenKnightSpawned && !this.greenKnightDefeated) {
             this.greenKnightSpawned = false;
             this.greenKnight = null;
+        }
+        // An undefeated turtle reverts to unspawned, so walking back into the
+        // Fallow re-triggers it - the same rule the other bosses follow.
+        if (this.giantTurtleSpawned && !this.giantTurtleDefeated) {
+            this.giantTurtleSpawned = false;
+            this.giantTurtle = null;
         }
         for (const id of Object.keys(this.caveBossSpawned)) {
             if (this.caveBossSpawned[id] && !this.caveBossDefeated[id]) {
@@ -1590,6 +1661,39 @@ class Game {
                         });
                     });
                 }
+            }, 2000);
+            return;
+        }
+
+        // Giant Snapping Turtle killed
+        if (isBoss && entity === this.giantTurtle) {
+            this.giantTurtleDefeated = true;
+            GameAnalytics.track("giant-turtle-defeated");
+            this.ui.hideBossHealth();
+            this.sound.bossDefeat();
+            // The shell is the prize: Turtle Shell Armor, three points sturdier
+            // than the Knight's Armor, and with the beast dead the Waiting
+            // Ground will finally take a Worldtree Seed.
+            const gotArmor = this.player.addArmor(GIANT_TURTLE.armorDrop);
+            setTimeout(() => {
+                const a = ARMOR[GIANT_TURTLE.armorDrop];
+                if (gotArmor) {
+                    this.sound.weaponPickup();
+                    this.ui.showNotification(`${a.icon} ${a.name} obtained! (DEF +${a.defense})`);
+                }
+                this.ui.showDialog(
+                    "The giant snapping turtle heaves once, lets out a last grinding growl, and goes still. Its great " +
+                    "domed shell splits cleanly along the seams.", () => {
+                    this.ui.showDialog(
+                        gotArmor
+                            ? `From the shell you cut ${a.name} - ${a.description}. DEF ${a.defense}. Open inventory (I) to equip it.`
+                            : `You already carry ${a.name}.`, () => {
+                        this.ui.showDialog(
+                            "The bare earth behind it seems to settle and breathe out. The Waiting Ground is unguarded now - " +
+                            "a Worldtree Seed will take root here at last."
+                        );
+                    });
+                });
             }, 2000);
             return;
         }
@@ -2881,6 +2985,19 @@ class Game {
         }
         if (!this.player.hasWorldtreeSeed) return;
 
+        // Nothing takes root anywhere in the realm while the Fallow's guardian
+        // still lives. The Worldtree Seed cannot be planted until the Giant
+        // Snapping Turtle has been defeated.
+        if (!this.giantTurtleDefeated) {
+            this.ui.showNotification("🐢 The seed will not take. Something in the Fallow still holds this land.");
+            this.ui.showDialog(
+                "You press the seed into the ground and it simply will not settle - it goes cold and inert in your hand. " +
+                "As long as the giant snapping turtle guards the Fallow, no Worldtree will take root anywhere in the realm. " +
+                "Find the beast, south of the Black Knight's castle, and put it down first."
+            );
+            return;
+        }
+
         // Remember what kind of ground this was before the seed leaves the
         // hand: the ash is the guess everyone makes, and it deserves a straight
         // answer rather than the generic one.
@@ -3527,6 +3644,23 @@ class Game {
         }
     }
 
+    checkGiantTurtleTrigger() {
+        const spawnPoint = this.world.giantTurtleSpawnPoint;
+        if (!spawnPoint) return;
+        if (dist(this.player.x, this.player.y, spawnPoint.x, spawnPoint.y) < 200) {
+            this.giantTurtleSpawned = true;
+            this.giantTurtle = new GiantTurtle(spawnPoint.x, spawnPoint.y);
+            this.giantTurtle.spawn();
+            this.turtleGrowlTimer = 1200;
+            this.sound.bossRoar();
+            this.sound.turtleGrowl();
+
+            this.ui.showDialog("The bare earth ahead heaves, and something the size of a boulder drags itself up out of the Fallow.");
+            this.ui.showDialog("A giant snapping turtle - moss on its shell, jaws like a bear-trap - plants itself squarely between you and the Waiting Ground. It has been guarding this plot for longer than the realm has had a name.");
+            this.ui.showDialog("It lets out a low, grinding growl and does not move aside. Nothing will take root in this earth while it lives. Defeat the Giant Snapping Turtle!");
+        }
+    }
+
     checkZone() {
         if (this.inCave) {
             if (this.currentZone !== "cave") {
@@ -3630,6 +3764,11 @@ class Game {
         // Green Knight (surface only)
         if (this.onSurface && this.greenKnight && this.greenKnight.spawned) {
             renderables.push({ y: this.greenKnight.y, render: () => this.greenKnight.render(ctx, this.camera, this.time) });
+        }
+
+        // Giant Snapping Turtle (surface only)
+        if (this.onSurface && this.giantTurtle && this.giantTurtle.spawned) {
+            renderables.push({ y: this.giantTurtle.y, render: () => this.giantTurtle.render(ctx, this.camera, this.time) });
         }
 
         // The Olympian (Cloudlands only)
@@ -3751,6 +3890,7 @@ class Game {
             } else if (this.inSky) {
                 this.skyWorld.renderMinimap(this.minimapCtx, this.player, this.skyMonsters, this.olympianBoss, mapOpts);
             } else {
+                mapOpts.giantTurtle = this.giantTurtle;
                 this.world.renderMinimap(this.minimapCtx, this.player, this.monsters, this.boss, this.greenKnight, this.companions, mapOpts);
             }
             this.lastMinimapRender = this.time;

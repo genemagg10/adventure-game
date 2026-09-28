@@ -589,7 +589,8 @@ const ANIMAL_CONFIG = {
     spawnInterval: 12000,   // ms between wild-animal respawn ticks
     spawnChance: 0.35,      // chance to respawn one per tick when under the cap
     followDistance: 46,     // how far behind the player companions trail
-    aggroRange: 230,        // how far from the player a companion will engage
+    aggroRange: 230,        // how far from the player a monster still counts as in the fight
+    quarryRange: 300,       // how far from the player the pack will chase what he attacked
     leashRange: 320,        // beyond this a companion breaks off and returns
     attackRange: 26,
     attackCooldown: 1000,   // ms between companion attacks

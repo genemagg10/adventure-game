@@ -140,6 +140,7 @@ class Game {
         // Animal companions
         this.wildAnimals = [];      // untamed critters roaming the surface
         this.companions = [];       // tamed animals following the player
+        this.packQuarry = null;     // whatever the player last attacked; the pack goes for it
         this.animalSpawnTimer = 0;
         this.nearAnimal = null;
         this.firstTameShown = false;
@@ -370,6 +371,7 @@ class Game {
         // Wild animals roaming the biomes
         this.wildAnimals = [];
         this.companions = [];
+        this.packQuarry = null;
         this.animalSpawnTimer = 0;
         this.nearAnimal = null;
         this.firstTameShown = false;
@@ -752,7 +754,25 @@ class Game {
             dist(this.player.x, this.player.y, a.x, a.y) <= dist(this.player.x, this.player.y, b.x, b.y) ? a : b);
     }
 
-    // Everything a companion is willing to bite, in the world the player is in.
+    // Point the pack at what the player just hit. Of several (a spell that
+    // caught a crowd), the survivor nearest the player; if the blow killed
+    // everything it touched, the old quarry stands.
+    setPackQuarry(hits) {
+        let best = null;
+        let bestDist = Infinity;
+        for (const hit of hits) {
+            const t = hit.target;
+            if (hit.killed || !t || !t.alive) continue;
+            const d = dist(this.player.x, this.player.y, t.x, t.y);
+            if (d < bestDist) {
+                bestDist = d;
+                best = t;
+            }
+        }
+        if (best) this.packQuarry = best;
+    }
+
+    // Everything hostile in the world the player is in.
     getHostiles(activeMonsters, activeBoss, activeGreenKnight) {
         const hostiles = [];
         for (const m of activeMonsters) {
@@ -766,10 +786,14 @@ class Game {
     updateAnimals(dt, activeWorld, activeMonsters, activeBoss, activeGreenKnight) {
         const hostiles = this.getHostiles(activeMonsters, activeBoss, activeGreenKnight);
 
+        // The pack only fights what the player has attacked. Once that is dead,
+        // or left behind in another realm, it has nothing to go for.
+        if (this.packQuarry && !hostiles.includes(this.packQuarry)) this.packQuarry = null;
+
         // Companions fight alongside the player in every realm - overworld,
         // caves and the Cloudlands
         for (const companion of this.companions) {
-            const hits = companion.update(dt, this.player, activeWorld, hostiles, this.combat);
+            const hits = companion.update(dt, this.player, activeWorld, hostiles, this.combat, this.packQuarry);
             for (const hit of hits) {
                 this.sound.monsterHit();
                 if (hit.killed) {
@@ -806,6 +830,7 @@ class Game {
 
     // Bring the pack to the player after a teleport (cave transition, respawn)
     gatherCompanions() {
+        this.packQuarry = null;
         let i = 0;
         for (const companion of this.companions) {
             if (!companion.alive) continue;
@@ -844,7 +869,7 @@ class Game {
         if (!this.firstTameShown) {
             this.firstTameShown = true;
             this.ui.showDialog(`The ${animal.name} takes the apple and trots to your side. ${animal.flavor}.`, () => {
-                this.ui.showDialog(`It will follow you and fight what threatens you until it falls. You can keep ${ANIMAL_CONFIG.maxCompanions} companions at once.`);
+                this.ui.showDialog(`It will follow you and fight whatever you attack until it falls. You can keep ${ANIMAL_CONFIG.maxCompanions} companions at once.`);
             });
         }
         return true;
@@ -1175,6 +1200,7 @@ class Game {
                     case "earth": this.sound.earthQuake(); break;
                 }
                 const results = this.combat.useElement(this.player, elemUsed, activeMonsters, activeBoss, activeGreenKnight);
+                this.setPackQuarry(results);
                 for (const r of results) {
                     if (r.killed) {
                         this.onEntityKilled(r.target, r.isBoss);
@@ -1387,6 +1413,7 @@ class Game {
 
         // Update arrow projectiles
         const arrowHits = this.combat.updateArrows(dt, activeMonsters, activeBoss, activeWorld, activeGreenKnight);
+        this.setPackQuarry(arrowHits);
         for (const hit of arrowHits) {
             if (hit.killed) {
                 this.onEntityKilled(hit.target, hit.isBoss);
@@ -1396,6 +1423,7 @@ class Game {
         // Combat attack hits (continued swings)
         if (this.player.attacking) {
             const hits = this.combat.checkPlayerAttack(this.player, activeMonsters, activeBoss, activeGreenKnight);
+            this.setPackQuarry(hits);
             for (const hit of hits) {
                 if (hit.crit) {
                     this.sound.criticalHit();
@@ -1603,6 +1631,7 @@ class Game {
         // Companions are lost on death; the player can tame a new pack with apples
         this.nearAnimal = null;
         this.companions = [];
+        this.packQuarry = null;
         this.setInsideClubhouse(false);
 
         // Repopulate roaming animals so a respawn also refreshes the living world

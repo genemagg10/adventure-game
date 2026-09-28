@@ -4,7 +4,8 @@ const { startNewGame } = require("./helpers");
 // The pack used to pick its own fights: any monster that wandered near
 // Ingoizer got bitten, whether he wanted a fight or not. Now the animals stay
 // at heel until he attacks something, and then they go for that - and only
-// that - until it falls.
+// that - until it falls. The one exception is self-defence: an animal a
+// monster hurts fights that monster back for a while.
 
 test.describe("the pack follows Ingoizer's lead", () => {
     test.beforeEach(async ({ page }) => {
@@ -89,5 +90,35 @@ test.describe("the pack follows Ingoizer's lead", () => {
         `));
 
         expect(result, "nothing left to chase from that blow, so the fox keeps its mark").toBe(true);
+    });
+
+    test("an animal a monster hurts fights that monster back", async ({ page }) => {
+        const result = await run(page, new Function(`${stage}
+            // The far troll lands a blow on the fox - source and all, as a
+            // monster's swing reports it.
+            fox.lastHurtTime = 0;
+            fox.hurtBy(1, far.x, far.y, far);
+            tick(200);
+            return { onFar: fox.target === far, far: far.maxHp - far.hp, near: near.maxHp - near.hp };
+        `));
+
+        expect(result.onFar, "the fox turns on the troll that hurt it").toBe(true);
+        expect(result.far, "and bites it").toBeGreaterThan(0);
+        expect(result.near, "the troll that left it alone is still left alone").toBe(0);
+    });
+
+    test("self-defence wears off once the monster stops attacking", async ({ page }) => {
+        const result = await run(page, new Function(`${stage}
+            fox.lastHurtTime = 0;
+            fox.hurtBy(1, far.x, far.y, far);
+            tick(1);
+            const before = fox.target === far;
+            fox.defendTimer = 0;
+            tick(1);
+            return { before, after: fox.target };
+        `));
+
+        expect(result.before, "it answers the blow").toBe(true);
+        expect(result.after, "then goes back to heel").toBeNull();
     });
 });

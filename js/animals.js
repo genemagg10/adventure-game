@@ -3,7 +3,7 @@
 // ============================================
 //
 // Harmless critters roam each biome. Feed one an apple and it becomes a
-// companion that follows you and fights whatever you attack - until it dies.
+// companion that follows you and fights whatever you attack, or whatever attacks it - until it dies.
 
 class Animal {
     constructor(type, x, y) {
@@ -61,6 +61,8 @@ class Animal {
         this.lastAttackTime = 0;
         this.lastHurtTime = 0;
         this.target = null;
+        this.attacker = null;      // the monster that last hurt it, which it will fight back
+        this.defendTimer = 0;
         this.knockbackVx = 0;
         this.knockbackVy = 0;
         this.stuckTimer = 0;
@@ -87,9 +89,22 @@ class Animal {
 
     // The pack does not pick its own fights. It goes for whatever Ingoizer
     // last struck - his quarry - and only while that is still within reach of
-    // him; otherwise there is nothing to bite and it stays at heel.
+    // him. Failing that, an animal a monster has just hurt fights that monster
+    // back for a while. Otherwise there is nothing to bite and it stays at heel.
     findTarget(player, quarry) {
-        return this.isEngageable(quarry, player, ANIMAL_CONFIG.quarryRange) ? quarry : null;
+        if (this.isEngageable(quarry, player, ANIMAL_CONFIG.quarryRange)) return quarry;
+        if (this.defendTimer > 0 && this.isEngageable(this.attacker, player, ANIMAL_CONFIG.quarryRange)) {
+            return this.attacker;
+        }
+        this.attacker = null;
+        return null;
+    }
+
+    // Remember who hurt it, so it can answer back.
+    provokedBy(source) {
+        if (!source) return;
+        this.attacker = source;
+        this.defendTimer = ANIMAL_CONFIG.defendTime;
     }
 
     // Returns an array of hit results ({ target, damage, killed, isBoss }) so the
@@ -104,6 +119,7 @@ class Animal {
 
         if (this.flashTimer > 0) this.flashTimer -= dt;
         if (this.tameGlow > 0) this.tameGlow -= dt;
+        if (this.defendTimer > 0) this.defendTimer -= dt;
         if (this.attacking) {
             this.attackTimer -= dt;
             if (this.attackTimer <= 0) this.attacking = false;
@@ -357,6 +373,7 @@ class Animal {
             if (dist(this.x, this.y, h.x, h.y) > this.size + h.size + 4) continue;
             this.lastHurtTime = now;
             this.takeDamage(h.damage, h.x, h.y);
+            this.provokedBy(h);
             return;
         }
     }
@@ -412,13 +429,14 @@ class Animal {
     // A blow from something else - a monster swinging at the pack rather than at
     // Ingoizer. It honours the same short guard the contact damage uses, so an
     // animal in a scrum is not billed twice for standing in one place. Returns
-    // true when the blow actually landed.
-    hurtBy(amount, fromX, fromY) {
+    // true when the blow actually landed. The animal will fight `source` back.
+    hurtBy(amount, fromX, fromY, source) {
         if (!this.alive) return false;
         const now = Date.now();
         if (now - this.lastHurtTime < ANIMAL_CONFIG.hurtCooldown) return false;
         this.lastHurtTime = now;
         this.takeDamage(amount, fromX, fromY);
+        this.provokedBy(source);
         return true;
     }
 

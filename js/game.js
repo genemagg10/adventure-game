@@ -838,6 +838,7 @@ class Game {
             companion.x = this.player.x + Math.cos(angle) * 26;
             companion.y = this.player.y + Math.sin(angle) * 26;
             companion.target = null;
+            companion.attacker = null;
             companion.knockbackVx = 0;
             companion.knockbackVy = 0;
             i++;
@@ -869,7 +870,7 @@ class Game {
         if (!this.firstTameShown) {
             this.firstTameShown = true;
             this.ui.showDialog(`The ${animal.name} takes the apple and trots to your side. ${animal.flavor}.`, () => {
-                this.ui.showDialog(`It will follow you and fight whatever you attack until it falls. You can keep ${ANIMAL_CONFIG.maxCompanions} companions at once.`);
+                this.ui.showDialog(`It will follow you, fight whatever you attack and defend itself, until it falls. You can keep ${ANIMAL_CONFIG.maxCompanions} companions at once.`);
             });
         }
         return true;

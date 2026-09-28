@@ -591,6 +591,7 @@ const ANIMAL_CONFIG = {
     followDistance: 46,     // how far behind the player companions trail
     aggroRange: 230,        // how far from the player a monster still counts as in the fight
     quarryRange: 300,       // how far from the player the pack will chase what he attacked
+    defendTime: 4000,       // ms an animal keeps fighting back after a monster last hurt it
     leashRange: 320,        // beyond this a companion breaks off and returns
     attackRange: 26,
     attackCooldown: 1000,   // ms between companion attacks

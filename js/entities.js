@@ -812,7 +812,7 @@ class Monster {
                             if (player.takeDamage(this.damage, this.x, this.y)) {
                                 return { type: "playerHit", damage: this.damage };
                             }
-                        } else if (target.hurtBy && target.hurtBy(this.damage, this.x, this.y)) {
+                        } else if (target.hurtBy && target.hurtBy(this.damage, this.x, this.y, this)) {
                             return { type: "companionHit", damage: this.damage, companion: target };
                         }
                     }

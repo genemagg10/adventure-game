@@ -3,7 +3,7 @@
 // ============================================
 //
 // Harmless critters roam each biome. Feed one an apple and it becomes a
-// companion that follows you and fights whatever threatens you - until it dies.
+// companion that follows you and fights whatever you attack, or whatever attacks it - until it dies.
 
 class Animal {
     constructor(type, x, y) {
@@ -61,6 +61,8 @@ class Animal {
         this.lastAttackTime = 0;
         this.lastHurtTime = 0;
         this.target = null;
+        this.attacker = null;      // the monster that last hurt it, which it will fight back
+        this.defendTimer = 0;
         this.knockbackVx = 0;
         this.knockbackVy = 0;
         this.stuckTimer = 0;
@@ -78,30 +80,38 @@ class Animal {
 
     // Hostiles the companion is willing to pick a fight with: alive, actually
     // present (bosses spawn in with an animation), and near the player.
-    isEngageable(hostile, player) {
+    isEngageable(hostile, player, range = ANIMAL_CONFIG.aggroRange) {
         if (!hostile || !hostile.alive) return false;
         if (hostile.spawned === false) return false;
         if (hostile.spawnAnimation > 0) return false;
-        return dist(hostile.x, hostile.y, player.x, player.y) < ANIMAL_CONFIG.aggroRange;
+        return dist(hostile.x, hostile.y, player.x, player.y) < range;
     }
 
-    findTarget(player, hostiles) {
-        let best = null;
-        let bestDist = Infinity;
-        for (const h of hostiles) {
-            if (!this.isEngageable(h, player)) continue;
-            const d = dist(this.x, this.y, h.x, h.y);
-            if (d < bestDist) {
-                bestDist = d;
-                best = h;
-            }
+    // The pack does not pick its own fights. It goes for whatever Ingoizer
+    // last struck - his quarry - and only while that is still within reach of
+    // him. Failing that, an animal a monster has just hurt fights that monster
+    // back for a while. Otherwise there is nothing to bite and it stays at heel.
+    findTarget(player, quarry) {
+        if (this.isEngageable(quarry, player, ANIMAL_CONFIG.quarryRange)) return quarry;
+        if (this.defendTimer > 0 && this.isEngageable(this.attacker, player, ANIMAL_CONFIG.quarryRange)) {
+            return this.attacker;
         }
-        return best;
+        this.attacker = null;
+        return null;
+    }
+
+    // Remember who hurt it, so it can answer back.
+    provokedBy(source) {
+        if (!source) return;
+        this.attacker = source;
+        this.defendTimer = ANIMAL_CONFIG.defendTime;
     }
 
     // Returns an array of hit results ({ target, damage, killed, isBoss }) so the
     // game can hand kills to onEntityKilled, matching the player's attack flow.
-    update(dt, player, world, hostiles, combat) {
+    // `quarry` is whatever the player last attacked; companions leave everything
+    // else alone.
+    update(dt, player, world, hostiles, combat, quarry = null) {
         if (!this.alive) {
             this.deathTimer -= dt;
             return [];
@@ -109,6 +119,7 @@ class Animal {
 
         if (this.flashTimer > 0) this.flashTimer -= dt;
         if (this.tameGlow > 0) this.tameGlow -= dt;
+        if (this.defendTimer > 0) this.defendTimer -= dt;
         if (this.attacking) {
             this.attackTimer -= dt;
             if (this.attackTimer <= 0) this.attacking = false;
@@ -122,7 +133,7 @@ class Animal {
             moveX = move.x;
             moveY = move.y;
         } else if (this.tamed) {
-            const move = this.updateCompanion(dt, player, hostiles, combat, hits);
+            const move = this.updateCompanion(dt, player, hostiles, combat, hits, quarry);
             moveX = move.x;
             moveY = move.y;
         } else {
@@ -286,11 +297,11 @@ class Animal {
         return { x: mx, y: my };
     }
 
-    updateCompanion(dt, player, hostiles, combat, hits) {
+    updateCompanion(dt, player, hostiles, combat, hits, quarry) {
         const distToPlayer = dist(this.x, this.y, player.x, player.y);
 
         // Stay close: if the fight dragged us too far from the player, break off.
-        let target = distToPlayer > ANIMAL_CONFIG.leashRange ? null : this.findTarget(player, hostiles);
+        let target = distToPlayer > ANIMAL_CONFIG.leashRange ? null : this.findTarget(player, quarry);
         this.target = target;
 
         if (target) {
@@ -362,6 +373,7 @@ class Animal {
             if (dist(this.x, this.y, h.x, h.y) > this.size + h.size + 4) continue;
             this.lastHurtTime = now;
             this.takeDamage(h.damage, h.x, h.y);
+            this.provokedBy(h);
             return;
         }
     }
@@ -417,13 +429,14 @@ class Animal {
     // A blow from something else - a monster swinging at the pack rather than at
     // Ingoizer. It honours the same short guard the contact damage uses, so an
     // animal in a scrum is not billed twice for standing in one place. Returns
-    // true when the blow actually landed.
-    hurtBy(amount, fromX, fromY) {
+    // true when the blow actually landed. The animal will fight `source` back.
+    hurtBy(amount, fromX, fromY, source) {
         if (!this.alive) return false;
         const now = Date.now();
         if (now - this.lastHurtTime < ANIMAL_CONFIG.hurtCooldown) return false;
         this.lastHurtTime = now;
         this.takeDamage(amount, fromX, fromY);
+        this.provokedBy(source);
         return true;
     }
 

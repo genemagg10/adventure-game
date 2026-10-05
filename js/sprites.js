@@ -436,6 +436,12 @@ const KeySprite = {
             o.fillStyle = "rgba(255,255,255,0.85)";
             o.fillRect(1, -2, 2, 1);
         }
+        const glint = 0.35 + 0.65 * Math.abs(Math.sin((time || 0) * 0.009));
+        o.globalAlpha = glint;
+        o.fillStyle = p.highlight;
+        o.fillRect(8, -8, 2, 2);
+        o.fillRect(11, -6, 2, 2);
+        o.fillRect(-10, -7, 2, 2);
         o.restore();
         ctx.drawImage(off, Math.round(x) - 10, Math.round(y + bob) - 12);
     },

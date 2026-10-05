@@ -414,6 +414,8 @@ class CombatSystem {
         const hits = [];
         for (let i = this.arrowProjectiles.length - 1; i >= 0; i--) {
             const a = this.arrowProjectiles[i];
+            const prevX = a.x;
+            const prevY = a.y;
             const moveX = a.vx * dt * 0.1;
             const moveY = a.vy * dt * 0.1;
             a.x += moveX;
@@ -516,10 +518,15 @@ class CombatSystem {
 
             let removed = false;
 
-            // Check monster collision
+            // Check monster collision. A fast bolt is tested along the segment
+            // it just crossed, so it cannot step clean over a body.
             for (const m of monsters) {
                 if (!m.alive) continue;
-                if (dist(a.x, a.y, m.x, m.y) < m.size + 4) {
+                const reach = m.size + 4;
+                const struck = a.isLaser
+                    ? this.segmentHits(prevX, prevY, a.x, a.y, m.x, m.y, reach)
+                    : dist(a.x, a.y, m.x, m.y) < reach;
+                if (struck) {
                     let damage = a.damage;
                     let crit = false;
                     if (Math.random() < 0.15) {
@@ -548,7 +555,11 @@ class CombatSystem {
 
             // Check boss collision
             if (boss && boss.alive && boss.spawned && boss.spawnAnimation <= 0) {
-                if (dist(a.x, a.y, boss.x, boss.y) < boss.size + 4) {
+                const reach = boss.size + 4;
+                const struck = a.isLaser
+                    ? this.segmentHits(prevX, prevY, a.x, a.y, boss.x, boss.y, reach)
+                    : dist(a.x, a.y, boss.x, boss.y) < reach;
+                if (struck) {
                     let damage = a.damage;
                     let crit = false;
                     if (Math.random() < 0.12) {
@@ -573,7 +584,11 @@ class CombatSystem {
 
             // Check Green Knight collision
             if (greenKnight && greenKnight.alive && greenKnight.spawned && greenKnight.spawnAnimation <= 0) {
-                if (dist(a.x, a.y, greenKnight.x, greenKnight.y) < greenKnight.size + 4) {
+                const reach = greenKnight.size + 4;
+                const struck = a.isLaser
+                    ? this.segmentHits(prevX, prevY, a.x, a.y, greenKnight.x, greenKnight.y, reach)
+                    : dist(a.x, a.y, greenKnight.x, greenKnight.y) < reach;
+                if (struck) {
                     let damage = a.damage;
                     let crit = false;
                     if (Math.random() < 0.12) {
@@ -598,6 +613,24 @@ class CombatSystem {
         return hits;
     }
 
+    // True when the circle sits on the segment from (x0, y0) to (x1, y1).
+    segmentHits(x0, y0, x1, y1, cx, cy, r) {
+        const dx = x1 - x0;
+        const dy = y1 - y0;
+        const len2 = dx * dx + dy * dy;
+        let t = 0;
+        if (len2 > 0.0001) {
+            t = ((cx - x0) * dx + (cy - y0) * dy) / len2;
+            if (t < 0) t = 0;
+            else if (t > 1) t = 1;
+        }
+        const px = x0 + dx * t;
+        const py = y0 + dy * t;
+        const ex = px - cx;
+        const ey = py - cy;
+        return ex * ex + ey * ey < r * r;
+    }
+
     // A bolt of Zeus striking home: a short jagged arc plus a flash
     spawnBoltImpact(arrow, target) {
         const backX = arrow.x - arrow.vx * 6;
@@ -615,22 +648,18 @@ class CombatSystem {
 
             if (a.isLaser) {
                 ctx.save();
-                ctx.translate(sx, sy);
+                ctx.translate(Math.round(sx), Math.round(sy));
                 ctx.rotate(angle);
-                ctx.shadowColor = a.isFireArrow ? "#ff8844" : "#7ef0ff";
-                ctx.shadowBlur = 10;
-                ctx.strokeStyle = a.isFireArrow ? "rgba(255, 170, 90, 0.45)" : "rgba(120, 230, 255, 0.55)";
-                ctx.lineWidth = 6;
-                ctx.beginPath();
-                ctx.moveTo(-14, 0);
-                ctx.lineTo(12, 0);
-                ctx.stroke();
-                ctx.strokeStyle = a.isFireArrow ? "#fff1d0" : "#f4fdff";
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(-12, 0);
-                ctx.lineTo(14, 0);
-                ctx.stroke();
+                const hot = a.isFireArrow ? "#ff8844" : "#7ef0ff";
+                const core = a.isFireArrow ? "#fff1d0" : "#f4fdff";
+                ctx.fillStyle = a.isFireArrow ? "rgba(255, 120, 40, 0.35)" : "rgba(80, 220, 255, 0.4)";
+                ctx.fillRect(-52, -5, 70, 10);
+                ctx.fillStyle = hot;
+                ctx.fillRect(-46, -2, 60, 4);
+                ctx.fillStyle = core;
+                ctx.fillRect(-40, -1, 52, 2);
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(6, -3, 8, 6);
                 ctx.restore();
                 continue;
             }

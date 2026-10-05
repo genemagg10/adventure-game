@@ -54,6 +54,8 @@ test.describe("three keys and the door beside the Hollow", () => {
                 otherCaves: [1, 2, 3].map(id => g.caveWorlds[id].strangeKey),
                 labels, lore,
                 doorGap: Math.hypot(door.x - hollow.x, door.y - hollow.y),
+                ambrosiaClear: g.skyWorld.ambrosia.every(a => Math.hypot(a.x - crystal.x, a.y - crystal.y) >= 120),
+                jadeFramed: jade.tileX >= 18 && jade.tileY >= 12 && jade.tileX < CAVE_W - 18 && jade.tileY < CAVE_H - 12,
             };
         });
 
@@ -69,6 +71,8 @@ test.describe("three keys and the door beside the Hollow", () => {
         expect(reachable(placed.caveSolid, 80, 60, placed.caveExit[0], placed.caveExit[1], placed.jade.tileX, placed.jade.tileY)).toBe(true);
         expect(reachable(placed.skySolid, 80, 60, placed.skyExit[0], placed.skyExit[1], placed.crystal.tileX, placed.crystal.tileY)).toBe(true);
         expect(placed.doorGap).toBeGreaterThan(80);
+        expect(placed.ambrosiaClear).toBe(true);
+        expect(placed.jadeFramed).toBe(true);
         expect(placed.labels).not.toMatch(/Copper|Jade|Crystal|Laser/);
         expect(placed.lore).not.toMatch(/Laser Gun|Copper Key|Jade Key|Crystal Key/);
 
@@ -102,6 +106,9 @@ test.describe("three keys and the door beside the Hollow", () => {
                 harderThanKnight: LUCA_BOSS.hp > BOSS.hp && LUCA_BOSS.damage > BOSS.damage,
                 harderThanTurtle: LUCA_BOSS.hp > GIANT_TURTLE.hp && LUCA_BOSS.damage > GIANT_TURTLE.damage,
                 harderThanZeus: LUCA_BOSS.hp > ZEUS_BOSS.hp && LUCA_BOSS.damage > ZEUS_BOSS.damage && LUCA_BOSS.boltDamage > OLYMPIAN_DAMAGE.zeusBolt,
+                openerSafe: LUCA_BOSS.phases[0].bolt * 2 < PLAYER_DEFAULTS.maxHp && LUCA_BOSS.phases[1].bolt * 2 < PLAYER_DEFAULTS.maxHp,
+                lateHurts: LUCA_BOSS.phases[2].bolt * 2 >= PLAYER_DEFAULTS.maxHp,
+                windup: LUCA_BOSS.windup,
             };
         });
         expect(fight.inSeal).toBe(true);
@@ -110,6 +117,9 @@ test.describe("three keys and the door beside the Hollow", () => {
         expect(fight.harderThanTurtle).toBe(true);
         expect(fight.harderThanZeus).toBe(true);
         expect(fight.fastest).toBeLessThan(fight.zeusFast);
+        expect(fight.openerSafe).toBe(true);
+        expect(fight.lateHurts).toBe(true);
+        expect(fight.windup).toBeGreaterThanOrEqual(400);
 
         const reward = await page.evaluate(() => {
             const g = window.game;
@@ -140,6 +150,114 @@ test.describe("three keys and the door beside the Hollow", () => {
         expect(reward.bolt).toBe("laser");
         expect(reward.hallGrew).toBe(false);
         expect(reward.defeated).toBe(true);
+    });
+
+    test("the room music starts for the fight and stops when you leave", async ({ page }) => {
+        await startNewGame(page);
+        const entered = await page.evaluate(() => {
+            const g = window.game;
+            g.player.holdKey("copper");
+            g.player.holdKey("jade");
+            g.player.holdKey("crystal");
+            g.player.x = g.world.sealedDoor.x + 60;
+            g.player.y = g.world.sealedDoor.y;
+            g.checkSealedDoor();
+            const inReach = g.nearSealedDoor;
+            g.trySealedDoor();
+            g.syncSealMusic();
+            return {
+                inReach,
+                inSeal: g.inSeal,
+                drone: g.sealDroneOn,
+                fight: g.sealMusicOn,
+                droneLive: g.sound.isSealDronePlaying(),
+                fightLive: g.sound.isSealMusicPlaying(),
+            };
+        });
+        expect(entered.inReach).toBe(true);
+        expect(entered.inSeal).toBe(true);
+        expect(entered.drone).toBe(true);
+        expect(entered.fight).toBe(false);
+        expect(entered.droneLive).toBe(true);
+        expect(entered.fightLive).toBe(false);
+
+        const fighting = await page.evaluate(() => {
+            const g = window.game;
+            g.luca.spawnAnimation = 0;
+            g.syncSealMusic();
+            return { drone: g.sealDroneOn, fight: g.sealMusicOn, live: g.sound.isSealMusicPlaying() };
+        });
+        expect(fighting.drone).toBe(false);
+        expect(fighting.fight).toBe(true);
+        expect(fighting.live).toBe(true);
+
+        const paused = await page.evaluate(() => {
+            const g = window.game;
+            g.paused = true;
+            g.syncSealMusic();
+            const quiet = !g.sealMusicOn && !g.sealDroneOn;
+            g.paused = false;
+            g.syncSealMusic();
+            return { quiet, back: g.sealMusicOn && g.sound.isSealMusicPlaying() };
+        });
+        expect(paused.quiet).toBe(true);
+        expect(paused.back).toBe(true);
+
+        const left = await page.evaluate(() => {
+            const g = window.game;
+            g.exitSeal();
+            g.syncSealMusic();
+            return { inSeal: g.inSeal, drone: g.sealDroneOn, fight: g.sealMusicOn, live: g.sound.isSealMusicPlaying() };
+        });
+        expect(left.inSeal).toBe(false);
+        expect(left.drone).toBe(false);
+        expect(left.fight).toBe(false);
+        expect(left.live).toBe(false);
+
+        const died = await page.evaluate(() => {
+            const g = window.game;
+            g.trySealedDoor();
+            g.luca.spawnAnimation = 0;
+            g.syncSealMusic();
+            const started = g.sealMusicOn;
+            g.respawnPlayer();
+            g.syncSealMusic();
+            return { started, drone: g.sealDroneOn, fight: g.sealMusicOn, inSeal: g.inSeal };
+        });
+        expect(died.started).toBe(true);
+        expect(died.inSeal).toBe(false);
+        expect(died.drone).toBe(false);
+        expect(died.fight).toBe(false);
+    });
+
+    test("the laser hits a monster up close and at a distance", async ({ page }) => {
+        await startNewGame(page);
+        const shot = await page.evaluate(() => {
+            const g = window.game;
+            g.player.addBow("laser_gun");
+            g.player.equipBow("laser_gun");
+            g.player.arrows = 8;
+            g.player.facing = { x: 1, y: 0 };
+            function loose(distance) {
+                const sk = new Monster("skeleton", g.player.x + distance, g.player.y);
+                g.player.lastShootTime = 0;
+                g.combat.arrowProjectiles.length = 0;
+                const arrow = g.player.shootArrow();
+                g.combat.addArrow(arrow);
+                for (let i = 0; i < 6; i++) g.combat.updateArrows(80, [sk], null, g.world, null);
+                return { hp: sk.hp, alive: sk.alive };
+            }
+            return {
+                damage: BOWS.laser_gun.damage,
+                close: loose(24),
+                far: loose(160),
+            };
+        });
+        expect(shot.damage).toBeGreaterThanOrEqual(50);
+        expect(shot.close.alive).toBe(false);
+        expect(shot.close.hp).toBeLessThanOrEqual(0);
+        expect(shot.far.alive).toBe(false);
+        expect(shot.far.hp).toBeLessThanOrEqual(0);
     });
 
     test("the tag, the keys, and the laser gun survive a save", async ({ page }) => {

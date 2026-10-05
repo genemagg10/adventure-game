@@ -42,6 +42,7 @@ class UIManager {
         this.invWeapons = document.getElementById("inventory-weapons");
         this.invGems = document.getElementById("inventory-gems");
         this.arrowCount = document.getElementById("arrow-count");
+        this.keyPips = document.querySelectorAll("#key-pips .key-pip");
         this.arrowIcon = document.getElementById("arrow-icon");
         this.greenGemCounter = document.getElementById("green-gem-counter");
         this.greenGemCount = document.getElementById("green-gem-count");
@@ -280,6 +281,7 @@ class UIManager {
             weapon.name, weapon.damage, bow.name, bow.damage, armor.name, armor.defense,
             player.hasMerlinWand, player.hasSheath, player.hasWorldtreeSeed,
             this.game.ladyQuestState, this.game.touchControls && this.game.touchControls.active,
+            (player.heldKeys || []).join(","),
             elementState,
         ].join("|");
         if (signature === this._hudSignature) return false;
@@ -334,6 +336,12 @@ class UIManager {
 
         // Arrows - once Zeus falls, every arrow in the quiver is one of his bolts
         this.arrowCount.textContent = player.arrows;
+        if (this.keyPips && this.keyPips.length) {
+            const held = player.heldKeys || [];
+            for (const pip of this.keyPips) {
+                pip.classList.toggle("on", held.indexOf(pip.dataset.key) !== -1);
+            }
+        }
         const arrowIcon = this.arrowIcon;
         if (arrowIcon) {
             const bowNow = BOWS[player.currentBow];

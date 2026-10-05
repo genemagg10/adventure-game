@@ -30,7 +30,13 @@ class Game {
         document.addEventListener("visibilitychange", () => {
             if (!document.hidden) return;
             this.clubMusicOn = false;
+            this.sealMusicOn = false;
+            this.sealDroneOn = false;
+            this.sealPhase = "off";
+            if (!this.sound) return;
             this.sound.stopClubMusic();
+            this.sound.stopSealMusic();
+            this.sound.stopSealDrone();
         });
 
         this.running = false;
@@ -159,6 +165,10 @@ class Game {
         this.insideClubhouse = false;
         this.clubGuestTimer = 0;
         this.clubMusicOn = false;
+        this.sealMusicOn = false;
+        this.sealDroneOn = false;
+        this.sealPhase = "off";
+        this.sealIntro = 0;
 
         // Camera
         this.camera = { x: 0, y: 0 };
@@ -410,6 +420,12 @@ class Game {
         this.clubGuestTimer = 0;
         this.clubMusicOn = false;
         this.sound.stopClubMusic();
+        this.sealMusicOn = false;
+        this.sealDroneOn = false;
+        this.sealPhase = "off";
+        this.sealIntro = 0;
+        this.sound.stopSealMusic();
+        this.sound.stopSealDrone();
 
         // Boss (not yet spawned)
         this.boss = new Boss(this.world.bossSpawnPoint.x, this.world.bossSpawnPoint.y);
@@ -1049,6 +1065,30 @@ class Game {
         else this.sound.stopClubMusic();
     }
 
+    // Drone while the room is still waking, then the fight loop once he can act.
+    // Pausing, dying, or stepping back out all take the sound with them.
+    syncSealMusic() {
+        const live = this.state === "playing" && !this.paused && this.inSeal && !this.lucaDefeated;
+        const waking = !!(live && this.luca && this.luca.spawned && this.luca.alive && this.luca.spawnAnimation > 0);
+        const fighting = !!(live && this.luca && this.luca.spawned && this.luca.alive && this.luca.spawnAnimation <= 0);
+        const next = fighting ? "fight" : (waking || (live && !this.luca) ? "drone" : "off");
+        if (next === this.sealPhase && ((next === "fight") === this.sealMusicOn) && ((next === "drone") === this.sealDroneOn)) return;
+        if (next === "fight" && this.sealPhase === "drone") this.sound.systemWake();
+        this.sealPhase = next;
+        const wantDrone = next === "drone";
+        const wantFight = next === "fight";
+        if (wantDrone !== this.sealDroneOn) {
+            this.sealDroneOn = wantDrone;
+            if (wantDrone) this.sound.startSealDrone();
+            else this.sound.stopSealDrone();
+        }
+        if (wantFight !== this.sealMusicOn) {
+            this.sealMusicOn = wantFight;
+            if (wantFight) this.sound.startSealMusic();
+            else this.sound.stopSealMusic();
+        }
+    }
+
     gameLoop(timestamp, generation) {
         if (!this.running || generation !== this.loopGeneration) return;
         this.frameRequestId = null;
@@ -1080,6 +1120,7 @@ class Game {
         // pausing, dying, going down a cave or walking back out of the door all
         // put the needle back on the shelf.
         this.syncClubMusic();
+        this.syncSealMusic();
 
         // The on-screen buttons wear what they will do, so they are repainted
         // from the same state the frame is drawn from.
@@ -1138,7 +1179,10 @@ class Game {
             else this.ui.openPause();
         }
 
-        if (inMenu) return;
+        if (inMenu) {
+            this.checkStrangeKeys();
+            return;
+        }
 
         this.engagedPlayTime += dt;
         if (this.engagedPlayTime >= 5 * 60 * 1000) {
@@ -1303,11 +1347,13 @@ class Game {
             }
         }
 
+        if (this.inSeal && this.sealIntro > 0) this.sealIntro = Math.max(0, this.sealIntro - dt);
+
         if (this.inSeal && this.luca && this.luca.spawned) {
             const prevProjCount = this.luca.projectiles.length;
             const prevPlayerHp = this.player.hp;
             this.luca.update(dt, this.player, this.sealWorld);
-            if (this.luca.alive) {
+            if (this.luca.alive && this.sealIntro <= 0) {
                 this.ui.showBossHealth(this.luca, this.luca.name);
                 if (this.luca.projectiles.length > prevProjCount) this.sound.bossProjectile();
                 if (this.player.hp < prevPlayerHp && this.player.lastHitArmorEnchant) {
@@ -1693,15 +1739,19 @@ class Game {
     onEntityKilled(entity, isBoss) {
         if (isBoss && entity === this.luca) {
             this.lucaDefeated = true;
+            this.sealMusicOn = false;
+            this.sealDroneOn = false;
+            this.sealPhase = "off";
+            this.sound.stopSealMusic();
+            this.sound.stopSealDrone();
             this.ui.hideBossHealth();
             this.sound.bossDefeat();
             const fresh = this.player.addBow("laser_gun");
             this.player.equipBow("laser_gun");
             this.player.arrows += 24;
-            if (fresh) {
-                this.sound.weaponPickup();
-                this.ui.showNotification(`${BOWS.laser_gun.icon} ${BOWS.laser_gun.name}`);
-            }
+            if (fresh) this.ui.showNotification(`${BOWS.laser_gun.icon} ${BOWS.laser_gun.name}`);
+            setTimeout(() => this.sound.sealVictory(), 400);
+            setTimeout(() => this.sound.laserAcquire(), 1100);
             return;
         }
 
@@ -2654,6 +2704,7 @@ class Game {
         // Spawn monsters for this cave
         this.spawnCaveMonstersForCave(caveWorld);
         this.caveBoss = null;
+        this.snapCamera();
 
         // The pack climbs down with you
         this.nearAnimal = null;
@@ -2755,7 +2806,9 @@ class Game {
         this.nearAnimal = null;
         this.gatherCompanions();
         if (!this.lucaDefeated) this.spawnLuca();
-        this.sound.menuSelect();
+        this.sealIntro = 520;
+        this.sound.doorReveal();
+        this.sound.threeLocks();
     }
 
     spawnLuca() {
@@ -2763,9 +2816,8 @@ class Game {
         const spot = this.sealWorld.bossSpawn;
         this.luca = new LucaBoss(spot.worldX, spot.worldY);
         this.luca.spawn();
-        this.luca.spawnAnimation = 700;
+        this.luca.spawnAnimation = 1300;
         this.lucaSpawned = true;
-        this.sound.systemWake();
     }
 
     exitSeal() {
@@ -2785,7 +2837,7 @@ class Game {
         this.ui.hideBossHealth();
         this.gatherCompanions();
         this.snapCamera();
-        this.sound.menuSelect();
+        this.sealIntro = 0;
     }
 
     enterMakersHollow() {
@@ -3911,7 +3963,15 @@ class Game {
         if (!key || key.collected || typeof KeySprite === "undefined") return;
         const sx = key.x - this.camera.x;
         const sy = key.y - this.camera.y;
-        if (sx < -20 || sx > CANVAS_W + 20 || sy < -20 || sy > CANVAS_H + 20) return;
+        if (sx < -40 || sx > CANVAS_W + 40 || sy < -40 || sy > CANVAS_H + 40) return;
+        const pulse = 0.22 + 0.18 * Math.abs(Math.sin((this.time || 0) * 0.007));
+        const glow = key.id === "jade" ? `rgba(80, 220, 140, ${pulse})`
+            : key.id === "crystal" ? `rgba(200, 220, 255, ${pulse})`
+            : `rgba(220, 150, 70, ${pulse})`;
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 16, 0, Math.PI * 2);
+        ctx.fill();
         KeySprite.draw(ctx, sx, sy, key.id, this.time);
     }
 
@@ -3939,7 +3999,8 @@ class Game {
 
         // Render world (cave, sky, sealed room, or surface)
         if (this.inSeal && this.sealWorld) {
-            this.sealWorld.render(ctx, this.camera, this.time);
+            const awake = !!(this.luca && this.luca.spawned && this.luca.alive && this.luca.spawnAnimation <= 0 && this.sealIntro <= 0);
+            this.sealWorld.render(ctx, this.camera, this.time, awake);
         } else if (this.inCave && this.caveWorlds[this.activeCaveId]) {
             this.caveWorlds[this.activeCaveId].render(ctx, this.camera, this.time);
         } else if (this.inSky) {
@@ -4004,7 +4065,7 @@ class Game {
             renderables.push({ y: this.giantTurtle.y, render: () => this.giantTurtle.render(ctx, this.camera, this.time) });
         }
 
-        if (this.inSeal && this.luca && this.luca.spawned) {
+        if (this.inSeal && this.luca && this.luca.spawned && this.sealIntro <= 0) {
             renderables.push({ y: this.luca.y, render: () => this.luca.render(ctx, this.camera, this.time) });
         }
 
@@ -4109,6 +4170,12 @@ class Game {
             this.caveWorlds[this.activeCaveId].renderExitLabels(ctx, this.camera, this.time);
         } else if (this.inSky) {
             this.skyWorld.renderExitLabels(ctx, this.camera, this.time);
+        }
+
+        if (this.inSeal && this.sealIntro > 0) {
+            const shade = Math.min(0.78, (this.sealIntro / 520) * 0.78);
+            ctx.fillStyle = `rgba(4, 8, 16, ${shade})`;
+            ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
         }
 
         // The minimap is information, not the primary animation surface. Its

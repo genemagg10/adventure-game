@@ -148,7 +148,7 @@ const BOWS = {
     hunters_bow: { name: "Hunter's Bow", icon: "🏹", damage: 16, speed: 1.0, range: 280, price: 120, description: "A sturdy hunting bow", projectileSpeed: 6 },
     longbow: { name: "Longbow", icon: "🏹", damage: 22, speed: 1.1, range: 350, price: 200, description: "Powerful and precise", projectileSpeed: 7 },
     arrow_strength_bow: { name: "Bow of Arrow Strength", icon: "🏹", damage: 30, speed: 1.1, range: 320, price: 0, description: "A mighty bow from the hidden base — its arrows strike as hard as Excalibur, and grow stronger with every enchantment and gem", projectileSpeed: 7 },
-    laser_gun: { name: "Laser Gun", icon: "✦", damage: 48, speed: 1.45, range: 460, price: 0, description: "Fires a bolt of light.", projectileSpeed: 14, bolt: "laser" },
+    laser_gun: { name: "Laser Gun", icon: "✦", damage: 58, speed: 1.45, range: 460, price: 0, description: "Fires a bolt of light.", projectileSpeed: 14, bolt: "laser" },
 };
 
 // Armor
@@ -701,7 +701,7 @@ const STRANGE_KEYS = {
 const SEALED_DOOR = {
     x: 11,
     y: 144,
-    range: 42,
+    range: 78,
 };
 
 // The room behind that door. Wide enough that a full-width window still has floor.
@@ -710,17 +710,20 @@ const SEAL_H = 28;
 
 const LUCA_BOSS = {
     name: "Luca",
-    hp: 2400,
+    hp: 1500,
     damage: 58,
-    boltDamage: 54,
+    boltDamage: 56,
     speed: 1.45,
     size: 20,
     color: "#141820",
+    // Early bolts stay under half of a full health bar. The late patterns
+    // carry the listed bolt, and elemental powers feed those later shots.
+    windup: 400,
     phases: [
-        { hpThreshold: 1.0, speed: 1.05, attackRate: 900, pattern: "bolt" },
-        { hpThreshold: 0.72, speed: 1.25, attackRate: 700, pattern: "fan" },
-        { hpThreshold: 0.45, speed: 1.45, attackRate: 520, pattern: "sweep" },
-        { hpThreshold: 0.22, speed: 1.75, attackRate: 400, pattern: "frenzy" },
+        { hpThreshold: 1.0, speed: 1.05, attackRate: 1100, pattern: "bolt", bolt: 32 },
+        { hpThreshold: 0.72, speed: 1.25, attackRate: 860, pattern: "fan", bolt: 40 },
+        { hpThreshold: 0.45, speed: 1.45, attackRate: 560, pattern: "sweep", bolt: 56 },
+        { hpThreshold: 0.22, speed: 1.75, attackRate: 400, pattern: "frenzy", bolt: 56 },
     ],
 };
 

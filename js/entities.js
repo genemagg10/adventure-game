@@ -1716,6 +1716,18 @@ class LucaBoss extends Boss {
         this.phases = c.phases;
         this.leashRadius = 640;
         this.sweep = null;
+        this.windup = null;
+    }
+
+    boltPower(phase, player) {
+        const listed = phase && phase.bolt != null ? phase.bolt : LUCA_BOSS.boltDamage;
+        if (!phase || phase.hpThreshold > 0.45 || !player || !player.elements) return listed;
+        let unlocked = 0;
+        const order = player.elementUnlockOrder || [];
+        for (let i = 0; i < order.length; i++) {
+            if (player.elements[order[i]]) unlocked++;
+        }
+        return listed + unlocked * 4;
     }
 
     update(dt, player, world) {
@@ -1786,41 +1798,60 @@ class LucaBoss extends Boss {
             player.takeDamage(this.damage * 0.45, this.x, this.y);
         }
 
-        if (now - this.lastAttackTime > phase.attackRate) {
-            this.lastAttackTime = now;
-            if (phase.pattern === "bolt") {
-                this.fireBolt(player, 0, 5.2);
-            } else if (phase.pattern === "fan") {
-                for (const off of [-0.45, -0.22, 0, 0.22, 0.45]) this.fireBolt(player, off, 5.4);
-            } else if (phase.pattern === "sweep") {
-                this.startSweep(player);
-                this.fireBolt(player, 0.15, 6);
-                this.fireBolt(player, -0.15, 6);
-            } else {
-                this.blinkToward(player, world);
-                this.fireBolt(player, 0, 6.4);
-                this.fireBolt(player, 0.4, 5.6);
-                this.fireBolt(player, -0.4, 5.6);
-                this.dropMine();
-                this.charging = true;
-                this.chargeTimer = 220;
-                this.chargeDir = normalize(player.x - this.x, player.y - this.y);
+        if (this.windup) {
+            this.windup.left -= dt;
+            this.windup.angle = dirToAngle(player.x - this.x, player.y - this.y);
+            if (this.windup.left <= 0) {
+                const shot = this.windup;
+                this.windup = null;
+                this.releasePattern(shot, player, world);
             }
+        } else if (now - this.lastAttackTime > phase.attackRate) {
+            this.lastAttackTime = now;
+            this.windup = {
+                left: LUCA_BOSS.windup,
+                total: LUCA_BOSS.windup,
+                pattern: phase.pattern,
+                bolt: this.boltPower(phase, player),
+                angle: dirToAngle(player.x - this.x, player.y - this.y),
+            };
         }
 
         if (this.flashTimer > 0) this.flashTimer -= dt;
         return null;
     }
 
-    fireBolt(player, angleOffset, speed) {
-        const angle = dirToAngle(player.x - this.x, player.y - this.y) + angleOffset;
+    releasePattern(shot, player, world) {
+        const bolt = shot.bolt;
+        if (shot.pattern === "bolt") {
+            this.fireBolt(shot.angle, 0, 4.2, bolt);
+        } else if (shot.pattern === "fan") {
+            for (const off of [-0.45, -0.22, 0, 0.22, 0.45]) this.fireBolt(shot.angle, off, 4.6, bolt);
+        } else if (shot.pattern === "sweep") {
+            this.startSweep(player);
+            this.fireBolt(shot.angle, 0.15, 5.4, bolt);
+            this.fireBolt(shot.angle, -0.15, 5.4, bolt);
+        } else {
+            this.blinkToward(player, world);
+            this.fireBolt(shot.angle, 0, 5.6, bolt);
+            this.fireBolt(shot.angle, 0.4, 5.0, bolt);
+            this.fireBolt(shot.angle, -0.4, 5.0, bolt);
+            this.dropMine();
+            this.charging = true;
+            this.chargeTimer = 220;
+            this.chargeDir = normalize(player.x - this.x, player.y - this.y);
+        }
+    }
+
+    fireBolt(angle, angleOffset, speed, damage) {
+        const aim = angle + angleOffset;
         this.projectiles.push({
-            x: this.x + Math.cos(angle) * 16,
-            y: this.y + Math.sin(angle) * 16,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            life: 1600,
-            damage: LUCA_BOSS.boltDamage,
+            x: this.x + Math.cos(aim) * 18,
+            y: this.y + Math.sin(aim) * 18,
+            vx: Math.cos(aim) * speed,
+            vy: Math.sin(aim) * speed,
+            life: 1800,
+            damage: damage,
             kind: "bolt",
         });
     }
@@ -1878,6 +1909,28 @@ class LucaBoss extends Boss {
         ctx.save();
         if (!this.alive) ctx.globalAlpha = Math.max(0, this.deathTimer / 3000);
 
+        if (this.windup) {
+            const p = 1 - this.windup.left / this.windup.total;
+            const ang = this.windup.angle;
+            const offsets = this.windup.pattern === "fan" ? [-0.45, -0.22, 0, 0.22, 0.45]
+                : this.windup.pattern === "sweep" ? [-0.15, 0.15]
+                : this.windup.pattern === "frenzy" ? [-0.4, 0, 0.4]
+                : [0];
+            ctx.fillStyle = `rgba(126, 240, 255, ${0.12 + p * 0.4})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 12 + p * 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = `rgba(160, 240, 255, ${0.35 + p * 0.6})`;
+            ctx.lineWidth = 2;
+            const reach = 70 + p * 150;
+            for (let i = 0; i < offsets.length; i++) {
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.lineTo(sx + Math.cos(ang + offsets[i]) * reach, sy + Math.sin(ang + offsets[i]) * reach);
+                ctx.stroke();
+            }
+        }
+
         if (this.sweep) {
             const warning = this.sweep.life > this.sweep.activeFor;
             ctx.strokeStyle = warning ? "rgba(120, 230, 255, 0.35)" : "rgba(180, 250, 255, 0.95)";
@@ -1901,20 +1954,16 @@ class LucaBoss extends Boss {
             } else {
                 const ang = Math.atan2(p.vy, p.vx);
                 ctx.save();
-                ctx.translate(px, py);
+                ctx.translate(Math.round(px), Math.round(py));
                 ctx.rotate(ang);
-                ctx.strokeStyle = "rgba(140, 240, 255, 0.45)";
-                ctx.lineWidth = 5;
-                ctx.beginPath();
-                ctx.moveTo(-10, 0);
-                ctx.lineTo(8, 0);
-                ctx.stroke();
-                ctx.strokeStyle = "#f4fdff";
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(-8, 0);
-                ctx.lineTo(9, 0);
-                ctx.stroke();
+                ctx.fillStyle = "rgba(126, 240, 255, 0.4)";
+                ctx.fillRect(-18, -6, 32, 12);
+                ctx.fillStyle = "#7ef0ff";
+                ctx.fillRect(-14, -3, 26, 6);
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(-8, -1, 18, 2);
+                ctx.fillStyle = "#f4fdff";
+                ctx.fillRect(8, -4, 7, 8);
                 ctx.restore();
             }
         }

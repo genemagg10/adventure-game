@@ -3180,45 +3180,38 @@ class CaveWorld {
     placeJadeKey() {
         const center = this.treasurePos;
         const exit = this.exit;
-        let best = null;
-        let bestScore = -1;
-        for (let y = 2; y < CAVE_H - 2; y++) {
-            for (let x = 2; x < CAVE_W - 2; x++) {
-                if (this.tiles[y][x] !== TILE.CAVE_FLOOR) continue;
-                let open = 0;
-                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-                    const t = this.tiles[y + dy][x + dx];
-                    if (t !== TILE.CAVE_WALL) open++;
-                }
-                const wx = x * TILE_SIZE + TILE_SIZE / 2;
-                const wy = y * TILE_SIZE + TILE_SIZE / 2;
-                if (center && dist(wx, wy, center.x, center.y) < TILE_SIZE * 5) continue;
-                if (exit && dist(wx, wy, exit.worldX, exit.worldY) < TILE_SIZE * 5) continue;
-                const score = (open === 1 ? 10000 : 0)
-                    + (center ? dist(wx, wy, center.x, center.y) : 0)
-                    + (exit ? dist(wx, wy, exit.worldX, exit.worldY) : 0);
-                if (score > bestScore) {
-                    bestScore = score;
-                    best = { x, y, wx, wy };
-                }
-            }
-        }
-        if (!best) {
-            let far = -1;
+        const inset = (x, y) => x >= 18 && y >= 12 && x < CAVE_W - 18 && y < CAVE_H - 12;
+        const search = (deadEnd, framed) => {
+            let best = null;
+            let bestScore = -1;
             for (let y = 2; y < CAVE_H - 2; y++) {
                 for (let x = 2; x < CAVE_W - 2; x++) {
                     if (this.tiles[y][x] !== TILE.CAVE_FLOOR) continue;
+                    if (framed && !inset(x, y)) continue;
+                    let open = 0;
+                    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                        const t = this.tiles[y + dy][x + dx];
+                        if (t !== TILE.CAVE_WALL) open++;
+                    }
+                    if (deadEnd && open !== 1) continue;
                     const wx = x * TILE_SIZE + TILE_SIZE / 2;
                     const wy = y * TILE_SIZE + TILE_SIZE / 2;
-                    if (center && dist(wx, wy, center.x, center.y) < TILE_SIZE * 3) continue;
-                    const score = center ? dist(wx, wy, center.x, center.y) : 0;
-                    if (score > far) {
-                        far = score;
+                    if (center && dist(wx, wy, center.x, center.y) < TILE_SIZE * 5) continue;
+                    if (exit && dist(wx, wy, exit.worldX, exit.worldY) < TILE_SIZE * 5) continue;
+                    const score = (open === 1 ? 10000 : 0)
+                        + (center ? dist(wx, wy, center.x, center.y) : 0)
+                        + (exit ? dist(wx, wy, exit.worldX, exit.worldY) : 0);
+                    if (score > bestScore) {
+                        bestScore = score;
                         best = { x, y, wx, wy };
                     }
                 }
             }
-        }
+            return best;
+        };
+        // Prefer a dead end the camera can actually center, so the key is not
+        // jammed into a corner of the view.
+        const best = search(true, true) || search(false, true) || search(true, false) || search(false, false);
         if (!best) return;
         this.strangeKey = {
             id: "jade",
@@ -3912,7 +3905,36 @@ class SkyWorld {
                             y: ty * TILE_SIZE + TILE_SIZE / 2,
                             collected: false,
                         };
+                        this.nudgeAmbrosiaOffKey();
                         return;
+                    }
+                }
+            }
+        }
+        this.nudgeAmbrosiaOffKey();
+    }
+
+    // A cache sitting on the key would replace the key's banner. Slide it off.
+    nudgeAmbrosiaOffKey() {
+        const key = this.strangeKey;
+        if (!key || !this.ambrosia) return;
+        for (const a of this.ambrosia) {
+            if (dist(a.x, a.y, key.x, key.y) >= 140) continue;
+            let moved = false;
+            for (let r = 5; r <= 14 && !moved; r++) {
+                for (let dy = -r; dy <= r && !moved; dy++) {
+                    for (let dx = -r; dx <= r && !moved; dx++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+                        const tx = key.tileX + dx;
+                        const ty = key.tileY + dy;
+                        if (this.isSolid(tx, ty)) continue;
+                        const x = tx * TILE_SIZE + TILE_SIZE / 2;
+                        const y = ty * TILE_SIZE + TILE_SIZE / 2;
+                        if (dist(x, y, key.x, key.y) < 140) continue;
+                        if (this.ambrosia.some(o => o !== a && dist(o.x, o.y, x, y) < 48)) continue;
+                        a.x = x;
+                        a.y = y;
+                        moved = true;
                     }
                 }
             }
@@ -4634,9 +4656,47 @@ class SealWorld {
                 i++;
             }
         }
+        this.dressSealTile(ctx, sx, sy, tx, ty);
     }
 
-    render(ctx, camera) {
+    sealHash(x, y) {
+        let n = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263)) >>> 0;
+        n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0;
+        return n >>> 0;
+    }
+
+    // A few stones that are not the regular course: a slab, a crack, a chip.
+    dressSealTile(ctx, sx, sy, tx, ty) {
+        const boss = this.bossSpawn;
+        if (boss && Math.abs(tx - boss.x) + Math.abs(ty - boss.y) <= 2) return;
+        const h = this.sealHash(tx, ty);
+        if (h % 19 === 0) {
+            ctx.fillStyle = "#555566";
+            ctx.fillRect(sx + 2, sy + 8, 26, 14);
+            ctx.fillStyle = "#6a6a78";
+            ctx.fillRect(sx + 2, sy + 8, 26, 1);
+            ctx.fillStyle = "#1c1c24";
+            ctx.fillRect(sx + 10, sy + 10, 1, 10);
+        } else if (h % 11 === 0) {
+            ctx.fillStyle = "rgba(0,0,0,0.32)";
+            ctx.fillRect(sx + 4, sy + 6, 16, 10);
+        }
+        if (h % 13 === 0) {
+            ctx.fillStyle = "#16161e";
+            ctx.fillRect(sx + 7, sy + 3, 1, 14);
+            ctx.fillRect(sx + 7, sy + 16, 9, 1);
+        }
+        if (h % 17 === 0) {
+            ctx.fillStyle = "#3a3a44";
+            ctx.fillRect(sx + 18, sy + 21, 6, 3);
+            ctx.fillStyle = "#4a4a56";
+            ctx.fillRect(sx + 22, sy + 17, 4, 3);
+            ctx.fillStyle = "#2a2a34";
+            ctx.fillRect(sx + 15, sy + 23, 3, 2);
+        }
+    }
+
+    render(ctx, camera, time, awake) {
         const startTX = Math.floor(camera.x / TILE_SIZE) - 1;
         const startTY = Math.floor(camera.y / TILE_SIZE) - 1;
         const endTX = startTX + TILES_X + 2;
@@ -4655,6 +4715,280 @@ class SealWorld {
                 else this.renderSealFloor(ctx, sx, sy, tx, ty);
             }
         }
+        const t = time || 0;
+        const lit = !!awake;
+        this.drawSealCircuits(ctx, camera, t, lit);
+        this.drawSealSigil(ctx, camera, t, lit);
+        this.drawSealCables(ctx, camera, t, lit);
+        this.drawSealMachines(ctx, camera, t, lit);
+        this.drawSealMotes(ctx, camera, t, lit);
+    }
+
+    drawSealCircuits(ctx, camera, time, awake) {
+        const boss = this.bossSpawn;
+        if (!boss) return;
+        const pulse = awake ? 0.55 + 0.45 * Math.abs(Math.sin(time * 0.007)) : 0.28;
+        const startTX = Math.floor(camera.x / TILE_SIZE) - 1;
+        const startTY = Math.floor(camera.y / TILE_SIZE) - 1;
+        const endTX = startTX + TILES_X + 2;
+        const endTY = startTY + TILES_Y + 2;
+        for (let ty = startTY; ty <= endTY; ty++) {
+            for (let tx = startTX; tx <= endTX; tx++) {
+                if (tx <= 0 || ty <= 0 || tx >= SEAL_W - 1 || ty >= SEAL_H - 1) continue;
+                if (Math.abs(tx - boss.x) + Math.abs(ty - boss.y) <= 2) continue;
+                const h = this.sealHash(tx + 3, ty + 9);
+                if (h % 4 !== 0 && h % 5 !== 0) continue;
+                const sx = tx * TILE_SIZE - camera.x;
+                const sy = ty * TILE_SIZE - camera.y;
+                ctx.fillStyle = awake ? `rgba(126, 240, 255, ${0.25 + pulse * 0.55})` : "rgba(36, 110, 130, 0.7)";
+                const dx = boss.x - tx;
+                const dy = boss.y - ty;
+                if (Math.abs(dx) >= Math.abs(dy)) {
+                    ctx.fillRect(sx + 4, sy + 16, 24, 1);
+                    if (dx > 0) ctx.fillRect(sx + TILE_SIZE - 3, sy + 16, 3, 1);
+                } else {
+                    ctx.fillRect(sx + 16, sy + 4, 1, 24);
+                    if (dy > 0) ctx.fillRect(sx + 16, sy + TILE_SIZE - 3, 1, 3);
+                }
+                if (h % 8 === 0) {
+                    ctx.fillStyle = awake ? "#d8fbff" : "#245868";
+                    ctx.fillRect(sx + 14, sy + 14, 3, 3);
+                }
+            }
+        }
+    }
+
+    pixelRing(ctx, cx, cy, r, color) {
+        ctx.fillStyle = color;
+        const steps = Math.max(8, Math.ceil(r * 1.2));
+        for (let i = 0; i < steps; i++) {
+            const a = (i / steps) * Math.PI * 2;
+            ctx.fillRect(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), 2, 2);
+        }
+    }
+
+    drawSealSigil(ctx, camera, time, awake) {
+        const boss = this.bossSpawn;
+        if (!boss) return;
+        const cx = Math.round(boss.worldX - camera.x);
+        const cy = Math.round(boss.worldY - camera.y);
+        const pulse = awake ? 0.55 + 0.45 * Math.sin(time * 0.01) : 0;
+        if (awake) {
+            ctx.fillStyle = `rgba(80, 210, 255, ${0.08 + pulse * 0.08})`;
+            ctx.fillRect(cx - 46, cy - 46, 92, 92);
+        }
+        this.pixelRing(ctx, cx, cy, 40, awake ? "#3ec8e0" : "#2a4450");
+        this.pixelRing(ctx, cx, cy, 28, awake ? "#7ef0ff" : "#3a5a68");
+        this.pixelRing(ctx, cx, cy, 14, awake ? "#d8fbff" : "#4a6a78");
+        for (let i = 0; i < 8; i++) {
+            const a = i * Math.PI / 4;
+            const x = Math.round(cx + Math.cos(a) * 34);
+            const y = Math.round(cy + Math.sin(a) * 34);
+            ctx.fillStyle = awake ? "#f4fdff" : "#4a6a78";
+            ctx.fillRect(x - 1, y - 1, 3, 3);
+        }
+        ctx.fillStyle = awake ? "#7ef0ff" : "#2a4a58";
+        ctx.fillRect(cx - 7, cy - 1, 14, 2);
+        ctx.fillRect(cx - 1, cy - 7, 2, 14);
+        ctx.fillStyle = awake ? "#ffffff" : "#1a3038";
+        ctx.fillRect(cx - 2, cy - 2, 4, 4);
+    }
+
+    drawSealCables(ctx, camera, time, awake) {
+        const boss = this.bossSpawn;
+        if (!boss) return;
+        const bx = boss.worldX;
+        const by = boss.worldY;
+        const paths = [
+            [[bx - 300, by + 40], [bx - 240, by + 70], [bx - 180, by + 50], [bx - 120, by + 90]],
+            [[bx + 280, by + 20], [bx + 220, by + 60], [bx + 160, by + 40], [bx + 110, by + 80]],
+            [[bx - 260, by + 160], [bx - 200, by + 140], [bx - 150, by + 180], [bx - 90, by + 150]],
+            [[bx + 250, by + 170], [bx + 190, by + 150], [bx + 130, by + 190]],
+        ];
+        ctx.fillStyle = "#12161c";
+        for (const path of paths) this.strokeCable(ctx, camera, path, 2);
+        ctx.fillStyle = awake ? "rgba(126, 240, 255, 0.85)" : "#1d4e5c";
+        const hop = Math.floor(time / 180) % 4;
+        for (let p = 0; p < paths.length; p++) {
+            const path = paths[p];
+            const i = (hop + p) % (path.length - 1);
+            this.strokeCable(ctx, camera, [path[i], path[i + 1]], 1);
+        }
+    }
+
+    strokeCable(ctx, camera, path, thick) {
+        for (let i = 0; i < path.length - 1; i++) {
+            const x0 = path[i][0] - camera.x;
+            const y0 = path[i][1] - camera.y;
+            const x1 = path[i + 1][0] - camera.x;
+            const y1 = path[i + 1][1] - camera.y;
+            const steps = Math.max(2, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4));
+            for (let s = 0; s <= steps; s++) {
+                const t = s / steps;
+                ctx.fillRect(Math.round(x0 + (x1 - x0) * t), Math.round(y0 + (y1 - y0) * t), thick, thick);
+            }
+        }
+    }
+
+    drawSealMachines(ctx, camera, time, awake) {
+        const boss = this.bossSpawn;
+        if (!boss) return;
+        const bx = boss.worldX;
+        const by = boss.worldY;
+        const props = [
+            { kind: "mech", x: bx - 250, y: by + 8 },
+            { kind: "mech", x: bx + 250, y: by + 8, flip: true },
+            { kind: "rack", x: bx - 320, y: by + 36 },
+            { kind: "rack", x: bx + 304, y: by + 20 },
+            { kind: "crt", x: bx - 190, y: by + 86 },
+            { kind: "crt", x: bx + 168, y: by + 100 },
+            { kind: "plasma", x: bx - 340, y: by - 16 },
+            { kind: "plasma", x: bx + 330, y: by - 4 },
+            { kind: "plasma", x: bx - 310, y: by + 150 },
+            { kind: "plasma", x: bx + 300, y: by + 160 },
+            { kind: "tesla", x: bx - 160, y: by + 168 },
+            { kind: "tesla", x: bx + 150, y: by + 176 },
+            { kind: "holo", x: bx - 120, y: by - 36 },
+            { kind: "holo", x: bx + 96, y: by - 24 },
+        ];
+        for (let i = 0; i < props.length; i++) {
+            const p = props[i];
+            const x = Math.round(p.x - camera.x);
+            const y = Math.round(p.y - camera.y);
+            if (x < -40 || x > CANVAS_W + 40 || y < -60 || y > CANVAS_H + 40) continue;
+            if (p.kind === "mech") this.drawMech(ctx, x, y, time, awake, i);
+            else if (p.kind === "rack") this.drawRack(ctx, x, y, time, i);
+            else if (p.kind === "crt") this.drawCrt(ctx, x, y, time, i);
+            else if (p.kind === "plasma") this.drawPlasma(ctx, x, y, time, i);
+            else if (p.kind === "tesla") this.drawTesla(ctx, x, y, time, i);
+            else this.drawHolo(ctx, x, y, time, i);
+        }
+    }
+
+    drawMech(ctx, x, y, time, awake, seed) {
+        ctx.fillStyle = "#1a222c";
+        ctx.fillRect(x - 7, y - 16, 5, 16);
+        ctx.fillRect(x + 2, y - 16, 5, 16);
+        ctx.fillStyle = "#0e1218";
+        ctx.fillRect(x - 8, y - 4, 6, 3);
+        ctx.fillRect(x + 2, y - 4, 6, 3);
+        ctx.fillStyle = "#243040";
+        ctx.fillRect(x - 9, y - 36, 18, 22);
+        ctx.fillStyle = "#3a4558";
+        ctx.fillRect(x - 12, y - 34, 4, 8);
+        ctx.fillRect(x + 8, y - 34, 4, 8);
+        ctx.fillStyle = awake ? "#7ef0ff" : "#1a3a48";
+        ctx.fillRect(x - 3, y - 30, 6, 3);
+        ctx.fillStyle = "#12161c";
+        ctx.fillRect(x - 6, y - 48, 12, 14);
+        ctx.fillStyle = awake ? "#7ef0ff" : "#1a2838";
+        ctx.fillRect(x - 4, y - 43, 8, 3);
+        if (awake) {
+            const blink = Math.sin(time * 0.01 + seed) > 0.2;
+            ctx.fillStyle = blink ? "#f4fdff" : "#7ef0ff";
+            ctx.fillRect(x - 3, y - 42, 2, 1);
+            ctx.fillRect(x + 1, y - 42, 2, 1);
+        }
+        ctx.fillStyle = "#7a8aa0";
+        ctx.fillRect(x - 1, y - 52, 2, 4);
+    }
+
+    drawRack(ctx, x, y, time, seed) {
+        ctx.fillStyle = "#12161e";
+        ctx.fillRect(x, y - 34, 16, 36);
+        ctx.fillStyle = "#2a3344";
+        ctx.fillRect(x + 2, y - 31, 12, 8);
+        ctx.fillRect(x + 2, y - 21, 12, 8);
+        ctx.fillRect(x + 2, y - 11, 12, 8);
+        const blink = Math.floor(time / 140 + seed);
+        ctx.fillStyle = blink % 2 ? "#39ff88" : "#14301c";
+        ctx.fillRect(x + 11, y - 28, 2, 2);
+        ctx.fillStyle = blink % 3 ? "#7ef0ff" : "#163848";
+        ctx.fillRect(x + 11, y - 18, 2, 2);
+        ctx.fillStyle = blink % 5 === 0 ? "#ff4466" : "#3a1820";
+        ctx.fillRect(x + 11, y - 8, 2, 2);
+    }
+
+    drawCrt(ctx, x, y, time, seed) {
+        ctx.fillStyle = "#1a1e28";
+        ctx.fillRect(x, y, 28, 22);
+        ctx.fillStyle = "#2a3340";
+        ctx.fillRect(x + 10, y + 22, 8, 4);
+        ctx.fillStyle = "#06140c";
+        ctx.fillRect(x + 3, y + 3, 22, 14);
+        const scroll = Math.floor(time / 90 + seed) % 6;
+        ctx.fillStyle = "#39ff88";
+        for (let row = 0; row < 4; row++) {
+            const w = 5 + ((row * 3 + scroll) % 5) * 3;
+            const glitch = (row + scroll) % 5 === 0;
+            ctx.globalAlpha = glitch ? 0.35 : 0.9;
+            ctx.fillRect(x + 5, y + 5 + row * 3, glitch ? 16 : w, 1);
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    drawPlasma(ctx, x, y, time, seed) {
+        const flick = Math.abs(Math.sin(time * 0.018 + seed));
+        const h = 6 + Math.floor(flick * 6);
+        ctx.fillStyle = "#242c38";
+        ctx.fillRect(x - 6, y, 12, 5);
+        ctx.fillStyle = "#1a6a88";
+        ctx.fillRect(x - 2, y - h, 4, h);
+        ctx.fillStyle = "#d8fbff";
+        ctx.fillRect(x - 1, y - h + 1, 2, Math.max(2, h - 2));
+        ctx.fillStyle = `rgba(80, 200, 255, ${0.06 + flick * 0.07})`;
+        ctx.fillRect(x - 16, y - 16, 32, 32);
+    }
+
+    drawTesla(ctx, x, y, time, seed) {
+        ctx.fillStyle = "#3a4558";
+        ctx.fillRect(x - 1, y - 20, 3, 20);
+        ctx.fillStyle = "#1a222c";
+        ctx.fillRect(x - 6, y - 4, 12, 4);
+        ctx.fillStyle = "#7ef0ff";
+        ctx.fillRect(x - 5, y - 24, 10, 4);
+        const flick = Math.sin(time * 0.03 + seed * 1.7);
+        ctx.fillStyle = flick > 0 ? "#f4fdff" : "#3ec8e0";
+        ctx.fillRect(x + 5, y - 22, 6, 1);
+        ctx.fillRect(x + 9, y - 22 + Math.round(flick * 3), 4, 1);
+        ctx.fillRect(x - 12, y - 20, 6, 1);
+        ctx.fillRect(x - 12, y - 20 + Math.round(flick * 2), 1, 4);
+    }
+
+    drawHolo(ctx, x, y, time, seed) {
+        const bob = Math.round(Math.sin(time * 0.004 + seed) * 3);
+        const yy = y + bob;
+        ctx.fillStyle = "rgba(80, 210, 255, 0.16)";
+        ctx.fillRect(x, yy, 30, 16);
+        ctx.fillStyle = "rgba(180, 246, 255, 0.85)";
+        ctx.fillRect(x, yy, 30, 1);
+        ctx.fillRect(x, yy + 15, 30, 1);
+        ctx.fillRect(x, yy, 1, 16);
+        ctx.fillRect(x + 29, yy, 1, 16);
+        const scan = Math.floor(time / 70 + seed) % 5;
+        ctx.fillStyle = "rgba(126, 240, 255, 0.75)";
+        ctx.fillRect(x + 3, yy + 3 + scan * 2, 22, 1);
+        ctx.fillStyle = "rgba(57, 255, 136, 0.8)";
+        ctx.fillRect(x + 4, yy + 6, 8, 1);
+        ctx.fillRect(x + 4, yy + 9, 14, 1);
+    }
+
+    drawSealMotes(ctx, camera, time, awake) {
+        const boss = this.bossSpawn;
+        if (!boss) return;
+        for (let i = 0; i < 16; i++) {
+            const span = 760;
+            const x = boss.worldX - span / 2 + ((i * 137) % span);
+            const travel = 90;
+            const y = boss.worldY - 40 + ((i * 53) % 200) - ((time * 0.025 + i * 17) % travel);
+            const sx = Math.round(x - camera.x);
+            const sy = Math.round(y - camera.y);
+            if (sx < 0 || sx > CANVAS_W || sy < 0 || sy > CANVAS_H) continue;
+            ctx.fillStyle = i % 2 === 0 ? (awake ? "#7ef0ff" : "#2a6a80") : "#39ff88";
+            ctx.globalAlpha = awake ? 0.85 : 0.45;
+            ctx.fillRect(sx, sy, i % 3 === 0 ? 2 : 1, 1);
+        }
+        ctx.globalAlpha = 1;
     }
 
     renderMinimap(ctx, player) {

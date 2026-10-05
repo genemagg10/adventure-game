@@ -4586,6 +4586,56 @@ class SealWorld {
         return false;
     }
 
+    // Castle wall grey, the same family as the battlements outside.
+    renderSealWall(ctx, sx, sy) {
+        ctx.fillStyle = "#2a2a3a";
+        ctx.fillRect(sx, sy, TILE_SIZE + 1, TILE_SIZE + 1);
+        ctx.fillStyle = "#3a3a4a";
+        ctx.fillRect(sx + 2, sy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        ctx.fillStyle = "#4a4a5a";
+        ctx.fillRect(sx + 4, sy + 4, TILE_SIZE - 8, 3);
+    }
+
+    // Fitted flagstones. Courses run in bond so the joints never stack into a grid.
+    renderSealFloor(ctx, sx, sy, tx, ty) {
+        const shades = ["#4a4a5a", "#3a3a4a", "#555566", "#454550"];
+        const widths = [18, 14, 22, 16];
+        const period = 70;
+        ctx.fillStyle = "#2a2a3a";
+        ctx.fillRect(sx, sy, TILE_SIZE + 1, TILE_SIZE + 1);
+        const left = tx * TILE_SIZE;
+        const right = left + TILE_SIZE;
+        for (let row = 0; row < 4; row++) {
+            const worldRow = ty * 4 + row;
+            const origin = -((worldRow % 2) * 15);
+            const periodsBefore = Math.floor((left - origin) / period);
+            let cursor = origin + periodsBefore * period;
+            let i = periodsBefore * widths.length;
+            const stop = i + 8;
+            while (cursor < right && i < stop) {
+                const w = widths[Math.abs(i) % widths.length];
+                const stoneL = cursor;
+                const stoneR = cursor + w;
+                if (stoneR > left && stoneL < right) {
+                    const x0 = sx + (Math.max(stoneL, left) - left);
+                    const x1 = sx + (Math.min(stoneR, right) - left);
+                    const insetL = stoneL >= left ? 1 : 0;
+                    const insetR = stoneR <= right ? 1 : 0;
+                    const drawW = (x1 - insetR) - (x0 + insetL);
+                    if (drawW > 0) {
+                        const n = Math.abs(i + worldRow * 3);
+                        ctx.fillStyle = shades[n % shades.length];
+                        ctx.fillRect(x0 + insetL, sy + row * 8 + 1, drawW, 6);
+                        ctx.fillStyle = "rgba(255,255,255,0.07)";
+                        ctx.fillRect(x0 + insetL, sy + row * 8 + 1, drawW, 1);
+                    }
+                }
+                cursor += w;
+                i++;
+            }
+        }
+    }
+
     render(ctx, camera) {
         const startTX = Math.floor(camera.x / TILE_SIZE) - 1;
         const startTY = Math.floor(camera.y / TILE_SIZE) - 1;
@@ -4601,12 +4651,8 @@ class SealWorld {
                     continue;
                 }
                 const tile = this.tiles[ty][tx];
-                ctx.fillStyle = tile === TILE.WALL ? "#2a2c34" : "#3c3e46";
-                ctx.fillRect(sx, sy, TILE_SIZE + 1, TILE_SIZE + 1);
-                if (tile === TILE.STONE && ((tx + ty) % 2 === 0)) {
-                    ctx.fillStyle = "rgba(0,0,0,0.08)";
-                    ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
-                }
+                if (tile === TILE.WALL) this.renderSealWall(ctx, sx, sy);
+                else this.renderSealFloor(ctx, sx, sy, tx, ty);
             }
         }
     }
@@ -4617,7 +4663,7 @@ class SealWorld {
         const s = Math.min(ctx.canvas.width / SEAL_W, ctx.canvas.height / SEAL_H);
         for (let y = 0; y < SEAL_H; y++) {
             for (let x = 0; x < SEAL_W; x++) {
-                ctx.fillStyle = this.tiles[y][x] === TILE.WALL ? "#2a2c34" : "#4a4e58";
+                ctx.fillStyle = this.tiles[y][x] === TILE.WALL ? "#2a2a3a" : "#4a4a5a";
                 ctx.fillRect(x * s, y * s, s + 0.5, s + 0.5);
             }
         }

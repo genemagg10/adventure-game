@@ -107,7 +107,11 @@ class World {
 
         // The Maker's Hollow, far in the southwest corner
         this.makersHollow = null;
+        this.sealedDoor = null;
         this.placeMakersHollow(rng);
+
+        this.strangeKey = null;
+        this.placeCopperKey();
 
         // The Waiting Ground, far in the southeast corner - the one plot the
         // Worldtree Seed will take root in
@@ -790,6 +794,55 @@ class World {
             x: h.x * TILE_SIZE + TILE_SIZE / 2,
             y: h.y * TILE_SIZE + TILE_SIZE / 2,
             discovered: false,
+        };
+
+        // A short run of flagstones to a plain stone door a few paces east.
+        const door = SEALED_DOOR;
+        for (let x = h.x; x <= door.x + 1; x++) {
+            for (const y of [door.y - 1, door.y, door.y + 1]) {
+                if (x < 0 || y < 0 || x >= WORLD_W || y >= WORLD_H) continue;
+                if (x === h.x && y === h.y) continue;
+                if (SOLID_TILES.has(this.tiles[y][x]) || this.tiles[y][x] === TILE.GRASS) {
+                    this.tiles[y][x] = TILE.STONE;
+                }
+            }
+        }
+        this.sealedDoor = {
+            tileX: door.x,
+            tileY: door.y,
+            x: door.x * TILE_SIZE + TILE_SIZE / 2,
+            y: door.y * TILE_SIZE + TILE_SIZE / 2,
+        };
+    }
+
+    // One copper key, on open ground in the ruins. No marker.
+    placeCopperKey() {
+        const zone = ZONES.ruins;
+        const prefer = { x: 24, y: 110 };
+        let spot = null;
+        for (let r = 0; r < 20 && !spot; r++) {
+            for (let dy = -r; dy <= r && !spot; dy++) {
+                for (let dx = -r; dx <= r && !spot; dx++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+                    const tx = prefer.x + dx;
+                    const ty = prefer.y + dy;
+                    if (tx < zone.x + 2 || ty < zone.y + 2 || tx >= zone.x + zone.w - 2 || ty >= zone.y + zone.h - 2) continue;
+                    if (this.isSolid(tx, ty)) continue;
+                    spot = { x: tx, y: ty };
+                }
+            }
+        }
+        if (!spot) {
+            spot = prefer;
+            this.tiles[spot.y][spot.x] = TILE.GRASS;
+        }
+        this.strangeKey = {
+            id: "copper",
+            tileX: spot.x,
+            tileY: spot.y,
+            x: spot.x * TILE_SIZE + TILE_SIZE / 2,
+            y: spot.y * TILE_SIZE + TILE_SIZE / 2,
+            collected: false,
         };
     }
 
@@ -3119,6 +3172,62 @@ class CaveWorld {
         }
 
         this.generateCaveDecorations(rng);
+        this.strangeKey = null;
+        if (this.entranceId === 0) this.placeJadeKey();
+    }
+
+    // A side passage in the southwest maze, away from the chest in the middle.
+    placeJadeKey() {
+        const center = this.treasurePos;
+        const exit = this.exit;
+        let best = null;
+        let bestScore = -1;
+        for (let y = 2; y < CAVE_H - 2; y++) {
+            for (let x = 2; x < CAVE_W - 2; x++) {
+                if (this.tiles[y][x] !== TILE.CAVE_FLOOR) continue;
+                let open = 0;
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const t = this.tiles[y + dy][x + dx];
+                    if (t !== TILE.CAVE_WALL) open++;
+                }
+                const wx = x * TILE_SIZE + TILE_SIZE / 2;
+                const wy = y * TILE_SIZE + TILE_SIZE / 2;
+                if (center && dist(wx, wy, center.x, center.y) < TILE_SIZE * 5) continue;
+                if (exit && dist(wx, wy, exit.worldX, exit.worldY) < TILE_SIZE * 5) continue;
+                const score = (open === 1 ? 10000 : 0)
+                    + (center ? dist(wx, wy, center.x, center.y) : 0)
+                    + (exit ? dist(wx, wy, exit.worldX, exit.worldY) : 0);
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = { x, y, wx, wy };
+                }
+            }
+        }
+        if (!best) {
+            let far = -1;
+            for (let y = 2; y < CAVE_H - 2; y++) {
+                for (let x = 2; x < CAVE_W - 2; x++) {
+                    if (this.tiles[y][x] !== TILE.CAVE_FLOOR) continue;
+                    const wx = x * TILE_SIZE + TILE_SIZE / 2;
+                    const wy = y * TILE_SIZE + TILE_SIZE / 2;
+                    if (center && dist(wx, wy, center.x, center.y) < TILE_SIZE * 3) continue;
+                    const score = center ? dist(wx, wy, center.x, center.y) : 0;
+                    if (score > far) {
+                        far = score;
+                        best = { x, y, wx, wy };
+                    }
+                }
+            }
+        }
+        if (!best) return;
+        this.strangeKey = {
+            id: "jade",
+            tileX: best.x,
+            tileY: best.y,
+            x: best.wx,
+            y: best.wy,
+            collected: false,
+        };
     }
 
     generateMaze(rng) {
@@ -3774,6 +3883,40 @@ class SkyWorld {
 
         this.placeAmbrosia(rng, islands);
         this.generateSkyDecorations(rng);
+        this.strangeKey = null;
+        this.placeCrystalKey();
+    }
+
+    // On an outlying island, not the temple and not the ladder you arrive on.
+    placeCrystalKey() {
+        const prefer = [
+            { x: 12, y: 12 }, { x: 66, y: 13 }, { x: 10, y: 34 }, { x: 69, y: 36 },
+        ];
+        const temple = this.templeCenter || { x: 0, y: 0 };
+        const exit = this.exit;
+        for (const p of prefer) {
+            for (let r = 0; r <= 6; r++) {
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+                        const tx = p.x + dx;
+                        const ty = p.y + dy;
+                        if (this.isSolid(tx, ty)) continue;
+                        if (Math.abs(tx - temple.x) + Math.abs(ty - temple.y) < 16) continue;
+                        if (exit && Math.abs(tx - exit.x) + Math.abs(ty - exit.y) < 8) continue;
+                        this.strangeKey = {
+                            id: "crystal",
+                            tileX: tx,
+                            tileY: ty,
+                            x: tx * TILE_SIZE + TILE_SIZE / 2,
+                            y: ty * TILE_SIZE + TILE_SIZE / 2,
+                            collected: false,
+                        };
+                        return;
+                    }
+                }
+            }
+        }
     }
 
     // Flood fill from the arrival pad; anything the player cannot walk to is
@@ -4386,5 +4529,105 @@ class SkyWorld {
             { shape: "crown", colour: "#ffee44", label: "Temple" },
         ]);
         MapArt.chartedReadout(ctx, L.w - 20, L.legend.y + L.legend.h / 2, this.fog, "right");
+    }
+}
+
+// A plain stone room. No fog, no markers.
+class SealWorld {
+    constructor() {
+        this.tiles = [];
+        this.fog = null;
+        this.exit = null;
+        this.bossSpawn = null;
+        this.generate();
+    }
+
+    generate() {
+        this.tiles = new Array(SEAL_H);
+        for (let y = 0; y < SEAL_H; y++) {
+            this.tiles[y] = new Array(SEAL_W);
+            for (let x = 0; x < SEAL_W; x++) {
+                const edge = x === 0 || y === 0 || x === SEAL_W - 1 || y === SEAL_H - 1;
+                this.tiles[y][x] = edge ? TILE.WALL : TILE.STONE;
+            }
+        }
+        const ex = Math.floor(SEAL_W / 2);
+        const ey = SEAL_H - 4;
+        this.exit = {
+            x: ex,
+            y: ey,
+            worldX: ex * TILE_SIZE + TILE_SIZE / 2,
+            worldY: ey * TILE_SIZE + TILE_SIZE / 2,
+        };
+        const bx = Math.floor(SEAL_W / 2);
+        const by = Math.floor(SEAL_H / 2) - 2;
+        this.bossSpawn = {
+            x: bx,
+            y: by,
+            worldX: bx * TILE_SIZE + TILE_SIZE / 2,
+            worldY: by * TILE_SIZE + TILE_SIZE / 2,
+        };
+    }
+
+    isSolid(tx, ty) {
+        if (tx < 0 || tx >= SEAL_W || ty < 0 || ty >= SEAL_H) return true;
+        return this.tiles[ty][tx] === TILE.WALL;
+    }
+
+    blocksMonster(tx, ty) {
+        return this.isSolid(tx, ty);
+    }
+
+    blocksSight() {
+        return false;
+    }
+
+    isWarded() {
+        return false;
+    }
+
+    render(ctx, camera) {
+        const startTX = Math.floor(camera.x / TILE_SIZE) - 1;
+        const startTY = Math.floor(camera.y / TILE_SIZE) - 1;
+        const endTX = startTX + TILES_X + 2;
+        const endTY = startTY + TILES_Y + 2;
+        for (let ty = startTY; ty <= endTY; ty++) {
+            for (let tx = startTX; tx <= endTX; tx++) {
+                const sx = tx * TILE_SIZE - camera.x;
+                const sy = ty * TILE_SIZE - camera.y;
+                if (tx < 0 || ty < 0 || tx >= SEAL_W || ty >= SEAL_H) {
+                    ctx.fillStyle = "#0c0c10";
+                    ctx.fillRect(sx, sy, TILE_SIZE + 1, TILE_SIZE + 1);
+                    continue;
+                }
+                const tile = this.tiles[ty][tx];
+                ctx.fillStyle = tile === TILE.WALL ? "#2a2c34" : "#3c3e46";
+                ctx.fillRect(sx, sy, TILE_SIZE + 1, TILE_SIZE + 1);
+                if (tile === TILE.STONE && ((tx + ty) % 2 === 0)) {
+                    ctx.fillStyle = "rgba(0,0,0,0.08)";
+                    ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+                }
+            }
+        }
+    }
+
+    renderMinimap(ctx, player) {
+        ctx.fillStyle = "#12141a";
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        const s = Math.min(ctx.canvas.width / SEAL_W, ctx.canvas.height / SEAL_H);
+        for (let y = 0; y < SEAL_H; y++) {
+            for (let x = 0; x < SEAL_W; x++) {
+                ctx.fillStyle = this.tiles[y][x] === TILE.WALL ? "#2a2c34" : "#4a4e58";
+                ctx.fillRect(x * s, y * s, s + 0.5, s + 0.5);
+            }
+        }
+        if (player) {
+            ctx.fillStyle = "#7ef0ff";
+            ctx.fillRect(player.x / TILE_SIZE * s - 1.5, player.y / TILE_SIZE * s - 1.5, 3, 3);
+        }
+    }
+
+    renderWorldMap(ctx, player) {
+        this.renderMinimap(ctx, player);
     }
 }

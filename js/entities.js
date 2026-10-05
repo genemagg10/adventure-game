@@ -19,6 +19,8 @@ class Player {
         // Which of the Ingoizer siblings the player chose at the start screen.
         // Their house colour tints the hero's armour trim in the world.
         this.siblingId = null;
+        this.playerTag = "";
+        this.heldKeys = [];
         this._siblingTintCache = { id: null, tint: null };
 
         // Weapons
@@ -176,6 +178,21 @@ class Player {
         return false;
     }
 
+    holdKey(id) {
+        if (!id || this.heldKeys.includes(id)) return false;
+        this.heldKeys.push(id);
+        return true;
+    }
+
+    holdsKey(id) {
+        return Array.isArray(this.heldKeys) && this.heldKeys.includes(id);
+    }
+
+    holdsAllKeys() {
+        if (typeof STRANGE_KEYS === "undefined") return false;
+        return Object.keys(STRANGE_KEYS).every(id => this.holdsKey(id));
+    }
+
     getArmor() {
         const armor = ARMOR[this.currentArmor];
         let def = armor.defense;
@@ -220,6 +237,7 @@ class Player {
         const isFireArrow = this.activeElement === "fire" && this.elements.fire;
         const fireDamage = isFireArrow ? Math.floor(ELEMENTS.fire.damage * 0.5) : 0;
         const bowEnchant = this.enchantments[this.currentBow] || null;
+        const isLaser = bow.bolt === "laser";
 
         return {
             x: this.x + this.facing.x * 10,
@@ -230,7 +248,8 @@ class Player {
             range: bow.range,
             distTraveled: 0,
             isFireArrow: isFireArrow,
-            isZeusBolt: !!this.hasZeusBolts,
+            isLaser: isLaser,
+            isZeusBolt: !!this.hasZeusBolts && !isLaser,
             bowEnchant: bowEnchant,
         };
     }
@@ -1678,6 +1697,248 @@ class Boss {
         ctx.beginPath();
         ctx.arc(sx, sy + bob, this.size + 10 + auraPhase * 5, 0, Math.PI * 2);
         ctx.stroke();
+    }
+}
+
+// A fighter who does not swing a sword. Bolts, a sweeping line, and a short blink.
+class LucaBoss extends Boss {
+    constructor(x, y) {
+        super(x, y);
+        const c = LUCA_BOSS;
+        this.name = c.name;
+        this.hp = c.hp;
+        this.maxHp = c.hp;
+        this.damage = c.damage;
+        this.baseSpeed = c.speed;
+        this.speed = c.speed;
+        this.size = c.size;
+        this.color = c.color;
+        this.phases = c.phases;
+        this.leashRadius = 640;
+        this.sweep = null;
+    }
+
+    update(dt, player, world) {
+        if (!this.alive) {
+            if (this.deathTimer > 0) this.deathTimer -= dt;
+            return null;
+        }
+        if (!this.spawned) return null;
+        if (this.spawnAnimation > 0) {
+            this.spawnAnimation -= dt;
+            return null;
+        }
+
+        const phase = this.getCurrentPhase();
+        const distToPlayer = dist(this.x, this.y, player.x, player.y);
+        const now = Date.now();
+        const spd = this.speed * phase.speed;
+
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const p = this.projectiles[i];
+            p.x += p.vx * dt * 0.1;
+            p.y += p.vy * dt * 0.1;
+            p.life -= dt;
+            if (p.life <= 0) {
+                this.projectiles.splice(i, 1);
+                continue;
+            }
+            const radius = p.kind === "mine" ? 12 : 6;
+            if (circleOverlap(p.x, p.y, radius, player.x, player.y, player.size)) {
+                if (player.takeDamage(p.damage || LUCA_BOSS.boltDamage, p.x, p.y)) {
+                    this.projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        if (this.sweep) {
+            this.sweep.life -= dt;
+            if (this.sweep.life < this.sweep.activeFor && !this.sweep.hit) {
+                if (this.onSweep(player)) {
+                    this.sweep.hit = true;
+                    player.takeDamage(LUCA_BOSS.boltDamage, this.x, this.y);
+                }
+            }
+            if (this.sweep.life <= 0) this.sweep = null;
+        }
+
+        if (this.charging) {
+            this.chargeTimer -= dt;
+            this.tryMove(this.chargeDir.x * spd * 3.2, this.chargeDir.y * spd * 3.2, world);
+            if (distToPlayer < this.size + player.size + 4) {
+                player.takeDamage(this.damage, this.x, this.y);
+            }
+            if (this.chargeTimer <= 0) this.charging = false;
+            if (this.flashTimer > 0) this.flashTimer -= dt;
+            return null;
+        }
+
+        const norm = normalize(player.x - this.x, player.y - this.y);
+        this.tryMove(norm.x * spd, norm.y * spd, world);
+        this.facing = norm;
+        this.walkTimer += dt;
+        if (this.walkTimer > 140) {
+            this.walkFrame = (this.walkFrame + 1) % 4;
+            this.walkTimer = 0;
+        }
+
+        if (distToPlayer < this.size + player.size + 6) {
+            player.takeDamage(this.damage * 0.45, this.x, this.y);
+        }
+
+        if (now - this.lastAttackTime > phase.attackRate) {
+            this.lastAttackTime = now;
+            if (phase.pattern === "bolt") {
+                this.fireBolt(player, 0, 5.2);
+            } else if (phase.pattern === "fan") {
+                for (const off of [-0.45, -0.22, 0, 0.22, 0.45]) this.fireBolt(player, off, 5.4);
+            } else if (phase.pattern === "sweep") {
+                this.startSweep(player);
+                this.fireBolt(player, 0.15, 6);
+                this.fireBolt(player, -0.15, 6);
+            } else {
+                this.blinkToward(player, world);
+                this.fireBolt(player, 0, 6.4);
+                this.fireBolt(player, 0.4, 5.6);
+                this.fireBolt(player, -0.4, 5.6);
+                this.dropMine();
+                this.charging = true;
+                this.chargeTimer = 220;
+                this.chargeDir = normalize(player.x - this.x, player.y - this.y);
+            }
+        }
+
+        if (this.flashTimer > 0) this.flashTimer -= dt;
+        return null;
+    }
+
+    fireBolt(player, angleOffset, speed) {
+        const angle = dirToAngle(player.x - this.x, player.y - this.y) + angleOffset;
+        this.projectiles.push({
+            x: this.x + Math.cos(angle) * 16,
+            y: this.y + Math.sin(angle) * 16,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1600,
+            damage: LUCA_BOSS.boltDamage,
+            kind: "bolt",
+        });
+    }
+
+    dropMine() {
+        this.projectiles.push({
+            x: this.x,
+            y: this.y,
+            vx: 0,
+            vy: 0,
+            life: 2400,
+            damage: Math.round(LUCA_BOSS.boltDamage * 0.7),
+            kind: "mine",
+        });
+    }
+
+    startSweep(player) {
+        this.sweep = {
+            angle: dirToAngle(player.x - this.x, player.y - this.y),
+            life: 700,
+            activeFor: 280,
+            hit: false,
+        };
+    }
+
+    onSweep(player) {
+        if (!this.sweep) return false;
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const along = dx * Math.cos(this.sweep.angle) + dy * Math.sin(this.sweep.angle);
+        if (along < 10 || along > 220) return false;
+        const side = Math.abs(-dx * Math.sin(this.sweep.angle) + dy * Math.cos(this.sweep.angle));
+        return side < 22;
+    }
+
+    blinkToward(player, world) {
+        const step = 70;
+        const n = normalize(player.x - this.x, player.y - this.y);
+        const nx = this.x + n.x * step;
+        const ny = this.y + n.y * step;
+        const tile = worldToTile(nx, ny);
+        if (world && !world.isSolid(tile.x, tile.y)) {
+            this.x = nx;
+            this.y = ny;
+        }
+    }
+
+    render(ctx, camera, time) {
+        const sx = this.x - camera.x;
+        const sy = this.y - camera.y;
+        if (!this.spawned) return;
+        const bob = Math.sin(time * 0.008 + this.walkFrame) * 1.2;
+        const flash = this.flashTimer > 0;
+
+        ctx.save();
+        if (!this.alive) ctx.globalAlpha = Math.max(0, this.deathTimer / 3000);
+
+        if (this.sweep) {
+            const warning = this.sweep.life > this.sweep.activeFor;
+            ctx.strokeStyle = warning ? "rgba(120, 230, 255, 0.35)" : "rgba(180, 250, 255, 0.95)";
+            ctx.lineWidth = warning ? 2 : 5;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx + Math.cos(this.sweep.angle) * 220, sy + Math.sin(this.sweep.angle) * 220);
+            ctx.stroke();
+        }
+
+        for (const p of this.projectiles) {
+            const px = p.x - camera.x;
+            const py = p.y - camera.y;
+            if (p.kind === "mine") {
+                ctx.fillStyle = "rgba(80, 220, 255, 0.35)";
+                ctx.beginPath();
+                ctx.arc(px, py, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#e8fbff";
+                ctx.fillRect(px - 1.5, py - 1.5, 3, 3);
+            } else {
+                const ang = Math.atan2(p.vy, p.vx);
+                ctx.save();
+                ctx.translate(px, py);
+                ctx.rotate(ang);
+                ctx.strokeStyle = "rgba(140, 240, 255, 0.45)";
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.moveTo(-10, 0);
+                ctx.lineTo(8, 0);
+                ctx.stroke();
+                ctx.strokeStyle = "#f4fdff";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-8, 0);
+                ctx.lineTo(9, 0);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        // Coat
+        ctx.fillStyle = flash ? "#d8f6ff" : "#12161c";
+        ctx.fillRect(sx - 8, sy - 16 + bob, 16, 26);
+        ctx.fillStyle = flash ? "#ffffff" : "#243040";
+        ctx.fillRect(sx - 6, sy - 14 + bob, 12, 8);
+        // Visor
+        ctx.fillStyle = "#7ef0ff";
+        ctx.fillRect(sx - 4, sy - 11 + bob, 8, 2);
+        // Rifle along the facing
+        const ang = dirToAngle(this.facing.x, this.facing.y);
+        ctx.save();
+        ctx.translate(sx + Math.cos(ang) * 8, sy - 2 + bob + Math.sin(ang) * 8);
+        ctx.rotate(ang);
+        ctx.fillStyle = "#1a222c";
+        ctx.fillRect(0, -2, 16, 4);
+        ctx.fillStyle = "#9af6ff";
+        ctx.fillRect(14, -1, 5, 2);
+        ctx.restore();
+
+        ctx.restore();
     }
 }
 

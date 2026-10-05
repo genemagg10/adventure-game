@@ -89,6 +89,13 @@ class Game {
         this.nearCaveEntrance = null;
         this.nearCaveExit = null;
         this.nearMakersHollow = false;
+        this.nearSealedDoor = false;
+        this.nearSealExit = false;
+        this.inSeal = false;
+        this.sealWorld = null;
+        this.luca = null;
+        this.lucaSpawned = false;
+        this.lucaDefeated = false;
         this.savedSurfacePos = null;
 
         // The Cloudlands (sky realm above the world)
@@ -199,7 +206,26 @@ class Game {
     // True only when the player is walking the overworld - not underground,
     // not up in the Cloudlands.
     get onSurface() {
-        return !this.inCave && !this.inSky;
+        return !this.inCave && !this.inSky && !this.inSeal;
+    }
+
+    realmSize() {
+        if (this.inSeal) return { w: SEAL_W, h: SEAL_H };
+        if (this.inCave) return { w: CAVE_W, h: CAVE_H };
+        if (this.inSky) return { w: SKY_W, h: SKY_H };
+        return { w: WORLD_W, h: WORLD_H };
+    }
+
+    recordDeed(milestoneId) {
+        if (typeof HallOfDeeds === "undefined" || !this.player) return;
+        const sib = (typeof SiblingPortrait !== "undefined" && this.player.siblingId)
+            ? SiblingPortrait.byId(this.player.siblingId)
+            : null;
+        HallOfDeeds.record({
+            playerTag: this.player.playerTag || "Wayfarer",
+            siblingName: sib ? sib.name : "Ingoizer",
+            milestoneId,
+        });
     }
 
     // Match the drawing surface to the shape of the window. The height never
@@ -308,6 +334,7 @@ class Game {
         };
 
         window.addEventListener("keydown", (e) => {
+            if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
             const action = keyMap[e.code];
             if (action) {
                 e.preventDefault();
@@ -319,6 +346,7 @@ class Game {
         });
 
         window.addEventListener("keyup", (e) => {
+            if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
             const action = keyMap[e.code];
             if (action) {
                 e.preventDefault();
@@ -424,6 +452,13 @@ class Game {
         this.nearCaveEntrance = null;
         this.nearCaveExit = null;
         this.nearMakersHollow = false;
+        this.nearSealedDoor = false;
+        this.nearSealExit = false;
+        this.inSeal = false;
+        this.sealWorld = new SealWorld();
+        this.luca = null;
+        this.lucaSpawned = false;
+        this.lucaDefeated = false;
         this.savedSurfacePos = null;
 
         // The Cloudlands
@@ -466,12 +501,13 @@ class Game {
         this.ui.showHud();
     }
 
-    startGame(siblingId) {
+    startGame(siblingId, playerTag) {
         GameAnalytics.track("game-start");
         this.sound.menuSelect();
         this.resetState();
         this.selectedSiblingId = siblingId || null;
         this.player.siblingId = this.selectedSiblingId;
+        this.player.playerTag = playerTag || "";
         this.beginLoop();
 
         // Welcome dialog - greet the chosen sibling by name when there is one.
@@ -900,6 +936,7 @@ class Game {
         this.clubhouseUnlocked = true;
         this.clubGuestTimer = 0;
         GameAnalytics.track("clubhouse-opened");
+        this.recordDeed("clubhouse");
         this.sound.clubhouseFanfare();
         this.ui.showNotification("\u2605 The Clubhouse is open! \u2605");
 
@@ -1028,7 +1065,8 @@ class Game {
         // Closing the pause menu has to be handled out here: update() is what
         // reads the key, and update() is exactly what pausing stops.
         if (this.state === "playing" && this.paused && this.keyJustPressed.pause) {
-            if (this.ui.isSlotsOpen()) this.ui.closeSlots();
+            if (this.ui.isHallOpen()) this.ui.closeHall();
+            else if (this.ui.isSlotsOpen()) this.ui.closeSlots();
             else if (this.ui.isControlsOpen()) this.ui.closeControls();
             else if (this.ui.isPauseOpen()) this.ui.closePause();
             this.keyJustPressed.pause = false;
@@ -1123,9 +1161,9 @@ class Game {
 
         // Active world/monsters/boss references based on which realm we're in
         const activeCave = this.inCave ? this.caveWorlds[this.activeCaveId] : null;
-        const activeWorld = activeCave || (this.inSky ? this.skyWorld : this.world);
-        const activeMonsters = this.inCave ? this.caveMonsters : (this.inSky ? this.skyMonsters : this.monsters);
-        const activeBoss = this.inCave ? this.caveBoss : (this.inSky ? this.olympianBoss : this.boss);
+        const activeWorld = this.inSeal ? this.sealWorld : (activeCave || (this.inSky ? this.skyWorld : this.world));
+        const activeMonsters = this.inSeal ? [] : (this.inCave ? this.caveMonsters : (this.inSky ? this.skyMonsters : this.monsters));
+        const activeBoss = this.inSeal ? this.luca : (this.inCave ? this.caveBoss : (this.inSky ? this.olympianBoss : this.boss));
         // The surface's second boss slot is shared: the Green Knight and the
         // Giant Snapping Turtle both ride it (they are far apart and never
         // fought together). Whichever the player is actually beside is the one
@@ -1154,6 +1192,7 @@ class Game {
             const arrowData = this.player.shootArrow();
             if (arrowData) {
                 this.combat.addArrow(arrowData);
+                if (arrowData.isLaser) this.sound.laserZap();
                 if (arrowData.isFireArrow) {
                     this.ui.showNotification("Fire arrow!");
                 }
@@ -1261,6 +1300,25 @@ class Game {
                     );
                     this.player.lastHitArmorEnchant = null;
                 }
+            }
+        }
+
+        if (this.inSeal && this.luca && this.luca.spawned) {
+            const prevProjCount = this.luca.projectiles.length;
+            const prevPlayerHp = this.player.hp;
+            this.luca.update(dt, this.player, this.sealWorld);
+            if (this.luca.alive) {
+                this.ui.showBossHealth(this.luca, this.luca.name);
+                if (this.luca.projectiles.length > prevProjCount) this.sound.bossProjectile();
+                if (this.player.hp < prevPlayerHp && this.player.lastHitArmorEnchant) {
+                    this.combat.spawnArmorDefenseEffect(
+                        this.player.lastHitArmorEnchant, this.player,
+                        this.player.lastHitFromX, this.player.lastHitFromY
+                    );
+                    this.player.lastHitArmorEnchant = null;
+                }
+            } else {
+                this.ui.hideBossHealth();
             }
         }
 
@@ -1444,6 +1502,8 @@ class Game {
         // Check proximity for interactions
         this.checkCaveProximity();
         this.checkMakersHollow();
+        this.checkSealedDoor();
+        this.checkStrangeKeys();
         this.checkSkyProximity();
         if (this.onSurface) {
             this.checkProximity();
@@ -1454,7 +1514,7 @@ class Game {
             this.spawnCaveMonsters(dt);
         } else if (this.inSky) {
             this.spawnSkyMonsters(dt);
-        } else {
+        } else if (this.onSurface) {
             this.spawnMonsters(dt);
         }
 
@@ -1553,11 +1613,16 @@ class Game {
         const goldLost = Math.min(100, this.player.gold);
         this.player.gold -= goldLost;
 
-        // If the player died in a cave or up in the Cloudlands, return them to the surface
+        // If the player died in a cave, the sealed room, or the Cloudlands, return them to the surface
         this.inCave = false;
         this.activeCaveId = null;
         this.caveBoss = null;
         this.inSky = false;
+        this.inSeal = false;
+        if (this.lucaSpawned && !this.lucaDefeated) {
+            this.lucaSpawned = false;
+            this.luca = null;
+        }
 
         // The Olympian resets to his first face so the whole cycle can be fought again
         if (this.olympianSpawned && !this.olympianDefeated) {
@@ -1626,6 +1691,20 @@ class Game {
     }
 
     onEntityKilled(entity, isBoss) {
+        if (isBoss && entity === this.luca) {
+            this.lucaDefeated = true;
+            this.ui.hideBossHealth();
+            this.sound.bossDefeat();
+            const fresh = this.player.addBow("laser_gun");
+            this.player.equipBow("laser_gun");
+            this.player.arrows += 24;
+            if (fresh) {
+                this.sound.weaponPickup();
+                this.ui.showNotification(`${BOWS.laser_gun.icon} ${BOWS.laser_gun.name}`);
+            }
+            return;
+        }
+
         // The Olympian killed - only possible once Zeus is back in his true form
         if (isBoss && entity === this.olympianBoss) {
             this.onOlympianDefeated();
@@ -1669,6 +1748,7 @@ class Game {
         if (isBoss && entity === this.giantTurtle) {
             this.giantTurtleDefeated = true;
             GameAnalytics.track("giant-turtle-defeated");
+            this.recordDeed("giant-turtle");
             this.ui.hideBossHealth();
             this.sound.bossDefeat();
             // The shell is the prize: Turtle Shell Armor, three points sturdier
@@ -1702,6 +1782,7 @@ class Game {
         if (isBoss && entity === this.greenKnight) {
             this.greenKnightDefeated = true;
             GameAnalytics.track("green-knight-defeated");
+            this.recordDeed("green-knight");
             this.ui.hideBossHealth();
             this.sound.bossDefeat();
             // Drop Magic Charm
@@ -1735,6 +1816,7 @@ class Game {
         if (isBoss && entity === this.boss) {
             this.bossDefeated = true;
             GameAnalytics.track("black-knight-defeated");
+            this.recordDeed("black-knight");
             this.ui.hideBossHealth();
             this.sound.bossDefeat();
             // Drop Dark Knight's Crest
@@ -1834,6 +1916,9 @@ class Game {
     trackGemProgress() {
         if (this.player.blueGems >= 1) GameAnalytics.track("first-blue-gem");
         if (this.player.blueGems >= 5) GameAnalytics.track("five-blue-gems");
+        if (this.player.blueGems >= 1 && this.player.blueGems <= 5) {
+            this.recordDeed("blue-gem-" + this.player.blueGems);
+        }
     }
 
     // A Blue Gem has handed over a new power. One place decides what happens
@@ -2062,6 +2147,12 @@ class Game {
         if (this.nearMakersHollow && this.onSurface) {
             return { icon: "🪜", short: "climb down the ladder", long: "climb down the ladder" };
         }
+        if (this.nearSealedDoor && this.onSurface) {
+            return { icon: "▣", short: "try the door", long: "try the door" };
+        }
+        if (this.nearSealExit && this.inSeal) {
+            return { icon: "⬆️", short: "step back", long: "step back out" };
+        }
         if (this.nearCaveEntrance && !this.inCave) {
             return { icon: "🕳️", short: "enter cave", long: "enter cave" };
         }
@@ -2116,6 +2207,14 @@ class Game {
         // The ladder down to the Maker's Hollow
         if (this.nearMakersHollow && this.onSurface) {
             this.enterMakersHollow();
+            return;
+        }
+        if (this.nearSealedDoor && this.onSurface) {
+            this.trySealedDoor();
+            return;
+        }
+        if (this.nearSealExit && this.inSeal) {
+            this.exitSeal();
             return;
         }
 
@@ -2598,6 +2697,95 @@ class Game {
         this.nearMakersHollow = dist(this.player.x, this.player.y, hollow.x, hollow.y) < MAKERS_HOLLOW.range;
     }
 
+    checkSealedDoor() {
+        this.nearSealedDoor = false;
+        this.nearSealExit = false;
+        if (this.onSurface && this.world && this.world.sealedDoor) {
+            const door = this.world.sealedDoor;
+            this.nearSealedDoor = dist(this.player.x, this.player.y, door.x, door.y) < SEALED_DOOR.range;
+        } else if (this.inSeal && this.sealWorld && this.sealWorld.exit) {
+            const exit = this.sealWorld.exit;
+            this.nearSealExit = dist(this.player.x, this.player.y, exit.worldX, exit.worldY) < 48;
+        }
+    }
+
+    strangeKeyHere() {
+        if (this.inCave && this.caveWorlds[this.activeCaveId]) return this.caveWorlds[this.activeCaveId].strangeKey;
+        if (this.inSky && this.skyWorld) return this.skyWorld.strangeKey;
+        if (this.onSurface && this.world) return this.world.strangeKey;
+        return null;
+    }
+
+    checkStrangeKeys() {
+        const key = this.strangeKeyHere();
+        if (!key || key.collected) return;
+        if (dist(this.player.x, this.player.y, key.x, key.y) > 26) return;
+        key.collected = true;
+        this.player.holdKey(key.id);
+        this.sound.goldCollect();
+        const label = STRANGE_KEYS[key.id] ? STRANGE_KEYS[key.id].name : "";
+        if (label) this.ui.showNotification(label);
+        this.recordDeed("strange-key-" + key.id);
+    }
+
+    trySealedDoor() {
+        if (!this.player.holdsAllKeys()) {
+            this.sound.lockClick();
+            this.ui.showNotification("The locks click. A notch is empty.");
+            return;
+        }
+        this.enterSeal();
+    }
+
+    enterSeal() {
+        this.inSeal = true;
+        const door = this.world.sealedDoor;
+        this.savedSurfacePos = door
+            ? { x: door.x, y: door.y + TILE_SIZE }
+            : { x: this.player.x, y: this.player.y };
+        const exit = this.sealWorld.exit;
+        this.player.x = exit.worldX;
+        this.player.y = exit.worldY;
+        this.player.knockbackVx = 0;
+        this.player.knockbackVy = 0;
+        this.snapCamera();
+        this.currentZone = "seal";
+        this.zoneDisplayTimer = 0;
+        this.nearAnimal = null;
+        this.gatherCompanions();
+        if (!this.lucaDefeated) this.spawnLuca();
+        this.sound.menuSelect();
+    }
+
+    spawnLuca() {
+        const spot = this.sealWorld.bossSpawn;
+        this.luca = new LucaBoss(spot.worldX, spot.worldY);
+        this.luca.spawn();
+        this.luca.spawnAnimation = 700;
+        this.lucaSpawned = true;
+        this.sound.systemWake();
+    }
+
+    exitSeal() {
+        this.inSeal = false;
+        const back = this.savedSurfacePos || {
+            x: this.world.sealedDoor.x,
+            y: this.world.sealedDoor.y + TILE_SIZE,
+        };
+        this.player.x = back.x;
+        this.player.y = back.y;
+        this.player.knockbackVx = 0;
+        this.player.knockbackVy = 0;
+        if (!this.lucaDefeated) {
+            this.luca = null;
+            this.lucaSpawned = false;
+        }
+        this.ui.hideBossHealth();
+        this.gatherCompanions();
+        this.snapCamera();
+        this.sound.menuSelect();
+    }
+
     enterMakersHollow() {
         const hollow = this.world.makersHollow;
         if (!hollow) return;
@@ -2606,6 +2794,7 @@ class Game {
         if (firstTime) {
             this.world.invalidateMapCache();
             GameAnalytics.track("makers-hollow-found");
+            this.recordDeed("makers-hollow");
             this.ui.showNotification("\u2728 You found the Maker's Hollow!");
         }
         this.sound.secretDiscovery();
@@ -3011,6 +3200,7 @@ class Game {
 
         this.player.hasWorldtreeSeed = false;
         this.plantedInAsh = inAsh;
+        this.recordDeed("planted-worldtree");
         this.sound.gemCollect();
         this.ui.showNotification(`${WORLDTREE_SEED.icon} Seed planted. Something is coming up.`);
     }
@@ -3091,6 +3281,7 @@ class Game {
     // says so out loud rather than letting a player find out afterwards.
     onWorldtreeRegrown() {
         this.worldtreeRestored = true;
+        this.recordDeed("mended-worldtree");
         this.sound.divineChime();
         // Making peace, Zeus honours the hero with their full name - the one
         // mark of respect the quarrelling, Olympian-fight path never earns.
@@ -3168,6 +3359,7 @@ class Game {
 
         this.surfaceCharted = true;
         GameAnalytics.track("surface-fully-charted");
+        this.recordDeed("charted-surface");
         this.sound.explorerFanfare();
         this.ui.showNotification("\ud83d\uddfa\ufe0f The realm is charted!");
         this.ui.showDialog("Congratulations, you've explored 100% of the surface level! The fog has been cleared.");
@@ -3237,6 +3429,7 @@ class Game {
 
     enterSky() {
         this.inSky = true;
+        this.recordDeed("climbed-cloudlands");
         this.savedSurfacePos = { x: this.player.x, y: this.player.y };
 
         const exit = this.skyWorld.exit;
@@ -3297,8 +3490,9 @@ class Game {
     }
 
     snapCamera() {
-        const worldW = this.inCave ? CAVE_W : (this.inSky ? SKY_W : WORLD_W);
-        const worldH = this.inCave ? CAVE_H : (this.inSky ? SKY_H : WORLD_H);
+        const size = this.realmSize();
+        const worldW = size.w;
+        const worldH = size.h;
         this.camera.x = clamp(this.player.x - CANVAS_W / 2, 0, worldW * TILE_SIZE - CANVAS_W);
         this.camera.y = clamp(this.player.y - CANVAS_H / 2, 0, worldH * TILE_SIZE - CANVAS_H);
     }
@@ -3478,6 +3672,7 @@ class Game {
     onOlympianDefeated() {
         this.olympianDefeated = true;
         GameAnalytics.track("olympus-defeated");
+        this.recordDeed("beat-zeus");
         this.ui.hideBossHealth();
         this.sound.bossDefeat();
         this.player.hasZeusBolts = true;
@@ -3662,7 +3857,12 @@ class Game {
     }
 
     checkZone() {
-        if (this.inCave) {
+        if (this.inSeal) {
+            if (this.currentZone !== "seal") {
+                this.currentZone = "seal";
+                this.zoneDisplayTimer = 0;
+            }
+        } else if (this.inCave) {
             if (this.currentZone !== "cave") {
                 this.currentZone = "cave";
                 this.zoneDisplayTimer = 3000;
@@ -3697,10 +3897,36 @@ class Game {
         this.camera.y = lerp(this.camera.y, targetY, 0.1);
 
         // Clamp camera (use correct world dimensions)
-        const worldW = this.inCave ? CAVE_W : (this.inSky ? SKY_W : WORLD_W);
-        const worldH = this.inCave ? CAVE_H : (this.inSky ? SKY_H : WORLD_H);
+        const size = this.realmSize();
+        const worldW = size.w;
+        const worldH = size.h;
         this.camera.x = clamp(this.camera.x, 0, worldW * TILE_SIZE - CANVAS_W);
         this.camera.y = clamp(this.camera.y, 0, worldH * TILE_SIZE - CANVAS_H);
+    }
+
+    renderStrangeKey(ctx) {
+        const key = this.strangeKeyHere();
+        if (!key || key.collected || typeof KeySprite === "undefined") return;
+        const sx = key.x - this.camera.x;
+        const sy = key.y - this.camera.y;
+        if (sx < -20 || sx > CANVAS_W + 20 || sy < -20 || sy > CANVAS_H + 20) return;
+        KeySprite.draw(ctx, sx, sy, key.id, this.time);
+    }
+
+    renderSealedDoor(ctx) {
+        if (!this.onSurface || !this.world || !this.world.sealedDoor) return;
+        const door = this.world.sealedDoor;
+        const sx = door.x - this.camera.x;
+        const sy = door.y - this.camera.y;
+        if (sx < -40 || sx > CANVAS_W + 40 || sy < -40 || sy > CANVAS_H + 40) return;
+        ctx.save();
+        ctx.fillStyle = "#2c2926";
+        ctx.fillRect(sx - 8, sy - 16, 16, 32);
+        ctx.fillStyle = "#171512";
+        ctx.fillRect(sx - 2, sy - 14, 3, 28);
+        ctx.fillStyle = "#5a5148";
+        for (let i = 0; i < 3; i++) ctx.fillRect(sx + 3, sy - 9 + i * 8, 4, 2);
+        ctx.restore();
     }
 
     render() {
@@ -3709,8 +3935,10 @@ class Game {
 
         if (this.state !== "playing" && this.state !== "gameover") return;
 
-        // Render world (cave, sky or surface)
-        if (this.inCave && this.caveWorlds[this.activeCaveId]) {
+        // Render world (cave, sky, sealed room, or surface)
+        if (this.inSeal && this.sealWorld) {
+            this.sealWorld.render(ctx, this.camera, this.time);
+        } else if (this.inCave && this.caveWorlds[this.activeCaveId]) {
             this.caveWorlds[this.activeCaveId].render(ctx, this.camera, this.time);
         } else if (this.inSky) {
             this.skyWorld.render(ctx, this.camera, this.time);
@@ -3718,9 +3946,12 @@ class Game {
             this.world.render(ctx, this.camera, this.time, { carryingSeed: this.player.hasWorldtreeSeed });
         }
 
+        this.renderStrangeKey(ctx);
+        this.renderSealedDoor(ctx);
+
         // Render monsters (sorted by Y for depth)
         const renderables = [];
-        const renderMonsters = this.inCave ? this.caveMonsters : (this.inSky ? this.skyMonsters : this.monsters);
+        const renderMonsters = this.inSeal ? [] : (this.inCave ? this.caveMonsters : (this.inSky ? this.skyMonsters : this.monsters));
         for (const m of renderMonsters) {
             if (m.alive || m.deathTimer > 0) {
                 renderables.push({ y: m.y, render: () => m.render(ctx, this.camera, this.time) });
@@ -3771,6 +4002,10 @@ class Game {
             renderables.push({ y: this.giantTurtle.y, render: () => this.giantTurtle.render(ctx, this.camera, this.time) });
         }
 
+        if (this.inSeal && this.luca && this.luca.spawned) {
+            renderables.push({ y: this.luca.y, render: () => this.luca.render(ctx, this.camera, this.time) });
+        }
+
         // The Olympian (Cloudlands only)
         if (this.inSky && this.olympianBoss && this.olympianBoss.spawned) {
             renderables.push({ y: this.olympianBoss.y, render: () => this.olympianBoss.render(ctx, this.camera, this.time) });
@@ -3793,7 +4028,8 @@ class Game {
 
         // Zone display
         if (this.zoneDisplayTimer > 0) {
-            const zoneName = this.currentZone === "cave" ? "The Caves Below"
+            const zoneName = this.inSeal ? null
+                : this.currentZone === "cave" ? "The Caves Below"
                 : this.currentZone === "sky" ? "The Cloudlands"
                 : (ZONES[this.currentZone] && this.world.isZoneRevealed(this.currentZone)
                     ? ZONES[this.currentZone].name : null);
@@ -3879,13 +4115,15 @@ class Game {
         // after state resets or viewport changes.
         this.updateMinimapShyness();
         const mapOpts = { time: this.time };
-        const minimapRealm = this.inCave ? `cave:${this.activeCaveId}` : (this.inSky ? "sky" : "surface");
+        const minimapRealm = this.inSeal ? "seal" : (this.inCave ? `cave:${this.activeCaveId}` : (this.inSky ? "sky" : "surface"));
         const minimapState = `${minimapRealm}:${Math.floor(this.player.x / TILE_SIZE)}:${Math.floor(this.player.y / TILE_SIZE)}`;
         if (minimapState !== this.minimapStateSignature) this.minimapDirty = true;
         const minimapDue = this.minimapDirty
             || (!this.paused && this.time - this.lastMinimapRender >= 1000 / 12);
         if (minimapDue) {
-            if (this.inCave && this.caveWorlds[this.activeCaveId]) {
+            if (this.inSeal && this.sealWorld) {
+                this.sealWorld.renderMinimap(this.minimapCtx, this.player, [], this.luca, mapOpts);
+            } else if (this.inCave && this.caveWorlds[this.activeCaveId]) {
                 this.caveWorlds[this.activeCaveId].renderMinimap(this.minimapCtx, this.player, this.caveMonsters, this.caveBoss, mapOpts);
             } else if (this.inSky) {
                 this.skyWorld.renderMinimap(this.minimapCtx, this.player, this.skyMonsters, this.olympianBoss, mapOpts);
@@ -3900,7 +4138,9 @@ class Game {
 
         // Render world map if open
         if (this.ui.isMapOpen()) {
-            if (this.inCave && this.caveWorlds[this.activeCaveId]) {
+            if (this.inSeal && this.sealWorld) {
+                this.sealWorld.renderWorldMap(this.worldmapCtx, this.player, mapOpts);
+            } else if (this.inCave && this.caveWorlds[this.activeCaveId]) {
                 this.caveWorlds[this.activeCaveId].renderWorldMap(this.worldmapCtx, this.player, mapOpts);
             } else if (this.inSky) {
                 this.skyWorld.renderWorldMap(this.worldmapCtx, this.player, mapOpts);

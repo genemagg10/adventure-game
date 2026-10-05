@@ -148,6 +148,7 @@ const BOWS = {
     hunters_bow: { name: "Hunter's Bow", icon: "🏹", damage: 16, speed: 1.0, range: 280, price: 120, description: "A sturdy hunting bow", projectileSpeed: 6 },
     longbow: { name: "Longbow", icon: "🏹", damage: 22, speed: 1.1, range: 350, price: 200, description: "Powerful and precise", projectileSpeed: 7 },
     arrow_strength_bow: { name: "Bow of Arrow Strength", icon: "🏹", damage: 30, speed: 1.1, range: 320, price: 0, description: "A mighty bow from the hidden base — its arrows strike as hard as Excalibur, and grow stronger with every enchantment and gem", projectileSpeed: 7 },
+    laser_gun: { name: "Laser Gun", icon: "✦", damage: 48, speed: 1.45, range: 460, price: 0, description: "Fires a bolt of light.", projectileSpeed: 14, bolt: "laser" },
 };
 
 // Armor
@@ -687,6 +688,40 @@ const MAKERS_HOLLOW = {
     creator: "Luca",
     year: 2026,
     website: "luca.maggio.xyz",
+};
+
+// Three small keys. The names are labels for the things themselves.
+const STRANGE_KEYS = {
+    copper:  { id: "copper",  name: "Copper Key",  color: "#c4783a", highlight: "#f3c48a", shadow: "#6a3414", tooth: "#a85a28" },
+    jade:    { id: "jade",    name: "Jade Key",    color: "#2f9a62", highlight: "#b6f0d0", shadow: "#0e4a30", tooth: "#1d7a48" },
+    crystal: { id: "crystal", name: "Crystal Key", color: "#d5e6ff", highlight: "#ffffff", shadow: "#6e90c4", tooth: "#b7d0f5" },
+};
+
+// A stone door a few paces from the Hollow. Understated on purpose.
+const SEALED_DOOR = {
+    x: 11,
+    y: 144,
+    range: 42,
+};
+
+// The room behind that door. Wide enough that a full-width window still has floor.
+const SEAL_W = 52;
+const SEAL_H = 28;
+
+const LUCA_BOSS = {
+    name: "Luca",
+    hp: 2400,
+    damage: 58,
+    boltDamage: 54,
+    speed: 1.45,
+    size: 20,
+    color: "#141820",
+    phases: [
+        { hpThreshold: 1.0, speed: 1.05, attackRate: 900, pattern: "bolt" },
+        { hpThreshold: 0.72, speed: 1.25, attackRate: 700, pattern: "fan" },
+        { hpThreshold: 0.45, speed: 1.45, attackRate: 520, pattern: "sweep" },
+        { hpThreshold: 0.22, speed: 1.75, attackRate: 400, pattern: "frenzy" },
+    ],
 };
 
 // Obstacle tile types used around cave entrances

@@ -1456,4 +1456,59 @@ class SoundSystem {
             this.clubNoise(at + 3.5 * CLUB_BEAT, 0.45, 0.07, 6000);
         }
     }
+
+    // A short bright zap.
+    laserZap() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(1400, t);
+        osc.frequency.exponentialRampToValueAtTime(280, t + 0.09);
+        const gain = this.createGain(0.12);
+        gain.gain.setValueAtTime(0.12 * this.masterVolume, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        osc.connect(gain);
+        osc.start(t);
+        osc.stop(t + 0.1);
+    }
+
+    // Two dry clicks, nothing explained.
+    lockClick() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        for (let i = 0; i < 2; i++) {
+            const osc = this.ctx.createOscillator();
+            osc.type = "square";
+            osc.frequency.setValueAtTime(180 - i * 40, t + i * 0.07);
+            const gain = this.createGain(0.08);
+            gain.gain.setValueAtTime(0.08 * this.masterVolume, t + i * 0.07);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.04);
+            osc.connect(gain);
+            osc.start(t + i * 0.07);
+            osc.stop(t + i * 0.07 + 0.05);
+        }
+    }
+
+    // A rising tone when the room wakes.
+    systemWake() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(90, t);
+        osc.frequency.exponentialRampToValueAtTime(520, t + 0.45);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(400, t);
+        filter.frequency.linearRampToValueAtTime(1800, t + 0.45);
+        const gain = this.createGain(0.1);
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.linearRampToValueAtTime(0.1 * this.masterVolume, t + 0.2);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+        osc.connect(filter);
+        filter.connect(gain);
+        osc.start(t);
+        osc.stop(t + 0.55);
+    }
 }

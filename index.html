@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Ingoizer's World</title>
-    <link rel="stylesheet" href="css/style.css?v=20260831-charselect2">
+    <link rel="stylesheet" href="css/style.css?v=20261005-hall">
     <script data-goatcounter="https://genemaggio.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
 </head>
@@ -45,6 +45,7 @@
                     <button id="startBtn" class="menu-btn menu-btn-primary">Begin Adventure</button>
                     <button id="loadBtn" class="menu-btn hidden">Load Game</button>
                     <button id="controlsBtn" class="menu-btn">Controls</button>
+                    <button id="hallBtn" class="menu-btn">Hall of Deeds</button>
                 </div>
                 <p id="continue-note" class="menu-note hidden"></p>
                 <p id="start-note" class="menu-note">Your journey begins in Green Meadow</p>
@@ -101,6 +102,19 @@
                 <div class="control-item"><span class="key">ESC</span> Pause</div>
             </div>
             <button id="backBtn" class="menu-btn">Back</button>
+        </div>
+        <div id="tag-screen" class="hidden">
+            <section class="tag-panel" aria-labelledby="tag-title">
+                <h2 id="tag-title">What shall the Hall call you?</h2>
+                <p class="tag-copy">A short name, kept with the hero you chose.</p>
+                <label class="visually-hidden" for="player-tag">Player tag</label>
+                <input id="player-tag" maxlength="16" autocomplete="nickname" enterkeyhint="done" spellcheck="false">
+                <p id="tag-hint" class="menu-note" aria-live="polite"></p>
+                <div class="tag-actions">
+                    <button id="tagBeginBtn" class="menu-btn menu-btn-primary" disabled>Begin Adventure</button>
+                    <button id="tagBackBtn" class="menu-btn">Back</button>
+                </div>
+            </section>
         </div>
         <div id="hud" class="hidden">
             <div id="hud-top">
@@ -313,6 +327,7 @@
                     <button id="pause-save" class="menu-btn">Save Game</button>
                     <button id="pause-load" class="menu-btn">Load Game</button>
                     <button id="pause-controls" class="menu-btn">Controls</button>
+                    <button id="pause-hall" class="menu-btn">Hall of Deeds</button>
                     <button id="pause-quit" class="menu-btn">Quit to Title</button>
                 </div>
             </div>
@@ -320,6 +335,22 @@
         <div id="dialog-box" class="hidden">
             <p id="dialog-text"></p>
             <span class="dialog-hint">Press E to continue</span>
+        </div>
+        <div id="hall-overlay" class="hidden" role="dialog" aria-labelledby="hall-title" aria-modal="true">
+            <div class="hall-panel">
+                <h2 id="hall-title">Hall of Deeds</h2>
+                <p id="hall-status" class="menu-note"></p>
+                <div class="hall-scroll">
+                    <table class="hall-table">
+                        <thead>
+                            <tr><th>Name</th><th>Hero</th><th>Deed</th><th>When</th></tr>
+                        </thead>
+                        <tbody id="hall-rows"></tbody>
+                    </table>
+                    <p id="hall-empty" class="menu-note">No deeds yet.</p>
+                </div>
+                <button id="hall-close" class="menu-btn">Back</button>
+            </div>
         </div>
         <div id="game-over-screen" class="hidden">
             <h1 id="game-over-title">Game Over</h1>
@@ -335,6 +366,8 @@
     <script src="js/utils.js"></script>
     <script src="js/map.js"></script>
     <script src="js/analytics.js?v=20260818-launch"></script>
+    <script src="js/hall-config.js"></script>
+    <script src="js/hall.js"></script>
     <script src="js/sprites.js"></script>
     <script src="js/characters.js"></script>
     <script src="js/monster-sprites.js"></script>

@@ -384,3 +384,74 @@ const TreasureChestSprite = {
         ctx.restore();
     },
 };
+
+// Small held objects drawn in the world and, as markup, in the inventory.
+const KeySprite = {
+    palette(id) {
+        return (typeof STRANGE_KEYS !== "undefined" && STRANGE_KEYS[id]) || STRANGE_KEYS.copper;
+    },
+
+    draw(ctx, x, y, id, time) {
+        const p = this.palette(id);
+        const bob = Math.sin((time || 0) * 0.004 + x * 0.02) * 1.5;
+        ctx.save();
+        ctx.translate(Math.round(x), Math.round(y + bob));
+
+        // Bow of the key
+        ctx.fillStyle = p.shadow;
+        ctx.beginPath();
+        ctx.arc(-4, -1, 5.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(-4, -2, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = p.highlight;
+        ctx.beginPath();
+        ctx.arc(-5, -3.2, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(-4, -2, 1.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+
+        // Shaft and tooth
+        ctx.fillStyle = p.shadow;
+        ctx.fillRect(-1, -1, 12, 3.2);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-1, -2, 12, 2.4);
+        ctx.fillStyle = p.tooth;
+        ctx.fillRect(7, 0, 2.2, 3.4);
+        ctx.fillRect(10, 0, 2.2, 2.4);
+        if (id === "crystal") {
+            ctx.fillStyle = "rgba(255,255,255,0.85)";
+            ctx.fillRect(1, -2, 2, 1);
+        }
+        ctx.restore();
+    },
+
+    icon(id) {
+        const p = this.palette(id);
+        return `<svg class="key-icon" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+            <circle cx="11" cy="15" r="7" fill="${p.shadow}"/>
+            <circle cx="11" cy="14" r="6" fill="${p.color}"/>
+            <circle cx="9.2" cy="12.2" r="2" fill="${p.highlight}"/>
+            <circle cx="11" cy="14" r="2.3" fill="#140e08"/>
+            <rect x="15" y="12.2" width="13" height="3.4" rx="0.6" fill="${p.color}"/>
+            <rect x="23" y="15" width="2.2" height="4" fill="${p.tooth}"/>
+            <rect x="26.2" y="15" width="2.2" height="3" fill="${p.tooth}"/>
+        </svg>`;
+    },
+};
+
+const LaserIcon = {
+    markup() {
+        return `<svg class="laser-icon" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+            <rect x="4" y="13" width="16" height="7" rx="2" fill="#1c2430"/>
+            <rect x="18" y="14.5" width="8" height="4" fill="#67e8ff"/>
+            <rect x="25" y="15.4" width="5" height="2.2" fill="#e8fbff"/>
+            <circle cx="9" cy="16.5" r="1.4" fill="#7ef0ff"/>
+        </svg>`;
+    },
+};

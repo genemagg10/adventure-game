@@ -114,9 +114,47 @@ class UIManager {
 
         this.charBeginBtn.addEventListener("click", () => {
             if (!this.selectedSiblingId) return;
-            this.characterScreen.classList.add("hidden");
-            this.game.startGame(this.selectedSiblingId);
+            this.openPlayerTag();
         });
+
+        const tagInput = document.getElementById("player-tag");
+        const tagBegin = document.getElementById("tagBeginBtn");
+        if (tagInput && tagBegin) {
+            tagInput.addEventListener("input", () => {
+                const ok = !!HallOfDeeds.normalizeTag(tagInput.value);
+                tagBegin.disabled = !ok;
+                const hint = document.getElementById("tag-hint");
+                if (hint) hint.textContent = "";
+            });
+            tagInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" && !tagBegin.disabled) tagBegin.click();
+            });
+            tagBegin.addEventListener("click", () => {
+                const tag = HallOfDeeds.normalizeTag(tagInput.value);
+                const hint = document.getElementById("tag-hint");
+                if (!tag) {
+                    if (hint) hint.textContent = "A short name, please.";
+                    return;
+                }
+                document.getElementById("tag-screen").classList.add("hidden");
+                this.game.startGame(this.selectedSiblingId, tag);
+            });
+        }
+        const tagBack = document.getElementById("tagBackBtn");
+        if (tagBack) {
+            tagBack.addEventListener("click", () => {
+                this.game.sound.menuSelect();
+                document.getElementById("tag-screen").classList.add("hidden");
+                this.characterScreen.classList.remove("hidden");
+            });
+        }
+
+        const hallBtn = document.getElementById("hallBtn");
+        if (hallBtn) hallBtn.addEventListener("click", () => this.openHall("title"));
+        const pauseHall = document.getElementById("pause-hall");
+        if (pauseHall) pauseHall.addEventListener("click", () => this.openHall("pause"));
+        const hallClose = document.getElementById("hall-close");
+        if (hallClose) hallClose.addEventListener("click", () => this.closeHall());
 
         document.getElementById("continueBtn").addEventListener("click", () => {
             if (this.continueSlot === null || this.continueSlot === undefined) return;
@@ -298,12 +336,17 @@ class UIManager {
         this.arrowCount.textContent = player.arrows;
         const arrowIcon = this.arrowIcon;
         if (arrowIcon) {
-            const wantIcon = player.hasZeusBolts ? ZEUS_BOLT.icon : "🏹";
+            const bowNow = BOWS[player.currentBow];
+            const wantIcon = (bowNow && bowNow.bolt === "laser")
+                ? bowNow.icon
+                : (player.hasZeusBolts ? ZEUS_BOLT.icon : "🏹");
             if (arrowIcon.textContent !== wantIcon) {
                 arrowIcon.textContent = wantIcon;
-                arrowIcon.title = player.hasZeusBolts
-                    ? `${ZEUS_BOLT.name} (+${ZEUS_BOLT.damageBonus} DMG)`
-                    : "Arrows";
+                arrowIcon.title = (bowNow && bowNow.bolt === "laser")
+                    ? bowNow.name
+                    : (player.hasZeusBolts
+                        ? `${ZEUS_BOLT.name} (+${ZEUS_BOLT.damageBonus} DMG)`
+                        : "Arrows");
             }
         }
 
@@ -501,6 +544,92 @@ class UIManager {
     // Character selection - the Ingoizer siblings
     // ============================================
 
+    openPlayerTag() {
+        this.game.sound.menuSelect();
+        this.characterScreen.classList.add("hidden");
+        const screen = document.getElementById("tag-screen");
+        screen.classList.remove("hidden");
+        const input = document.getElementById("player-tag");
+        const begin = document.getElementById("tagBeginBtn");
+        if (begin) begin.disabled = !HallOfDeeds.normalizeTag(input.value);
+        const hint = document.getElementById("tag-hint");
+        if (hint) hint.textContent = "";
+        if (input) input.focus();
+    }
+
+    openHall(returnTo) {
+        this.game.sound.menuSelect();
+        this.hallReturnTo = returnTo;
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        if (returnTo === "pause") this.pauseOverlay.classList.add("hidden");
+        else if (returnTo === "title") this.titleScreen.classList.add("hidden");
+        const overlay = document.getElementById("hall-overlay");
+        overlay.classList.remove("hidden");
+        const status = document.getElementById("hall-status");
+        if (status) {
+            status.textContent = HallOfDeeds.configured()
+                ? "A shared record. The first time a name earns a deed, it stays."
+                : "Recorded on this device until a shared hall is connected.";
+        }
+        const rows = document.getElementById("hall-rows");
+        if (rows) rows.innerHTML = "";
+        const empty = document.getElementById("hall-empty");
+        if (empty) {
+            empty.classList.remove("hidden");
+            empty.textContent = "Reading the hall…";
+        }
+        HallOfDeeds.loadBoard().then((deeds) => {
+            if (overlay.classList.contains("hidden")) return;
+            this.renderHall(deeds);
+        }).catch(() => {
+            if (!overlay.classList.contains("hidden")) this.renderHall(HallOfDeeds.readStore());
+        });
+    }
+
+    renderHall(deeds) {
+        const rows = document.getElementById("hall-rows");
+        const empty = document.getElementById("hall-empty");
+        if (!rows) return;
+        rows.innerHTML = "";
+        const list = Array.isArray(deeds) ? deeds : [];
+        if (empty) {
+            empty.textContent = "No deeds yet.";
+            empty.classList.toggle("hidden", list.length > 0);
+        }
+        for (const row of list) {
+            const tr = document.createElement("tr");
+            const cells = [
+                row.playerTag,
+                row.siblingName,
+                row.milestone,
+                HallOfDeeds.formatPacific(row.achievedAt),
+            ];
+            for (const text of cells) {
+                const td = document.createElement("td");
+                td.textContent = text || "";
+                tr.appendChild(td);
+            }
+            rows.appendChild(tr);
+        }
+    }
+
+    closeHall() {
+        this.game.sound.menuSelect();
+        const overlay = document.getElementById("hall-overlay");
+        if (overlay) overlay.classList.add("hidden");
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        if (this.hallReturnTo === "pause") this.pauseOverlay.classList.remove("hidden");
+        else if (this.hallReturnTo === "title") {
+            this.titleScreen.classList.remove("hidden");
+            this.refreshContinue();
+        }
+    }
+
+    isHallOpen() {
+        const overlay = document.getElementById("hall-overlay");
+        return !!(overlay && !overlay.classList.contains("hidden"));
+    }
+
     openCharacterSelect() {
         this.game.sound.menuSelect();
         if (typeof SiblingPortrait !== "undefined") SiblingPortrait.preload();
@@ -615,6 +744,10 @@ class UIManager {
         this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
         document.getElementById("slots-overlay").classList.add("hidden");
         this.controlsScreen.classList.add("hidden");
+        const hall = document.getElementById("hall-overlay");
+        if (hall) hall.classList.add("hidden");
+        const tag = document.getElementById("tag-screen");
+        if (tag) tag.classList.add("hidden");
         this.pauseOverlay.classList.add("hidden");
         this.closeGameOver();
         this.slotsPending = null;
@@ -1227,7 +1360,9 @@ class UIManager {
             slot.title = item.description || item.name;
         };
         setSlot("equipped-weapon", WEAPONS[player.currentWeapon], "Weapon", `DMG ${player.getWeapon().damage}`);
-        setSlot("equipped-bow", BOWS[player.currentBow], "Bow", `DMG ${player.getBow().damage}`);
+        const bowItem = BOWS[player.currentBow];
+        const bowIcon = bowItem.bolt === "laser" && typeof LaserIcon !== "undefined" ? LaserIcon.markup() : bowItem.icon;
+        setSlot("equipped-bow", { ...bowItem, icon: bowIcon }, bowItem.bolt === "laser" ? "Ranged" : "Bow", `DMG ${player.getBow().damage}`);
         setSlot("equipped-armor", ARMOR[player.currentArmor], "Armor", `DEF ${player.getArmor().defense}`);
         const consumable = player.greaterHealthPotions > 0
             ? { icon: "🧪", name: "Greater Potion", description: "Heals 80 HP" }
@@ -1260,8 +1395,9 @@ class UIManager {
         const stat = kind === "armor"
             ? `DEF ${this.bonusDefense(player, itemId)}`
             : `DMG ${this.bonusDamage(player, itemId, kind)}`;
+        const icon = (itemId === "laser_gun" && typeof LaserIcon !== "undefined") ? LaserIcon.markup() : item.icon;
         card.innerHTML = `
-            <span class="inventory-card-icon">${item.icon}</span>
+            <span class="inventory-card-icon">${icon}</span>
             <span class="inventory-card-copy"><strong>${item.name}${enchant ? ` ${ELEMENTS[enchant].icon}` : ""}</strong><small>${stat} · ${kind}</small></span>
             <span class="inventory-card-state">${equipped ? "✓ Equipped" : "Equip"}</span>`;
         card.addEventListener("click", () => {
@@ -1287,6 +1423,7 @@ class UIManager {
             this.inventoryItems.appendChild(heading);
             for (const id of group.items) this.inventoryItems.appendChild(this.inventoryCard(id, group.kind, player));
         }
+        this.appendHeldKeys(player);
     }
 
     supplyCard(icon, name, count, description, action, actionLabel = "Use") {
@@ -1328,6 +1465,21 @@ class UIManager {
         this.inventoryItems.appendChild(this.supplyCard(player.hasZeusBolts ? ZEUS_BOLT.icon : "➶", player.hasZeusBolts ? "Zeus's Bolts" : "Arrows", player.arrows, "Ammunition for your equipped bow"));
         this.inventoryItems.appendChild(this.supplyCard(APPLE_ITEM.icon, "Apples", player.apples, "Feed one to a wild animal to tame it"));
         this.inventoryItems.appendChild(this.supplyCard("🛡️", "Shield Rune", player.shieldHits, player.shieldActive ? "Ready to block the next hit" : "No shield rune is active"));
+        this.appendHeldKeys(player);
+    }
+
+    appendHeldKeys(player) {
+        const keys = player.heldKeys || [];
+        if (!keys.length || typeof STRANGE_KEYS === "undefined") return;
+        for (const id of keys) {
+            const key = STRANGE_KEYS[id];
+            if (!key) continue;
+            const card = document.createElement("article");
+            card.className = "supply-card";
+            const icon = (typeof KeySprite !== "undefined") ? KeySprite.icon(id) : "🗝️";
+            card.innerHTML = `<span class="inventory-card-icon">${icon}</span><div><strong>${key.name}</strong></div>`;
+            this.inventoryItems.appendChild(card);
+        }
     }
 
     renderPets(player) {

@@ -420,6 +420,15 @@ class CombatSystem {
             a.y += moveY;
             a.distTraveled += Math.sqrt(moveX * moveX + moveY * moveY);
 
+            if (a.isLaser) {
+                this.particles.push({
+                    x: a.x, y: a.y,
+                    vx: randFloat(-0.3, 0.3), vy: randFloat(-0.3, 0.3),
+                    life: 120, maxLife: 120, size: randFloat(1.5, 2.5),
+                    color: a.isFireArrow ? "#ffaa66" : "#9af6ff",
+                });
+            }
+
             // Fire arrow trail particles
             if (a.isFireArrow) {
                 this.particles.push({
@@ -518,7 +527,7 @@ class CombatSystem {
                         crit = true;
                     }
                     const killed = m.takeDamage(damage, a.x, a.y);
-                    this.spawnHitParticles(m.x, m.y, a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#ff4444"), 5);
+                    this.spawnHitParticles(m.x, m.y, a.isLaser ? "#7ef0ff" : (a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#ff4444")), 5);
                     this.addDamageNumber(m.x, m.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(m.x, m.y, "fire", 500);
@@ -547,7 +556,7 @@ class CombatSystem {
                         crit = true;
                     }
                     const killed = boss.takeDamage(damage, a.x, a.y);
-                    this.spawnHitParticles(boss.x, boss.y, a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#ff8800"), 8);
+                    this.spawnHitParticles(boss.x, boss.y, a.isLaser ? "#7ef0ff" : (a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#ff8800")), 8);
                     this.addDamageNumber(boss.x, boss.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(boss.x, boss.y, "fire", 500);
@@ -572,7 +581,7 @@ class CombatSystem {
                         crit = true;
                     }
                     const killed = greenKnight.takeDamage(damage, a.x, a.y);
-                    this.spawnHitParticles(greenKnight.x, greenKnight.y, a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#44ff44"), 8);
+                    this.spawnHitParticles(greenKnight.x, greenKnight.y, a.isLaser ? "#7ef0ff" : (a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#44ff44")), 8);
                     this.addDamageNumber(greenKnight.x, greenKnight.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(greenKnight.x, greenKnight.y, "fire", 500);
@@ -603,6 +612,28 @@ class CombatSystem {
             const sx = a.x - camera.x;
             const sy = a.y - camera.y;
             const angle = Math.atan2(a.vy, a.vx);
+
+            if (a.isLaser) {
+                ctx.save();
+                ctx.translate(sx, sy);
+                ctx.rotate(angle);
+                ctx.shadowColor = a.isFireArrow ? "#ff8844" : "#7ef0ff";
+                ctx.shadowBlur = 10;
+                ctx.strokeStyle = a.isFireArrow ? "rgba(255, 170, 90, 0.45)" : "rgba(120, 230, 255, 0.55)";
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.moveTo(-14, 0);
+                ctx.lineTo(12, 0);
+                ctx.stroke();
+                ctx.strokeStyle = a.isFireArrow ? "#fff1d0" : "#f4fdff";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-12, 0);
+                ctx.lineTo(14, 0);
+                ctx.stroke();
+                ctx.restore();
+                continue;
+            }
 
             // Zeus's bolts are not arrows at all - draw them as forked lightning
             if (a.isZeusBolt) {

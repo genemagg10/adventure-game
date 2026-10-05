@@ -37,7 +37,7 @@ const SaveSystem = {
         "purpleGemHealth", "purpleGemAttack", "purpleGemArmor", "hasRainbowGem", "hasZeusBolts",
         "hasWorldtreeSeed", "healthPotions", "greaterHealthPotions", "apples", "monstersKilled",
         "energy", "maxEnergy",
-        "siblingId",
+        "siblingId", "playerTag", "heldKeys",
     ],
 
     // Progress flags on the Game object itself. Note what is absent: the
@@ -57,6 +57,7 @@ const SaveSystem = {
         "worldtreeRestored", "zeusAppeased", "zeusMetInPeace", "seedPlantAttempts", "plantedInAsh",
         "loreUnlocks", "firstTameShown", "surfaceCharted",
         "clubhouseUnlocked", "clubhouseBoonTaken",
+        "lucaDefeated",
         "ladyQuestState", "ladyQuestAsked", "merlinQuestState",
         "monsterGemDrops", "currentZone",
     ],
@@ -360,6 +361,7 @@ const SaveSystem = {
             } : null,
             castleTapestry: world.castleTapestry ? { uncovered: world.castleTapestry.uncovered } : null,
             makersHollow: world.makersHollow ? { discovered: world.makersHollow.discovered } : null,
+            strangeKey: world.strangeKey ? { collected: !!world.strangeKey.collected } : null,
             burningTrees: world.burningTrees ? JSON.parse(JSON.stringify(world.burningTrees)) : null,
         };
     },
@@ -371,7 +373,10 @@ const SaveSystem = {
         for (const id of Object.keys(caveWorlds || {})) {
             const cave = caveWorlds[id];
             if (!cave) continue;
-            out[id] = { fog: this.packFog(cave.fog) };
+            out[id] = {
+                fog: this.packFog(cave.fog),
+                strangeKeyCollected: !!(cave.strangeKey && cave.strangeKey.collected),
+            };
         }
         return out;
     },
@@ -381,6 +386,7 @@ const SaveSystem = {
         return {
             fog: this.packFog(skyWorld.fog),
             ambrosia: this.captureFlags(skyWorld.ambrosia, ["collected"]),
+            strangeKeyCollected: !!(skyWorld.strangeKey && skyWorld.strangeKey.collected),
         };
     },
 
@@ -400,7 +406,24 @@ const SaveSystem = {
         this.restoreWorld(game.world, data.world);
         this.restoreCaves(game.caveWorlds, data.caves);
         this.restoreSky(game.skyWorld, data.sky);
+        this.syncHeldPickups(game);
         return true;
+    },
+
+    // A key already in hand should not be lying on the ground again.
+    syncHeldPickups(game) {
+        const held = (game.player && game.player.heldKeys) || [];
+        if (held.includes("copper") && game.world && game.world.strangeKey) {
+            game.world.strangeKey.collected = true;
+        }
+        if (held.includes("crystal") && game.skyWorld && game.skyWorld.strangeKey) {
+            game.skyWorld.strangeKey.collected = true;
+        }
+        if (held.includes("jade") && game.caveWorlds) {
+            for (const cave of Object.values(game.caveWorlds)) {
+                if (cave && cave.strangeKey) cave.strangeKey.collected = true;
+            }
+        }
     },
 
     restoreCompanions(game, saved) {
@@ -438,6 +461,9 @@ const SaveSystem = {
         this.overlay(world.merlinHut, saved.merlinHut, ["showWand", "wandCollected"]);
         this.overlay(world.castleTapestry, saved.castleTapestry, ["uncovered"]);
         this.overlay(world.makersHollow, saved.makersHollow, ["discovered"]);
+        if (world.strangeKey && saved.strangeKey && saved.strangeKey.collected) {
+            world.strangeKey.collected = true;
+        }
         if (saved.burningTrees) world.burningTrees = { ...saved.burningTrees };
 
         // Treasures already carried out of the hidden base do not lie there
@@ -455,6 +481,7 @@ const SaveSystem = {
             const cave = caveWorlds[id];
             if (!cave || !saved[id]) continue;
             this.unpackFog(cave.fog, saved[id].fog);
+            if (cave.strangeKey && saved[id].strangeKeyCollected) cave.strangeKey.collected = true;
         }
     },
 
@@ -462,6 +489,7 @@ const SaveSystem = {
         if (!skyWorld || !saved) return;
         this.unpackFog(skyWorld.fog, saved.fog);
         this.restoreFlags(skyWorld.ambrosia, saved.ambrosia, ["collected"]);
+        if (skyWorld.strangeKey && saved.strangeKeyCollected) skyWorld.strangeKey.collected = true;
     },
 
     // ============================================

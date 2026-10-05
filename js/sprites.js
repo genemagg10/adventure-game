@@ -394,41 +394,50 @@ const KeySprite = {
     draw(ctx, x, y, id, time) {
         const p = this.palette(id);
         const bob = Math.sin((time || 0) * 0.004 + x * 0.02) * 1.5;
-        ctx.save();
-        ctx.translate(Math.round(x), Math.round(y + bob));
+        // The bow's hole is punched on its own canvas, so it shows the ground
+        // under the key and does not erase the world behind it.
+        const off = this._off || (this._off = document.createElement("canvas"));
+        off.width = 32;
+        off.height = 24;
+        const o = off.getContext("2d");
+        o.setTransform(1, 0, 0, 1, 0, 0);
+        o.clearRect(0, 0, 32, 24);
+        o.save();
+        o.translate(10, 12);
 
         // Bow of the key
-        ctx.fillStyle = p.shadow;
-        ctx.beginPath();
-        ctx.arc(-4, -1, 5.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(-4, -2, 4.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = p.highlight;
-        ctx.beginPath();
-        ctx.arc(-5, -3.2, 1.6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.beginPath();
-        ctx.arc(-4, -2, 1.7, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalCompositeOperation = "source-over";
+        o.fillStyle = p.shadow;
+        o.beginPath();
+        o.arc(-4, -1, 5.2, 0, Math.PI * 2);
+        o.fill();
+        o.fillStyle = p.color;
+        o.beginPath();
+        o.arc(-4, -2, 4.2, 0, Math.PI * 2);
+        o.fill();
+        o.fillStyle = p.highlight;
+        o.beginPath();
+        o.arc(-5, -3.2, 1.6, 0, Math.PI * 2);
+        o.fill();
+        o.globalCompositeOperation = "destination-out";
+        o.beginPath();
+        o.arc(-4, -2, 1.7, 0, Math.PI * 2);
+        o.fill();
+        o.globalCompositeOperation = "source-over";
 
         // Shaft and tooth
-        ctx.fillStyle = p.shadow;
-        ctx.fillRect(-1, -1, 12, 3.2);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(-1, -2, 12, 2.4);
-        ctx.fillStyle = p.tooth;
-        ctx.fillRect(7, 0, 2.2, 3.4);
-        ctx.fillRect(10, 0, 2.2, 2.4);
+        o.fillStyle = p.shadow;
+        o.fillRect(-1, -1, 12, 3.2);
+        o.fillStyle = p.color;
+        o.fillRect(-1, -2, 12, 2.4);
+        o.fillStyle = p.tooth;
+        o.fillRect(7, 0, 2.2, 3.4);
+        o.fillRect(10, 0, 2.2, 2.4);
         if (id === "crystal") {
-            ctx.fillStyle = "rgba(255,255,255,0.85)";
-            ctx.fillRect(1, -2, 2, 1);
+            o.fillStyle = "rgba(255,255,255,0.85)";
+            o.fillRect(1, -2, 2, 1);
         }
-        ctx.restore();
+        o.restore();
+        ctx.drawImage(off, Math.round(x) - 10, Math.round(y + bob) - 12);
     },
 
     icon(id) {

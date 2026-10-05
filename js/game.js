@@ -3920,12 +3920,12 @@ class Game {
         const sy = door.y - this.camera.y;
         if (sx < -40 || sx > CANVAS_W + 40 || sy < -40 || sy > CANVAS_H + 40) return;
         ctx.save();
-        ctx.fillStyle = "#2c2926";
-        ctx.fillRect(sx - 8, sy - 16, 16, 32);
-        ctx.fillStyle = "#171512";
-        ctx.fillRect(sx - 2, sy - 14, 3, 28);
-        ctx.fillStyle = "#5a5148";
-        for (let i = 0; i < 3; i++) ctx.fillRect(sx + 3, sy - 9 + i * 8, 4, 2);
+        ctx.fillStyle = "#2a2724";
+        ctx.fillRect(sx - 11, sy - 24, 22, 46);
+        ctx.fillStyle = "#141210";
+        ctx.fillRect(sx - 2, sy - 22, 3, 42);
+        ctx.fillStyle = "#6e655c";
+        for (let i = 0; i < 3; i++) ctx.fillRect(sx + 4, sy - 14 + i * 11, 5, 3);
         ctx.restore();
     }
 

@@ -704,9 +704,10 @@ const SEALED_DOOR = {
     range: 78,
 };
 
-// The room behind that door. Wide enough that a full-width window still has floor.
-const SEAL_W = 52;
-const SEAL_H = 28;
+// The room behind that door. Wide enough that the widest window still shows
+// wall rather than void, and short enough that the chamber fills the view.
+const SEAL_W = 46;
+const SEAL_H = 19;
 
 const LUCA_BOSS = {
     name: "Luca",

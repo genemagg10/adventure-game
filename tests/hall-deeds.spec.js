@@ -54,7 +54,7 @@ test.describe("Hall of Deeds", () => {
         await expect(page.locator("#hall-rows tr")).toContainText("Mara");
         await expect(page.locator("#hall-rows tr")).toContainText("Lyra");
         await expect(page.locator("#hall-rows tr")).toContainText("Found Maker's Hollow");
-        await expect(page.locator("#hall-rows tr")).toContainText("2026-10-05T19:00:00-07:00");
+        await expect(page.locator("#hall-rows tr")).toContainText("Oct 5, 2026 · 7:00 PM PT");
         await page.click("#hall-close");
         await expect(page.locator("#title-screen")).toBeVisible();
 
@@ -81,10 +81,14 @@ test.describe("Hall of Deeds", () => {
                 labels,
                 winter: HallOfDeeds.formatPacific(new Date("2026-01-15T20:30:00Z")),
                 summer: HallOfDeeds.formatPacific(new Date("2026-07-15T19:30:00Z")),
+                winterWords: HallOfDeeds.formatWhen(new Date("2026-01-15T20:30:00Z")),
+                summerWords: HallOfDeeds.formatWhen(new Date("2026-07-15T19:30:00Z")),
             };
         });
         expect(info.summer).toBe("2026-07-15T12:30:00-07:00");
         expect(info.winter).toBe("2026-01-15T12:30:00-08:00");
+        expect(info.summerWords).toBe("Jul 15, 2026 · 12:30 PM PT");
+        expect(info.winterWords).toBe("Jan 15, 2026 · 12:30 PM PT");
         expect(info.labels).not.toMatch(/Laser Gun|Luca/);
         expect(info.ids.some(id => id.startsWith("strange-key-"))).toBe(true);
         for (const id of info.ids.filter(id => id.startsWith("strange-key-"))) {

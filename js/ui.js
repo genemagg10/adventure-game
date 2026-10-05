@@ -337,16 +337,19 @@ class UIManager {
         const arrowIcon = this.arrowIcon;
         if (arrowIcon) {
             const bowNow = BOWS[player.currentBow];
-            const wantIcon = (bowNow && bowNow.bolt === "laser")
-                ? bowNow.icon
-                : (player.hasZeusBolts ? ZEUS_BOLT.icon : "🏹");
-            if (arrowIcon.textContent !== wantIcon) {
-                arrowIcon.textContent = wantIcon;
-                arrowIcon.title = (bowNow && bowNow.bolt === "laser")
-                    ? bowNow.name
-                    : (player.hasZeusBolts
+            const laser = !!(bowNow && bowNow.bolt === "laser" && typeof LaserIcon !== "undefined");
+            const mode = laser ? "laser" : (player.hasZeusBolts ? "zeus" : "arrow");
+            if (arrowIcon.dataset.mode !== mode) {
+                arrowIcon.dataset.mode = mode;
+                if (laser) {
+                    arrowIcon.innerHTML = LaserIcon.markup();
+                    arrowIcon.title = bowNow.name;
+                } else {
+                    arrowIcon.textContent = player.hasZeusBolts ? ZEUS_BOLT.icon : "🏹";
+                    arrowIcon.title = player.hasZeusBolts
                         ? `${ZEUS_BOLT.name} (+${ZEUS_BOLT.damageBonus} DMG)`
-                        : "Arrows");
+                        : "Arrows";
+                }
             }
         }
 
@@ -476,15 +479,24 @@ class UIManager {
 
     // Notification
     showNotification(text) {
-        // Remove existing
-        const existing = document.querySelector(".notification");
-        if (existing) existing.remove();
+        this.clearNotification();
 
         const el = document.createElement("div");
         el.className = "notification";
         el.textContent = text;
         document.getElementById("game-container").appendChild(el);
-        setTimeout(() => el.remove(), 2500);
+        this.notificationTimer = setTimeout(() => {
+            el.remove();
+            this.notificationTimer = 0;
+        }, 2500);
+    }
+
+    clearNotification() {
+        if (this.notificationTimer) {
+            clearTimeout(this.notificationTimer);
+            this.notificationTimer = 0;
+        }
+        document.querySelectorAll(".notification").forEach(el => el.remove());
     }
 
     // The Maker's Hollow
@@ -558,6 +570,7 @@ class UIManager {
     }
 
     openHall(returnTo) {
+        this.clearNotification();
         this.game.sound.menuSelect();
         this.hallReturnTo = returnTo;
         this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
@@ -602,7 +615,7 @@ class UIManager {
                 row.playerTag,
                 row.siblingName,
                 row.milestone,
-                HallOfDeeds.formatPacific(row.achievedAt),
+                HallOfDeeds.formatWhen(row.achievedAt),
             ];
             for (const text of cells) {
                 const td = document.createElement("td");
@@ -1471,6 +1484,8 @@ class UIManager {
     appendHeldKeys(player) {
         const keys = player.heldKeys || [];
         if (!keys.length || typeof STRANGE_KEYS === "undefined") return;
+        const row = document.createElement("div");
+        row.className = "held-keys";
         for (const id of keys) {
             const key = STRANGE_KEYS[id];
             if (!key) continue;
@@ -1478,8 +1493,9 @@ class UIManager {
             card.className = "supply-card";
             const icon = (typeof KeySprite !== "undefined") ? KeySprite.icon(id) : "🗝️";
             card.innerHTML = `<span class="inventory-card-icon">${icon}</span><div><strong>${key.name}</strong></div>`;
-            this.inventoryItems.appendChild(card);
+            row.appendChild(card);
         }
+        if (row.childElementCount) this.inventoryItems.appendChild(row);
     }
 
     renderPets(player) {
@@ -1954,15 +1970,22 @@ class UIManager {
     // Interaction prompt
     renderInteractionPrompt(ctx, text) {
         ctx.save();
-        // Measure with the font the text is actually drawn in, or the backing
-        // plate comes out narrower than the prompt sitting on it.
+        // Measure with the font the text is actually drawn in, left-aligned,
+        // then pad both sides. A centered measure was leaving the plate tight
+        // enough that the last letters sat on the edge.
         ctx.font = "14px monospace";
-        ctx.textAlign = "center";
-        const w = ctx.measureText(text).width + 20;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-        ctx.fillRect(CANVAS_W / 2 - w / 2, CANVAS_H - 80, w, 24);
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        const textW = Math.ceil(ctx.measureText(text).width);
+        const padX = 28;
+        const w = textW + padX * 2;
+        const h = 30;
+        const x = Math.round(CANVAS_W / 2 - w / 2);
+        const y = CANVAS_H - 86;
+        ctx.fillStyle = "rgba(0, 0, 0, 0.78)";
+        ctx.fillRect(x, y, w, h);
         ctx.fillStyle = "#ffd700";
-        ctx.fillText(text, CANVAS_W / 2, CANVAS_H - 63);
+        ctx.fillText(text, x + padX, y + h / 2 + 1);
         ctx.restore();
     }
 }

@@ -2738,6 +2738,7 @@ class Game {
     }
 
     enterSeal() {
+        this.ui.clearNotification();
         this.inSeal = true;
         const door = this.world.sealedDoor;
         this.savedSurfacePos = door
@@ -2758,6 +2759,7 @@ class Game {
     }
 
     spawnLuca() {
+        this.ui.clearNotification();
         const spot = this.sealWorld.bossSpawn;
         this.luca = new LucaBoss(spot.worldX, spot.worldY);
         this.luca.spawn();

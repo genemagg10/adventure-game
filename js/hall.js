@@ -143,6 +143,33 @@ const HallOfDeeds = {
         return `${get("year")}-${get("month")}-${get("day")}T${hour}:${get("minute")}:${get("second")}${off}`;
     },
 
+    // The When column. Stored times stay on formatPacific; this is only the line a kid reads.
+    formatWhen(date) {
+        const d = date instanceof Date ? date : new Date(date);
+        if (isNaN(d.getTime())) return "";
+        let parts;
+        try {
+            parts = new Intl.DateTimeFormat("en-US", {
+                timeZone: "America/Los_Angeles",
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+            }).formatToParts(d);
+        } catch (e) {
+            return this.formatPacific(d);
+        }
+        const get = (type) => {
+            const part = parts.find(p => p.type === type);
+            return part ? part.value : "";
+        };
+        const minute = String(get("minute")).padStart(2, "0");
+        const period = get("dayPeriod").replace(/\s/g, "").toUpperCase();
+        return `${get("month")} ${get("day")}, ${get("year")} · ${get("hour")}:${minute} ${period} PT`;
+    },
+
     endpoint() {
         return String(HALL_CONFIG.supabaseUrl || "").replace(/\/$/, "");
     },

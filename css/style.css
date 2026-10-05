@@ -4003,6 +4003,26 @@ body.touch-mode * {
     margin: 0 auto;
 }
 
+#arrow-counter .laser-icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    vertical-align: -4px;
+}
+
+.held-keys {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.held-keys .supply-card {
+    flex: 1 1 150px;
+    max-width: 240px;
+}
+
 @media (max-height: 420px) {
     .tag-panel { padding: 12px 16px; }
     .tag-panel h2 { font-size: 18px; }

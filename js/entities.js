@@ -1919,18 +1919,51 @@ class LucaBoss extends Boss {
             }
         }
 
-        // Coat
-        ctx.fillStyle = flash ? "#d8f6ff" : "#12161c";
-        ctx.fillRect(sx - 8, sy - 16 + bob, 16, 26);
-        ctx.fillStyle = flash ? "#ffffff" : "#243040";
-        ctx.fillRect(sx - 6, sy - 14 + bob, 12, 8);
-        // Visor
-        ctx.fillStyle = "#7ef0ff";
-        ctx.fillRect(sx - 4, sy - 11 + bob, 8, 2);
+        const x = Math.round(sx);
+        const y = Math.round(sy + bob);
+        const coat = flash ? "#d8f6ff" : "#12161c";
+        const plate = flash ? "#ffffff" : "#243040";
+        const steel = flash ? "#e8fbff" : "#1a222c";
+        const boot = flash ? "#f4fdff" : "#0c1016";
+        const sole = flash ? "#ffffff" : "#3a4558";
+        const glow = "#7ef0ff";
+
+        // Helmet: a dome and visor, set above the shoulders.
+        ctx.fillStyle = glow;
+        ctx.fillRect(x - 1, y - 26, 2, 3);
+        ctx.fillStyle = plate;
+        ctx.fillRect(x - 5, y - 23, 10, 4);
+        ctx.fillStyle = coat;
+        ctx.fillRect(x - 8, y - 20, 16, 6);
+        ctx.fillStyle = glow;
+        ctx.fillRect(x - 6, y - 18, 12, 2);
+        ctx.fillStyle = steel;
+        ctx.fillRect(x - 7, y - 16, 14, 3);
+
+        // Coat, with a gap under the helmet so the head reads as its own shape.
+        ctx.fillStyle = coat;
+        ctx.fillRect(x - 9, y - 11, 18, 4);
+        ctx.fillRect(x - 7, y - 8, 14, 14);
+        ctx.fillStyle = plate;
+        ctx.fillRect(x - 4, y - 8, 8, 7);
+        ctx.fillStyle = glow;
+        ctx.fillRect(x - 3, y - 6, 6, 1);
+
+        // Boots, split from the coat and from each other.
+        ctx.fillStyle = boot;
+        ctx.fillRect(x - 8, y + 9, 6, 6);
+        ctx.fillRect(x + 2, y + 9, 6, 6);
+        ctx.fillStyle = sole;
+        ctx.fillRect(x - 8, y + 14, 6, 2);
+        ctx.fillRect(x + 2, y + 14, 6, 2);
+        ctx.fillStyle = glow;
+        ctx.fillRect(x - 6, y + 10, 2, 1);
+        ctx.fillRect(x + 4, y + 10, 2, 1);
+
         // Rifle along the facing
         const ang = dirToAngle(this.facing.x, this.facing.y);
         ctx.save();
-        ctx.translate(sx + Math.cos(ang) * 8, sy - 2 + bob + Math.sin(ang) * 8);
+        ctx.translate(x + Math.cos(ang) * 8, y - 2 + Math.sin(ang) * 8);
         ctx.rotate(ang);
         ctx.fillStyle = "#1a222c";
         ctx.fillRect(0, -2, 16, 4);

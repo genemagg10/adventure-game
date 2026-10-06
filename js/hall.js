@@ -177,12 +177,13 @@ const HallOfDeeds = {
     async flush() {
         if (!this.configured()) return false;
         const deeds = this.readStore();
-        const pending = deeds.filter(d => !d.synced);
+        const pending = deeds.filter(d => !d.synced && !d.dropped);
         if (pending.length === 0) return true;
         let ok = true;
         for (const row of pending) {
             const sent = await this.insertRemote(row);
-            if (sent) row.synced = true;
+            if (sent === "ok") row.synced = true;
+            else if (sent === "drop") row.dropped = true;
             else ok = false;
         }
         this.writeStore(deeds);
@@ -211,9 +212,16 @@ const HallOfDeeds = {
                     }),
                 }
             );
-            return res.ok || res.status === 409;
+            if (res.ok || res.status === 409) return "ok";
+            // PostgREST answers a refused row with 401 or 403 (RLS, 42501) or
+            // 400 (a check failed). Those will never succeed on retry.
+            if (res.status < 500) {
+                console.warn("Hall of Deeds refused a deed (" + res.status + "):", row.milestoneId);
+                return "drop";
+            }
+            return "retry";
         } catch (e) {
-            return false;
+            return "retry";
         }
     },
 

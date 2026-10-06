@@ -97,6 +97,80 @@ test.describe("Hall of Deeds", () => {
     });
 });
 
+test("a deed the database refuses is dropped, and only network errors are retried", async ({ page }) => {
+    await openTitle(page);
+    const notes = [];
+    page.on("console", (msg) => notes.push(msg.text()));
+    const result = await page.evaluate(async () => {
+        const base = {
+            tagKey: "mara",
+            playerTag: "Mara",
+            siblingName: "Lyra",
+            milestoneId: "makers-hollow",
+            milestone: "Found Maker's Hollow",
+            achievedAt: Date.parse("2026-10-06T02:00:00Z"),
+            synced: false,
+        };
+        const calls = [];
+        async function trial(kind) {
+            calls.length = 0;
+            HallOfDeeds.writeStore([{ ...base, synced: false }]);
+            window.fetch = async () => {
+                calls.push(kind);
+                if (kind === "offline") throw new Error("offline");
+                const status = kind;
+                const ok = status >= 200 && status < 300;
+                return { ok, status, json: async () => [] };
+            };
+            await HallOfDeeds.flush();
+            const once = calls.length;
+            await HallOfDeeds.flush();
+            const row = HallOfDeeds.readStore()[0];
+            return {
+                kind,
+                once,
+                twice: calls.length,
+                synced: !!row.synced,
+                dropped: !!row.dropped,
+            };
+        }
+        return {
+            refused: [
+                await trial(400),
+                await trial(401),
+                await trial(403),
+            ],
+            done: [await trial(409), await trial(201)],
+            retry: [await trial(503), await trial("offline")],
+        };
+    });
+
+    for (const row of result.refused) {
+        expect(row.once).toBe(1);
+        expect(row.twice).toBe(1);
+        expect(row.synced).toBe(false);
+        expect(row.dropped).toBe(true);
+    }
+    for (const row of result.done) {
+        expect(row.once).toBe(1);
+        expect(row.twice).toBe(1);
+        expect(row.synced).toBe(true);
+        expect(row.dropped).toBe(false);
+    }
+    for (const row of result.retry) {
+        expect(row.once).toBe(1);
+        expect(row.twice).toBe(2);
+        expect(row.synced).toBe(false);
+        expect(row.dropped).toBe(false);
+    }
+    const refusedLogs = notes.filter(text => text.includes("Hall of Deeds refused a deed"));
+    expect(refusedLogs).toEqual([
+        "Hall of Deeds refused a deed (400): makers-hollow",
+        "Hall of Deeds refused a deed (401): makers-hollow",
+        "Hall of Deeds refused a deed (403): makers-hollow",
+    ]);
+});
+
 function HALL_LABEL(info, id) {
     const start = info.ids.indexOf(id);
     return info.labels.split("\n")[start];

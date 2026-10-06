@@ -23,7 +23,33 @@ const slotDelete = n => `${slotRow(n)} .save-slot-btn`;
 /**
  * Load the page with no saved games, so a test never inherits another's slots.
  */
+/**
+ * The Hall is pointed at the live table. Tests must not insert rows there.
+ * Playwright fulfills the Supabase calls itself.
+ */
+async function mockHallFetch(page) {
+    await page.route("**/*supabase.co/**", async (route) => {
+        const headers = {
+            "access-control-allow-origin": "*",
+            "access-control-allow-headers": "*",
+            "access-control-allow-methods": "GET,POST,OPTIONS",
+        };
+        if (route.request().method() === "OPTIONS") {
+            await route.fulfill({ status: 204, headers });
+            return;
+        }
+        const get = route.request().method() === "GET";
+        await route.fulfill({
+            status: get ? 200 : 201,
+            contentType: "application/json",
+            headers,
+            body: get ? "[]" : "",
+        });
+    });
+}
+
 async function openTitle(page) {
+    await mockHallFetch(page);
     await page.goto("/index.html");
     await page.waitForFunction(() => window.game);
     await page.evaluate(() => localStorage.clear());

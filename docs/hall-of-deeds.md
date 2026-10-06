@@ -3,7 +3,9 @@
 The Hall of Deeds is a shared list of first-time public milestones. The game is a static GitHub Pages site, so the board has two layers:
 
 1. This browser, always. Deeds are written to `localStorage` under `ingoizersWorld.hall` as soon as they happen.
-2. A shared table, optional. When `js/hall-config.js` has a Supabase project URL and an **anon** key, the client inserts rows and reads the table back. Until those two strings are filled in, the Hall shows only what this browser has recorded, and each new deed stays queued locally (`synced: false`) until a later visit can send it.
+2. A shared table. `js/hall-config.js` points at the Lafayette Pulse Supabase project (`https://kcrhxkebazpospwljpit.supabase.co`) with that project's publishable anon key. The schema is migration `016_hall_deeds` in [genemagg10/lafayette-pulse](https://github.com/genemagg10/lafayette-pulse). The table is `public.hall_deeds`. Anon may select and insert only. The insert check allows the 18 milestone id and label pairs below, and a tag of 1 to 16 characters using the characters the game allows, with `tag_key` equal to the normalized tag. CORS from `https://luca.maggio.xyz` is allowed.
+
+Empty strings in the config still keep deeds on this browser only. Each new deed is queued locally (`synced: false`) until a send succeeds. A `409` (already there) counts as done. A `400`, `401`, or `403` — PostgREST's answer when a row violates RLS or a check, including `42501` — is logged once and dropped from the retry queue. The deed stays on this browser. Network errors and `5xx` responses stay queued.
 
 Do not put a service-role key in the repo, in Pages, or in `hall-config.js`. The anon key is public. Row Level Security is what keeps the table safe.
 
@@ -47,10 +49,13 @@ Keep this list in step with `HALL_MILESTONES` in `js/hall.js`. Anything not on t
 
 ## Supabase
 
-1. Create a free Supabase project.
-2. In the SQL editor, run the script below.
-3. In Project Settings → API, copy the project URL and the `anon` `public` key.
-4. Paste them into `js/hall-config.js`:
+The live board is already the Lafayette Pulse project. Its schema is migration `016_hall_deeds` in `genemagg10/lafayette-pulse`. The script below is that table, kept here so the client and the database stay on the same list.
+
+To point a different project at the same board:
+
+1. Create a Supabase project and run the script below (or apply migration `016_hall_deeds`).
+2. In Project Settings → API, copy the project URL and the publishable `anon` key.
+3. Paste them into `js/hall-config.js`:
 
 ```js
 const HALL_CONFIG = {
@@ -59,7 +64,7 @@ const HALL_CONFIG = {
 };
 ```
 
-5. Commit that file and let GitHub Pages publish it. The Pages origin (`https://genemagg10.github.io`) calls the REST API with the anon key. Supabase REST accepts that from the browser. No service role is involved.
+4. Commit that file and publish it. The Pages origin (`https://genemagg10.github.io`) and `https://luca.maggio.xyz` call the REST API with the anon key. No service role is involved.
 
 The insert policy allows a new row only. There is no update or delete policy, so the first timestamp for a tag and milestone stays.
 
@@ -117,4 +122,4 @@ Confirm in the table editor that RLS is on and that the `anon` role cannot updat
 
 ## Checking it
 
-Start a new game, enter a player tag, and do something the board records (finding Maker's Hollow is enough). Open Hall of Deeds from the title screen. The row should be there on this browser even before Supabase is filled in. After the config is published, the same row should appear in `hall_deeds`, and a second browser with the same tag should not add a duplicate.
+Start a new game, enter a player tag, and do something the board records (finding Maker's Hollow is enough). Open Hall of Deeds from the title screen. The row is on this browser immediately, and the same row is inserted into `hall_deeds`. A second browser with the same tag does not add a duplicate.

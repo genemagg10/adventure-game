@@ -2402,6 +2402,7 @@ class Game {
             this.player.addWeapon("excalibur");
             this.player.equipWeapon("excalibur");
             this.ladyQuestState = "complete";
+            this.recordDeed("lady-of-the-lake");
             const greeting = unaskedFor
                 ? "\"I am the Lady of the Lake - and you come to me already carrying the sheath of Excalibur. You went and took it from the guardian without being asked.\""
                 : `"You have defeated the guardian and recovered the sheath! You are truly worthy, ${addr}."`;
@@ -2492,6 +2493,7 @@ class Game {
             this.merlinQuestState = "complete";
             this.player.hasMallet = true;
             this.player.hasMerlinWand = false;
+            this.recordDeed("helped-merlin");
             this.ui.showDialog(`"You found my wand! Splendid! Thank you, brave ${addr}!"`, () => {
                 this.ui.showDialog("\"As promised, take this Enchanter's Mallet. With it, you can enchant a weapon AND armor with elemental power!\"", () => {
                     this.ui.showDialog("\"Open your inventory and use the mallet to imbue your gear with fire, water, ice, or lightning.\"");

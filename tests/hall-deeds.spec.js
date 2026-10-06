@@ -106,7 +106,7 @@ test.describe("Hall of Champions", () => {
         }, { rows: championRows(t, hour) });
 
         expect(ranked.covered).toBe(ranked.allowed);
-        expect(ranked.total).toBe(62);
+        expect(ranked.total).toBe(68);
         expect(ranked.champs.map((c) => c.tag)).toEqual([
             "Ivo", "Nia", "Bram", "Cass", "Dee", "Finn", "Gio", "Eve", "Ada", "Ann", "Zoe",
         ]);
@@ -183,14 +183,14 @@ test.describe("Hall of Champions", () => {
 
         expect(ranked.map((c) => c.tag)).toEqual(["Quin", "Vesper", "Pia", "Nim"]);
         expect(ranked[0]).toMatchObject({
-            score: 72, count: 18, diamond: true, bonus: 10, hardest: 8, hardestMark: 9,
+            score: 78, count: 20, diamond: true, bonus: 10, hardest: 8, hardestMark: 9,
             hardestTier: "Diamond", hardestLabel: "Full set",
         });
         expect(ranked[0].keys).toEqual(["strange-key-copper", "strange-key-jade", "strange-key-crystal"]);
-        expect(ranked[1]).toMatchObject({ score: 72, diamond: true, hardestMark: 9 });
+        expect(ranked[1]).toMatchObject({ score: 78, diamond: true, hardestMark: 9 });
         expect(ranked[0].reachedAt).toBeLessThan(ranked[1].reachedAt);
-        expect(ranked[2]).toMatchObject({ tag: "Pia", diamond: false, bonus: 0, score: 61, count: 17, hardestMark: 8 });
-        expect(ranked[3]).toMatchObject({ tag: "Nim", diamond: false, bonus: 0, score: 60, count: 17 });
+        expect(ranked[2]).toMatchObject({ tag: "Pia", diamond: false, bonus: 0, score: 67, count: 19, hardestMark: 8 });
+        expect(ranked[3]).toMatchObject({ tag: "Nim", diamond: false, bonus: 0, score: 66, count: 19 });
         expect(ranked[3].keys).not.toContain("strange-key-crystal");
 
         await page.evaluate(() => {
@@ -209,8 +209,8 @@ test.describe("Hall of Champions", () => {
         await page.click("#hallBtn");
         const row = page.locator(".champion-row");
         await expect(row).toHaveCount(1);
-        await expect(row.locator(".champ-score")).toHaveText("72");
-        await expect(row.locator(".champ-count")).toHaveText("18");
+        await expect(row.locator(".champ-score")).toHaveText("78");
+        await expect(row.locator(".champ-count")).toHaveText("20");
         await expect(row.locator(".champ-badge")).toHaveAttribute("data-tier", "Diamond");
         await expect(row).toHaveClass(/champion-row-diamond/);
         const badgeColor = await row.locator(".champ-badge").evaluate((el) => getComputedStyle(el).color);
@@ -386,10 +386,68 @@ test.describe("Hall of Champions", () => {
         expect(info.summerWords).toBe("Jul 15, 2026 · 12:30 PM PT");
         expect(info.winterWords).toBe("Jan 15, 2026 · 12:30 PM PT");
         expect(info.labels).not.toMatch(/Laser Gun|Luca/);
+        expect(HALL_LABEL(info, "lady-of-the-lake")).toBe("Helped the Lady of the Lake");
+        expect(HALL_LABEL(info, "helped-merlin")).toBe("Helped Merlin");
         expect(info.ids.some(id => id.startsWith("strange-key-"))).toBe(true);
         for (const id of info.ids.filter(id => id.startsWith("strange-key-"))) {
             expect(HALL_LABEL(info, id)).toBe("Found a strange key");
         }
+    });
+
+    test("the Lady and Merlin quests are recorded once, when the reward is granted", async ({ page }) => {
+        await openTitle(page);
+        await chooseCharacterAndBegin(page);
+        await page.waitForFunction(() => window.game.state === "playing");
+        await dismissDialogs(page);
+        const result = await page.evaluate(() => {
+            const g = window.game;
+            g.ladyQuestState = "given";
+            g.player.hasSheath = false;
+            g.startLadyQuest();
+            g.merlinQuestState = "given";
+            g.startMerlinQuest();
+            const before = HallOfDeeds.readStore().map((d) => d.milestoneId);
+
+            g.player.hasSheath = true;
+            g.ladyQuestState = "sheath_acquired";
+            g.startLadyQuest();
+            g.startLadyQuest();
+            g.player.hasMerlinWand = true;
+            g.merlinQuestState = "wand_acquired";
+            g.startMerlinQuest();
+            g.startMerlinQuest();
+            const mine = HallOfDeeds.readStore().filter((d) => d.playerTag === g.player.playerTag);
+            const withoutLady = HallOfDeeds.champions(mine.filter((d) => d.milestoneId !== "lady-of-the-lake"));
+            return {
+                ladyWeight: HALL_DEED_WEIGHT["lady-of-the-lake"],
+                merlinWeight: HALL_DEED_WEIGHT["helped-merlin"],
+                before,
+                lady: g.ladyQuestState,
+                excalibur: g.world.ladyOfLake.excaliburGiven,
+                weapon: g.player.currentWeapon,
+                merlin: g.merlinQuestState,
+                mallet: g.player.hasMallet,
+                wand: g.player.hasMerlinWand,
+                labels: mine.map((d) => d.milestone).sort(),
+                counts: {
+                    lady: mine.filter((d) => d.milestoneId === "lady-of-the-lake").length,
+                    merlin: mine.filter((d) => d.milestoneId === "helped-merlin").length,
+                },
+                partialDiamond: withoutLady.length ? withoutLady[0].diamond : false,
+            };
+        });
+        expect(result.ladyWeight).toEqual({ weight: 3, tier: "Mid" });
+        expect(result.merlinWeight).toEqual({ weight: 3, tier: "Mid" });
+        expect(result.before).toEqual([]);
+        expect(result.lady).toBe("complete");
+        expect(result.excalibur).toBe(true);
+        expect(result.weapon).toBe("excalibur");
+        expect(result.merlin).toBe("complete");
+        expect(result.mallet).toBe(true);
+        expect(result.wand).toBe(false);
+        expect(result.counts).toEqual({ lady: 1, merlin: 1 });
+        expect(result.labels).toEqual(["Helped Merlin", "Helped the Lady of the Lake"]);
+        expect(result.partialDiamond).toBe(false);
     });
 });
 
@@ -484,6 +542,7 @@ const HALL_MILESTONES_FOR_SEED = new Set([
     "climbed-cloudlands", "beat-zeus", "mended-worldtree", "blue-gem-1", "blue-gem-2",
     "blue-gem-3", "blue-gem-4", "blue-gem-5", "clubhouse", "charted-surface",
     "strange-key-copper", "strange-key-jade", "strange-key-crystal",
+    "lady-of-the-lake", "helped-merlin",
 ]);
 
 function championRows(t, hour) {

@@ -23,6 +23,8 @@ const HALL_MILESTONES = {
     "blue-gem-5": "Collected all Blue Gems",
     "clubhouse": "Found the Clubhouse",
     "charted-surface": "Charted the whole surface",
+    "lady-of-the-lake": "Helped the Lady of the Lake",
+    "helped-merlin": "Helped Merlin",
     "strange-key-copper": "Found a strange key",
     "strange-key-jade": "Found a strange key",
     "strange-key-crystal": "Found a strange key",
@@ -43,6 +45,10 @@ const HALL_DEED_WEIGHT = {
     "blue-gem-4": { weight: 3, tier: "Mid" },
     "black-knight": { weight: 3, tier: "Mid" },
     "green-knight": { weight: 3, tier: "Mid" },
+    // Excalibur and the Enchanter's Mallet are mid-game rewards: the sheath
+    // troll stands in the Dark Forest, and Merlin's wand is at the castle gates.
+    "lady-of-the-lake": { weight: 3, tier: "Mid" },
+    "helped-merlin": { weight: 3, tier: "Mid" },
     "blue-gem-5": { weight: 5, tier: "Late" },
     "giant-turtle": { weight: 5, tier: "Late" },
     "planted-worldtree": { weight: 5, tier: "Late" },
@@ -52,8 +58,8 @@ const HALL_DEED_WEIGHT = {
     "mended-worldtree": { weight: 8, tier: "Ending" },
 };
 
-// A champion who has every public deed, including all three strange keys,
-// earns this on top of the weights. It is not a nineteenth deed.
+// A champion who has every public deed, including both quests and all three
+// strange keys, earns this on top of the weights. It is not a twenty-first deed.
 const HALL_DIAMOND_BONUS = 10;
 
 const HallOfDeeds = {

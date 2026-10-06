@@ -156,6 +156,7 @@ class UIManager {
         if (pauseHall) pauseHall.addEventListener("click", () => this.openHall("pause"));
         const hallClose = document.getElementById("hall-close");
         if (hallClose) hallClose.addEventListener("click", () => this.closeHall());
+        this.bindHallKeys();
 
         document.getElementById("continueBtn").addEventListener("click", () => {
             if (this.continueSlot === null || this.continueSlot === undefined) return;
@@ -613,36 +614,192 @@ class UIManager {
         }).catch(() => {
             if (!overlay.classList.contains("hidden")) this.renderHall(HallOfDeeds.readStore());
         });
+        this.startChampionPad();
     }
 
     renderHall(deeds) {
         const rows = document.getElementById("hall-rows");
         const empty = document.getElementById("hall-empty");
+        const head = document.querySelector("#hall-overlay .champion-head");
         if (!rows) return;
         rows.innerHTML = "";
-        const list = Array.isArray(deeds) ? deeds : [];
+        const champs = HallOfDeeds.champions(deeds);
         if (empty) {
-            empty.textContent = "No deeds yet.";
-            empty.classList.toggle("hidden", list.length > 0);
+            empty.textContent = "No champions yet.";
+            empty.classList.toggle("hidden", champs.length > 0);
         }
-        for (const row of list) {
-            const tr = document.createElement("tr");
-            const cells = [
-                row.playerTag,
-                row.siblingName,
-                row.milestone,
-                HallOfDeeds.formatWhen(row.achievedAt),
-            ];
-            for (const text of cells) {
-                const td = document.createElement("td");
-                td.textContent = text || "";
-                tr.appendChild(td);
+        if (head) head.classList.toggle("hidden", champs.length === 0);
+        champs.forEach((champ, i) => {
+            const block = document.createElement("div");
+            block.className = "champion";
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "champion-row";
+            btn.setAttribute("aria-expanded", "false");
+            const panelId = "champion-deeds-" + i;
+            btn.setAttribute("aria-controls", panelId);
+            btn.setAttribute("aria-label",
+                `Rank ${champ.rank}, ${champ.playerTag}, score ${champ.score}, ${champ.count} deeds, hardest ${champ.hardestLabel}`);
+
+            const rank = document.createElement("span");
+            rank.className = "champ-rank";
+            rank.textContent = String(champ.rank);
+
+            const tag = document.createElement("span");
+            tag.className = "champ-tag";
+            tag.textContent = champ.playerTag || "";
+
+            const score = document.createElement("span");
+            score.className = "champ-score";
+            score.textContent = String(champ.score);
+
+            const count = document.createElement("span");
+            count.className = "champ-count";
+            count.textContent = String(champ.count);
+
+            const badge = document.createElement("span");
+            badge.className = "champ-badge";
+            badge.dataset.tier = champ.hardestTier || "";
+            badge.title = champ.hardestLabel || "";
+            badge.innerHTML = this.championBadgeSvg(champ.hardestTier);
+            const badgeName = document.createElement("span");
+            badgeName.className = "visually-hidden";
+            badgeName.textContent = champ.hardestLabel || "";
+            badge.appendChild(badgeName);
+
+            btn.append(rank, tag, score, count, badge);
+
+            const panel = document.createElement("div");
+            panel.id = panelId;
+            panel.className = "champion-deeds hidden";
+            panel.setAttribute("role", "region");
+            panel.setAttribute("aria-label", `${champ.playerTag} accomplishments`);
+            for (const deed of champ.deeds) {
+                const line = document.createElement("div");
+                line.className = "champion-deed";
+                const name = document.createElement("span");
+                name.className = "deed-name";
+                name.textContent = deed.milestone || "";
+                const tier = document.createElement("span");
+                tier.className = "deed-tier";
+                tier.textContent = `${deed.tier} · ${deed.weight}`;
+                const when = document.createElement("span");
+                when.className = "deed-when";
+                when.textContent = HallOfDeeds.formatWhen(deed.achievedAt);
+                line.append(name, tier, when);
+                panel.appendChild(line);
             }
-            rows.appendChild(tr);
+
+            btn.addEventListener("click", () => {
+                const open = btn.getAttribute("aria-expanded") === "true";
+                btn.setAttribute("aria-expanded", open ? "false" : "true");
+                panel.classList.toggle("hidden", open);
+            });
+
+            block.append(btn, panel);
+            rows.appendChild(block);
+        });
+        const first = rows.querySelector(".champion-row");
+        if (first) first.focus();
+        else {
+            const back = document.getElementById("hall-close");
+            if (back) back.focus();
         }
     }
 
+    championBadgeSvg(tier) {
+        const paths = {
+            Early: '<circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.7"/>',
+            Road: '<path fill="currentColor" d="M8 1.6 14.2 8 8 14.4 1.8 8Z"/>',
+            Mid: '<path fill="currentColor" d="M9.1 1.2 14.6 6.7 13.2 8.1 11.5 6.4 7.4 10.5 8.6 11.7 7.4 12.9H5.6L4.8 12.1 3.2 13.7 2.3 12.8 3.9 11.2 3.1 10.4V8.6L4.3 7.4 5.5 8.6 9.6 4.5 7.9 2.8Z"/>',
+            Late: '<path fill="currentColor" d="M8 1.2 9.8 5.5 14.4 5.9 10.9 9 12 13.6 8 11.2 4 13.6 5.1 9 1.6 5.9 6.2 5.5Z"/>',
+            Ending: '<path fill="currentColor" d="M1.6 11.2h12.8v2H1.6Zm.5-1.1 1.5-5.4 2.7 2.8L8 2.4l1.7 5.1 2.7-2.8 1.5 5.4Z"/>',
+        };
+        const body = paths[tier] || paths.Early;
+        return `<svg class="champ-badge-icon" viewBox="0 0 16 16" aria-hidden="true">${body}</svg>`;
+    }
+
+    bindHallKeys() {
+        if (this._hallKeys) return;
+        this._hallKeys = (e) => {
+            if (!this.isHallOpen()) return;
+            if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+            if (e.code === "ArrowUp" || e.code === "ArrowDown") {
+                e.preventDefault();
+                e.stopPropagation();
+                this.moveChampionFocus(e.code === "ArrowDown" ? 1 : -1);
+            } else if (e.code === "Space") {
+                const overlay = document.getElementById("hall-overlay");
+                const btn = document.activeElement;
+                e.preventDefault();
+                e.stopPropagation();
+                if (!e.repeat && btn && overlay && overlay.contains(btn) && btn.tagName === "BUTTON") btn.click();
+            } else if (e.code === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!e.repeat) this.closeHall();
+            }
+        };
+        window.addEventListener("keydown", this._hallKeys, true);
+    }
+
+    moveChampionFocus(dir) {
+        const rows = [...document.querySelectorAll("#hall-rows .champion-row")];
+        if (!rows.length) return;
+        let index = rows.indexOf(document.activeElement);
+        if (index < 0) index = dir > 0 ? -1 : rows.length;
+        const next = rows[Math.max(0, Math.min(rows.length - 1, index + dir))];
+        if (next) next.focus();
+    }
+
+    applyChampionPad(state) {
+        const prev = this._padPrev || {};
+        const up = !!(state && state.up);
+        const down = !!(state && state.down);
+        const activate = !!(state && state.activate);
+        if (up && !prev.up) this.moveChampionFocus(-1);
+        if (down && !prev.down) this.moveChampionFocus(1);
+        if (activate && !prev.activate) {
+            const btn = document.activeElement;
+            if (btn && btn.classList && btn.classList.contains("champion-row")) btn.click();
+        }
+        this._padPrev = { up, down, activate };
+    }
+
+    startChampionPad() {
+        this.stopChampionPad();
+        this._padPrev = {};
+        const tick = () => {
+            if (!this.isHallOpen()) {
+                this._padFrame = 0;
+                return;
+            }
+            this._padFrame = requestAnimationFrame(tick);
+            const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let up = false;
+            let down = false;
+            let activate = false;
+            for (const pad of pads) {
+                if (!pad) continue;
+                const axis = pad.axes && pad.axes.length > 1 ? pad.axes[1] : 0;
+                const buttons = pad.buttons || [];
+                up = up || !!(buttons[12] && buttons[12].pressed) || axis < -0.5;
+                down = down || !!(buttons[13] && buttons[13].pressed) || axis > 0.5;
+                activate = activate || !!(buttons[0] && buttons[0].pressed);
+            }
+            this.applyChampionPad({ up, down, activate });
+        };
+        this._padFrame = requestAnimationFrame(tick);
+    }
+
+    stopChampionPad() {
+        if (this._padFrame) cancelAnimationFrame(this._padFrame);
+        this._padFrame = 0;
+    }
+
     closeHall() {
+        this.stopChampionPad();
         this.game.sound.menuSelect();
         const overlay = document.getElementById("hall-overlay");
         if (overlay) overlay.classList.add("hidden");
@@ -775,6 +932,7 @@ class UIManager {
         this.controlsScreen.classList.add("hidden");
         const hall = document.getElementById("hall-overlay");
         if (hall) hall.classList.add("hidden");
+        this.stopChampionPad();
         const tag = document.getElementById("tag-screen");
         if (tag) tag.classList.add("hidden");
         this.pauseOverlay.classList.add("hidden");

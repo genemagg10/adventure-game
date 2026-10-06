@@ -28,7 +28,7 @@ Current features include:
 - A sprint that runs on energy. Hold the sprint key to move faster, watching the energy bar drain as you go; when it runs dry you drop back to a walk. Energy comes only from eating apples — each one you eat fills a quarter of the bar — so the fruit you gather in the wild is worth keeping.
 - Keyboard and touch controls, mobile landscape play, sound, inventory, shops, a mini map, and a world map.
 - An announcement, with a tune of its own, for charting every last cell of the surface map.
-- A Hall of Deeds. After you choose a sibling, a new adventure asks for a short player tag. First-time story milestones from that run are written to a board you can open from the title screen or the pause menu. Until a shared hall is connected, the board keeps what this browser has recorded. See `docs/hall-of-deeds.md`.
+- A Hall of Champions. After you choose a sibling, a new adventure asks for a short player tag. First-time story milestones from that run are written to a board you can open from the title screen or the pause menu. Champions are ranked by the deeds they have earned. Until a shared hall is connected, the board keeps what this browser has recorded. See `docs/hall-of-deeds.md`.
 
 ## Controls
 
@@ -79,7 +79,7 @@ Then open `http://localhost:8000`.
 | `js/combat.js` | Close attacks, arrows, elemental effects, damage, and fight events |
 | `js/ui.js` | Health display, shops, inventory, lore, riddles, speech, enchanting, and endings |
 | `js/game.js` | Main repeating loop, progress, quests, travel between realms, and story events |
-| `js/hall.js` | Hall of Deeds: the local record, and the shared board once it is connected |
+| `js/hall.js` | Hall of Champions: the local record, and the shared board once it is connected |
 | `js/hall-config.js` | Public address of the shared hall. Empty until it is connected |
 | `docs/hall-of-deeds.md` | How to connect the shared hall |
 | `js/save.js` | Saved games: what a save keeps, how it is written, and how it is read back |

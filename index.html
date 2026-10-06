@@ -45,7 +45,7 @@
                     <button id="startBtn" class="menu-btn menu-btn-primary">Begin Adventure</button>
                     <button id="loadBtn" class="menu-btn hidden">Load Game</button>
                     <button id="controlsBtn" class="menu-btn">Controls</button>
-                    <button id="hallBtn" class="menu-btn">Hall of Deeds</button>
+                    <button id="hallBtn" class="menu-btn">Hall of Champions</button>
                 </div>
                 <p id="continue-note" class="menu-note hidden"></p>
                 <p id="start-note" class="menu-note">Your journey begins in Green Meadow</p>
@@ -332,7 +332,7 @@
                     <button id="pause-save" class="menu-btn">Save Game</button>
                     <button id="pause-load" class="menu-btn">Load Game</button>
                     <button id="pause-controls" class="menu-btn">Controls</button>
-                    <button id="pause-hall" class="menu-btn">Hall of Deeds</button>
+                    <button id="pause-hall" class="menu-btn">Hall of Champions</button>
                     <button id="pause-quit" class="menu-btn">Quit to Title</button>
                 </div>
             </div>
@@ -343,16 +343,18 @@
         </div>
         <div id="hall-overlay" class="hidden" role="dialog" aria-labelledby="hall-title" aria-modal="true">
             <div class="hall-panel">
-                <h2 id="hall-title">Hall of Deeds</h2>
+                <h2 id="hall-title">Hall of Champions</h2>
                 <p id="hall-status" class="menu-note"></p>
                 <div class="hall-scroll">
-                    <table class="hall-table">
-                        <thead>
-                            <tr><th>Name</th><th>Hero</th><th>Deed</th><th>When</th></tr>
-                        </thead>
-                        <tbody id="hall-rows"></tbody>
-                    </table>
-                    <p id="hall-empty" class="menu-note">No deeds yet.</p>
+                    <div class="champion-head" aria-hidden="true">
+                        <span>Rank</span>
+                        <span>Name</span>
+                        <span>Score</span>
+                        <span>Deeds</span>
+                        <span>Best</span>
+                    </div>
+                    <div id="hall-rows"></div>
+                    <p id="hall-empty" class="menu-note">No champions yet.</p>
                 </div>
                 <button id="hall-close" class="menu-btn">Back</button>
             </div>

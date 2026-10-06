@@ -184,17 +184,9 @@ test.describe("Hall of Champions", () => {
         await openTitle(page);
         const hour = 60 * 60 * 1000;
         const t = Date.parse("2026-10-06T02:00:00Z");
-        await page.evaluate((pack) => {
-            for (const row of pack.rows) {
-                if (row.playerTag !== "Ivo" && row.playerTag !== "Nia") continue;
-                HallOfDeeds.record({
-                    playerTag: row.playerTag,
-                    siblingName: "Lyra",
-                    milestoneId: row.milestoneId,
-                    at: row.achievedAt,
-                });
-            }
-        }, { rows: championRows(t, hour) });
+        await page.evaluate((rows) => {
+            HallOfDeeds.writeStore(rows);
+        }, seedChampions(championRows(t, hour), ["Ivo", "Nia"]));
 
         await page.click("#hallBtn");
         const rows = page.locator(".champion-row");
@@ -232,17 +224,9 @@ test.describe("Hall of Champions", () => {
         await openTitle(page);
         const hour = 60 * 60 * 1000;
         const t = Date.parse("2026-10-06T02:00:00Z");
-        await page.evaluate((pack) => {
-            for (const row of pack.rows) {
-                if (!["Ivo", "Nia", "Bram"].includes(row.playerTag)) continue;
-                HallOfDeeds.record({
-                    playerTag: row.playerTag,
-                    siblingName: "Lyra",
-                    milestoneId: row.milestoneId,
-                    at: row.achievedAt,
-                });
-            }
-        }, { rows: championRows(t, hour) });
+        await page.evaluate((rows) => {
+            HallOfDeeds.writeStore(rows);
+        }, seedChampions(championRows(t, hour), ["Ivo", "Nia", "Bram"]));
         await page.click("#hallBtn");
         await expect(page.locator(".champion-row")).toHaveCount(3);
         await page.locator(".champion-row").first().click();
@@ -400,6 +384,20 @@ function HALL_LABEL(info, id) {
     const start = info.ids.indexOf(id);
     return info.labels.split("\n")[start];
 }
+
+function seedChampions(rows, tags) {
+    const keep = new Set(tags);
+    return rows
+        .filter((row) => keep.has(row.playerTag) && HALL_MILESTONES_FOR_SEED.has(row.milestoneId))
+        .map((row) => ({ ...row, siblingName: "Lyra", synced: true }));
+}
+
+const HALL_MILESTONES_FOR_SEED = new Set([
+    "makers-hollow", "black-knight", "green-knight", "giant-turtle", "planted-worldtree",
+    "climbed-cloudlands", "beat-zeus", "mended-worldtree", "blue-gem-1", "blue-gem-2",
+    "blue-gem-3", "blue-gem-4", "blue-gem-5", "clubhouse", "charted-surface",
+    "strange-key-copper", "strange-key-jade", "strange-key-crystal",
+]);
 
 function championRows(t, hour) {
     const row = (tag, id, label, at) => ({

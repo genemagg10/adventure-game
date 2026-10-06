@@ -318,6 +318,11 @@ test.describe("three keys and the door beside the Hollow", () => {
 
             g.hyperchargeTold = false;
             g.ui.clearNotification();
+            g.combat.arrowProjectiles.length = 0;
+            g.monsters = [];
+            g.player.x = 80;
+            g.player.y = 80;
+            g.player.facing = { x: 1, y: 0 };
             g.player.lastShootTime = 0;
             g.player.arrows = 4;
             g.keyJustPressed = { shoot: true };

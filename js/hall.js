@@ -1,5 +1,5 @@
 // ============================================
-// Ingoizer's World - Hall of Deeds
+// Ingoizer's World - Hall of Champions
 // ============================================
 //
 // A shared log of first-time public milestones. Deeds are kept in this
@@ -28,11 +28,139 @@ const HALL_MILESTONES = {
     "strange-key-crystal": "Found a strange key",
 };
 
+// Difficulty of each public deed. The board ranks a champion by the sum.
+// Early finds are 1, the road out of the meadow is 2, the mid bosses are 3,
+// the late trials are 5, and the two endings are 8.
+const HALL_DEED_WEIGHT = {
+    "makers-hollow": { weight: 1, tier: "Early" },
+    "clubhouse": { weight: 1, tier: "Early" },
+    "blue-gem-1": { weight: 1, tier: "Early" },
+    "blue-gem-2": { weight: 1, tier: "Early" },
+    "blue-gem-3": { weight: 2, tier: "Road" },
+    "strange-key-copper": { weight: 2, tier: "Road" },
+    "strange-key-jade": { weight: 2, tier: "Road" },
+    "strange-key-crystal": { weight: 2, tier: "Road" },
+    "blue-gem-4": { weight: 3, tier: "Mid" },
+    "black-knight": { weight: 3, tier: "Mid" },
+    "green-knight": { weight: 3, tier: "Mid" },
+    "blue-gem-5": { weight: 5, tier: "Late" },
+    "giant-turtle": { weight: 5, tier: "Late" },
+    "planted-worldtree": { weight: 5, tier: "Late" },
+    "climbed-cloudlands": { weight: 5, tier: "Late" },
+    "charted-surface": { weight: 5, tier: "Late" },
+    "beat-zeus": { weight: 8, tier: "Ending" },
+    "mended-worldtree": { weight: 8, tier: "Ending" },
+};
+
+// A champion who has every public deed, including all three strange keys,
+// earns this on top of the weights. It is not a nineteenth deed.
+const HALL_DIAMOND_BONUS = 10;
+
 const HallOfDeeds = {
     STORAGE_KEY: "ingoizersWorld.hall",
+    PAGE_SIZE: 1000,
 
     label(milestoneId) {
         return HALL_MILESTONES[milestoneId] || null;
+    },
+
+    weightOf(milestoneId) {
+        const row = HALL_DEED_WEIGHT[milestoneId];
+        return row ? row.weight : 0;
+    },
+
+    tierOf(milestoneId) {
+        const row = HALL_DEED_WEIGHT[milestoneId];
+        return row ? row.tier : "";
+    },
+
+    // Every listed public deed. The three strange keys are one line on the
+    // board, and that line counts only when all three have been found.
+    hasFullSet(deeds) {
+        const ids = new Set((deeds || []).map((deed) => deed.milestoneId));
+        return Object.keys(HALL_MILESTONES).every((id) => ids.has(id));
+    },
+
+    // One champion per tag. Score is the sum of deed weights, plus ten for a
+    // full set. Ties break by how many deeds they hold, then by their hardest
+    // mark (a full set outranks any single deed), then by who reached that
+    // score first. The full-set bonus is reached when the last deed lands.
+    champions(rows) {
+        const deduped = this.merge(Array.isArray(rows) ? rows : [], []);
+        const groups = new Map();
+        for (const row of deduped) {
+            let champ = groups.get(row.tagKey);
+            if (!champ) {
+                champ = {
+                    tagKey: row.tagKey,
+                    playerTag: row.playerTag,
+                    firstAt: row.achievedAt,
+                    deeds: [],
+                };
+                groups.set(row.tagKey, champ);
+            } else if (row.achievedAt < champ.firstAt) {
+                champ.playerTag = row.playerTag || champ.playerTag;
+                champ.firstAt = row.achievedAt;
+            }
+            champ.deeds.push(row);
+        }
+        const list = [];
+        for (const champ of groups.values()) {
+            let score = 0;
+            let reachedAt = 0;
+            let hardest = null;
+            const deeds = champ.deeds.map((deed) => {
+                const weight = this.weightOf(deed.milestoneId);
+                const tier = this.tierOf(deed.milestoneId);
+                score += weight;
+                if (deed.achievedAt > reachedAt) reachedAt = deed.achievedAt;
+                const entry = {
+                    milestoneId: deed.milestoneId,
+                    milestone: deed.milestone,
+                    weight,
+                    tier,
+                    achievedAt: deed.achievedAt,
+                };
+                if (!hardest || weight > hardest.weight || (weight === hardest.weight && deed.achievedAt < hardest.achievedAt)) {
+                    hardest = entry;
+                }
+                return entry;
+            });
+            deeds.sort((a, b) => {
+                if (b.weight !== a.weight) return b.weight - a.weight;
+                return a.achievedAt - b.achievedAt;
+            });
+            const diamond = this.hasFullSet(deeds);
+            if (diamond) score += HALL_DIAMOND_BONUS;
+            const deedWeight = hardest ? hardest.weight : 0;
+            list.push({
+                tagKey: champ.tagKey,
+                playerTag: champ.playerTag,
+                score,
+                count: deeds.length,
+                diamond,
+                bonus: diamond ? HALL_DIAMOND_BONUS : 0,
+                hardest: deedWeight,
+                // A full set is the mark in the Best column, above any ending.
+                hardestMark: diamond ? deedWeight + 1 : deedWeight,
+                hardestId: diamond ? "" : (hardest ? hardest.milestoneId : ""),
+                hardestLabel: diamond ? "Full set" : (hardest ? hardest.milestone : ""),
+                hardestTier: diamond ? "Diamond" : (hardest ? hardest.tier : ""),
+                reachedAt,
+                deeds,
+            });
+        }
+        list.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            if (b.count !== a.count) return b.count - a.count;
+            if (b.hardestMark !== a.hardestMark) return b.hardestMark - a.hardestMark;
+            if (a.reachedAt !== b.reachedAt) return a.reachedAt - b.reachedAt;
+            if (a.tagKey < b.tagKey) return -1;
+            if (a.tagKey > b.tagKey) return 1;
+            return 0;
+        });
+        for (let i = 0; i < list.length; i++) list[i].rank = i + 1;
+        return list;
     },
 
     // A display name: trimmed, inner spaces collapsed, 1–16 characters.
@@ -227,30 +355,38 @@ const HallOfDeeds = {
 
     async fetchRemote() {
         if (!this.configured()) return [];
+        const pageSize = Math.max(1, this.PAGE_SIZE | 0);
+        const collected = [];
         try {
-            const res = await fetch(
-                `${this.endpoint()}/rest/v1/hall_deeds?select=tag_key,player_tag,sibling_name,milestone_id,milestone,achieved_at&order=achieved_at.asc`,
-                {
-                    headers: {
-                        apikey: HALL_CONFIG.supabaseAnonKey,
-                        Authorization: `Bearer ${HALL_CONFIG.supabaseAnonKey}`,
-                    },
+            for (let offset = 0; ; offset += pageSize) {
+                const res = await fetch(
+                    `${this.endpoint()}/rest/v1/hall_deeds?select=tag_key,player_tag,milestone_id,milestone,achieved_at&order=achieved_at.asc&limit=${pageSize}&offset=${offset}`,
+                    {
+                        headers: {
+                            apikey: HALL_CONFIG.supabaseAnonKey,
+                            Authorization: `Bearer ${HALL_CONFIG.supabaseAnonKey}`,
+                        },
+                    }
+                );
+                if (!res.ok) return offset === 0 ? [] : collected;
+                const rows = await res.json();
+                if (!Array.isArray(rows) || rows.length === 0) break;
+                for (const r of rows) {
+                    const row = {
+                        tagKey: r.tag_key,
+                        playerTag: r.player_tag,
+                        milestoneId: r.milestone_id,
+                        milestone: r.milestone,
+                        achievedAt: Date.parse(r.achieved_at),
+                        synced: true,
+                    };
+                    if (row.milestoneId && row.tagKey && isFinite(row.achievedAt)) collected.push(row);
                 }
-            );
-            if (!res.ok) return [];
-            const rows = await res.json();
-            if (!Array.isArray(rows)) return [];
-            return rows.map(r => ({
-                tagKey: r.tag_key,
-                playerTag: r.player_tag,
-                siblingName: r.sibling_name,
-                milestoneId: r.milestone_id,
-                milestone: r.milestone,
-                achievedAt: Date.parse(r.achieved_at),
-                synced: true,
-            })).filter(r => r.milestoneId && r.tagKey && isFinite(r.achievedAt));
+                if (rows.length < pageSize) break;
+            }
+            return collected;
         } catch (e) {
-            return [];
+            return collected;
         }
     },
 

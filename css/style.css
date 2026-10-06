@@ -3942,17 +3942,27 @@ body.touch-mode * {
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow-y: auto;
+    overflow: hidden;
+    padding: 10px;
+    box-sizing: border-box;
     background: rgba(12, 8, 20, 0.92);
 }
 
 .hall-panel {
-    width: min(720px, 94%);
-    margin: 16px auto;
+    display: flex;
+    flex-direction: column;
+    width: min(620px, 94%);
+    max-height: 100%;
+    margin: 0 auto;
     padding: 18px 18px 14px;
+    box-sizing: border-box;
     border: 2px solid #cb8b25;
     background: linear-gradient(180deg, rgba(38, 26, 14, 0.98), rgba(20, 13, 8, 0.98));
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+}
+
+#hall-status {
+    color: #cbb47a;
 }
 
 .hall-panel h2 {
@@ -3964,35 +3974,209 @@ body.touch-mode * {
 }
 
 .hall-scroll {
-    max-height: min(320px, 52vh);
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: min(460px, 62vh);
     overflow: auto;
-    margin: 8px 0 12px;
+    margin: 8px 0 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(203, 139, 37, 0.35);
+    box-shadow: inset 0 -14px 12px -12px rgba(0, 0, 0, 0.9);
+    scrollbar-color: #cb8b25 #24180e;
 }
 
-.hall-table {
+#hall-close {
+    flex: 0 0 auto;
+    align-self: center;
+    margin-top: 12px;
+}
+
+#hallBtn,
+#pause-hall {
+    white-space: nowrap;
+}
+
+.champion-head,
+.champion-row {
+    display: grid;
+    grid-template-columns: 1rem 2.2rem minmax(3.2rem, var(--champ-name, 7rem)) 3.6rem 3.6rem 1.8rem;
+    align-items: center;
+    justify-content: start;
+    column-gap: 10px;
     width: 100%;
-    border-collapse: collapse;
+}
+
+.champion-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 6px 10px;
+    color: #f0c641;
+    background: #24180e;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+}
+
+.champion-row {
+    margin: 0;
+    padding: 8px 10px;
+    border: 0;
+    border-top: 1px solid rgba(203, 139, 37, 0.35);
+    background: transparent;
+    color: #f3e6c4;
+    font: inherit;
+    font-size: 15px;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(240, 198, 65, 0.45);
+}
+
+.champ-twist {
+    color: #f0c641;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.champion:nth-child(even) .champion-row {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.champion .champion-row[aria-expanded="true"] {
+    background: rgba(240, 198, 65, 0.16);
+}
+
+.champion .champion-row:focus-visible {
+    outline: 2px solid #f0c641;
+    outline-offset: -2px;
+    background: rgba(240, 198, 65, 0.22);
+}
+
+.champion .champion-row:active {
+    background: rgba(240, 198, 65, 0.34);
+}
+
+@media (hover: hover) {
+    .champion .champion-row:hover {
+        background: rgba(240, 198, 65, 0.2);
+    }
+}
+
+.champion .champion-row-diamond,
+.champion .champion-row-diamond:focus-visible,
+.champion .champion-row-diamond[aria-expanded="true"] {
+    background: rgba(46, 196, 230, 0.12);
+    box-shadow: inset 3px 0 0 #3ec8ea, 0 0 12px rgba(46, 196, 230, 0.28);
+}
+
+.champion .champion-row-diamond:focus-visible {
+    outline: 2px solid #3ec8ea;
+    outline-offset: -2px;
+}
+
+.champion .champion-row-diamond:active {
+    background: rgba(46, 196, 230, 0.22);
+}
+
+@media (hover: hover) {
+    .champion .champion-row-diamond:hover {
+        background: rgba(46, 196, 230, 0.18);
+    }
+}
+
+.champ-rank,
+.champ-score,
+.champ-count {
+    font-variant-numeric: tabular-nums;
+}
+
+.champ-tag {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.champ-badge {
+    display: inline-flex;
+    justify-content: center;
+    color: #b7c4a4;
+}
+
+.champ-badge-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+}
+
+.champ-badge[data-tier="Early"] { color: #c17a3a; }
+.champ-badge[data-tier="Road"] { color: #e0a15c; }
+.champ-badge[data-tier="Mid"] { color: #8f99a4; }
+.champ-badge[data-tier="Late"] { color: #f0d48a; }
+.champ-badge[data-tier="Ending"] { color: #ffe56a; }
+.champ-badge[data-tier="Diamond"] { color: #2ec4e6; }
+
+.champ-badge[data-tier="Diamond"] .champ-badge-icon {
+    width: 22px;
+    height: 26px;
+    animation: champ-diamond-shimmer 2.6s ease-in-out infinite;
+}
+
+.champ-spark {
+    animation: champ-spark 2.6s ease-in-out infinite;
+}
+
+@keyframes champ-diamond-shimmer {
+    0%, 100% { filter: drop-shadow(0 0 0.5px rgba(46, 196, 230, 0.35)); }
+    50% { filter: drop-shadow(0 0 3px rgba(90, 220, 255, 0.95)); }
+}
+
+@keyframes champ-spark {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .champ-badge[data-tier="Diamond"] .champ-badge-icon,
+    .champ-spark {
+        animation: none;
+    }
+
+    .champ-spark { opacity: 0.85; }
+}
+
+.champion-deed-diamond .deed-name {
+    color: #7fd8ee;
+    white-space: normal;
+}
+
+.champion-deeds {
+    padding: 2px 10px 8px 2.8rem;
+    background: rgba(0, 0, 0, 0.28);
+}
+
+.champion-deed {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px 12px;
+    align-items: baseline;
+    padding: 4px 0;
     color: #f3e6c4;
     font-size: 13px;
 }
 
-.hall-table th {
-    position: sticky;
-    top: 0;
-    padding: 6px 8px;
-    text-align: left;
+.deed-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.deed-tier {
     color: #f0c641;
-    background: #24180e;
+    white-space: nowrap;
 }
 
-.hall-table td {
-    padding: 6px 8px;
-    border-top: 1px solid rgba(203, 139, 37, 0.35);
-    vertical-align: top;
-}
-
-.hall-table tr:nth-child(even) td {
-    background: rgba(255, 255, 255, 0.03);
+.deed-when {
+    color: #d7c7a2;
+    white-space: nowrap;
 }
 
 .key-icon,
@@ -4064,8 +4248,30 @@ body.touch-mode * {
     .tag-panel { padding: 12px 16px; }
     .tag-panel h2 { font-size: 18px; }
     .tag-copy { margin-bottom: 8px; font-size: 13px; }
-    .hall-scroll { max-height: 38vh; }
-    .hall-table { font-size: 12px; }
+    .hall-panel { width: min(720px, 98%); padding: 8px 10px; }
+    .hall-panel h2 { font-size: 16px; letter-spacing: 1px; }
+    .hall-scroll {
+        max-height: none;
+        margin: 4px 0 0;
+        background-image:
+            linear-gradient(rgba(18, 12, 8, 0), #120c08),
+            linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.72));
+        background-repeat: no-repeat;
+        background-position: center bottom, center bottom;
+        background-size: 100% 16px, 100% 28px;
+        background-attachment: local, scroll;
+    }
+    .champion-head,
+    .champion-row { font-size: 12px; padding-top: 5px; padding-bottom: 5px; }
+    .champion-deed {
+        grid-template-columns: minmax(0, 1fr) auto;
+        font-size: 11px;
+        gap: 2px 8px;
+    }
+    .deed-when { grid-column: 1 / -1; }
+    .champion-deeds { padding-left: 10px; }
+    #hall-status { margin-top: 4px; }
+    #hall-close { margin: 6px 2px 2px; padding: 7px 16px; font-size: 14px; }
 }
 
 #pause-note {
@@ -4116,7 +4322,9 @@ body.touch-mode * {
    carry the only word the player gets that a save happened, and what the
    waiting adventure is, so they stay - .hidden still overrides both. */
 #slots-subtitle,
-#continue-note {
+#continue-note,
+#hall-status,
+#hall-empty {
     display: block;
 }
 

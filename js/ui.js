@@ -42,6 +42,7 @@ class UIManager {
         this.invWeapons = document.getElementById("inventory-weapons");
         this.invGems = document.getElementById("inventory-gems");
         this.arrowCount = document.getElementById("arrow-count");
+        this.keyPipRow = document.getElementById("key-pips");
         this.keyPips = document.querySelectorAll("#key-pips .key-pip");
         this.arrowIcon = document.getElementById("arrow-icon");
         this.greenGemCounter = document.getElementById("green-gem-counter");
@@ -156,6 +157,7 @@ class UIManager {
         if (pauseHall) pauseHall.addEventListener("click", () => this.openHall("pause"));
         const hallClose = document.getElementById("hall-close");
         if (hallClose) hallClose.addEventListener("click", () => this.closeHall());
+        this.bindHallKeys();
 
         document.getElementById("continueBtn").addEventListener("click", () => {
             if (this.continueSlot === null || this.continueSlot === undefined) return;
@@ -338,6 +340,9 @@ class UIManager {
         this.arrowCount.textContent = player.arrows;
         if (this.keyPips && this.keyPips.length) {
             const held = player.heldKeys || [];
+            // The empty notches spell out that three strange keys exist.
+            // Keep the whole row off the HUD until the first one is in hand.
+            if (this.keyPipRow) this.keyPipRow.classList.toggle("hidden", held.length === 0);
             for (const pip of this.keyPips) {
                 pip.classList.toggle("on", held.indexOf(pip.dataset.key) !== -1);
             }
@@ -613,36 +618,218 @@ class UIManager {
         }).catch(() => {
             if (!overlay.classList.contains("hidden")) this.renderHall(HallOfDeeds.readStore());
         });
+        this.startChampionPad();
     }
 
     renderHall(deeds) {
         const rows = document.getElementById("hall-rows");
         const empty = document.getElementById("hall-empty");
+        const head = document.querySelector("#hall-overlay .champion-head");
         if (!rows) return;
         rows.innerHTML = "";
-        const list = Array.isArray(deeds) ? deeds : [];
+        const champs = HallOfDeeds.champions(deeds);
         if (empty) {
-            empty.textContent = "No deeds yet.";
-            empty.classList.toggle("hidden", list.length > 0);
+            empty.textContent = "No champions yet.";
+            empty.classList.toggle("hidden", champs.length > 0);
         }
-        for (const row of list) {
-            const tr = document.createElement("tr");
-            const cells = [
-                row.playerTag,
-                row.siblingName,
-                row.milestone,
-                HallOfDeeds.formatWhen(row.achievedAt),
-            ];
-            for (const text of cells) {
-                const td = document.createElement("td");
-                td.textContent = text || "";
-                tr.appendChild(td);
+        if (head) head.classList.toggle("hidden", champs.length === 0);
+        champs.forEach((champ, i) => {
+            const block = document.createElement("div");
+            block.className = "champion";
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = champ.diamond ? "champion-row champion-row-diamond" : "champion-row";
+            btn.setAttribute("aria-expanded", "false");
+            const panelId = "champion-deeds-" + i;
+            btn.setAttribute("aria-controls", panelId);
+            btn.setAttribute("aria-label",
+                `Rank ${champ.rank}, ${champ.playerTag}, score ${champ.score}, ${champ.count} deeds, hardest ${champ.hardestLabel}`);
+
+            const twist = document.createElement("span");
+            twist.className = "champ-twist";
+            twist.setAttribute("aria-hidden", "true");
+            twist.textContent = "▸";
+
+            const rank = document.createElement("span");
+            rank.className = "champ-rank";
+            rank.textContent = String(champ.rank);
+
+            const tag = document.createElement("span");
+            tag.className = "champ-tag";
+            tag.textContent = champ.playerTag || "";
+
+            const score = document.createElement("span");
+            score.className = "champ-score";
+            score.textContent = String(champ.score);
+
+            const count = document.createElement("span");
+            count.className = "champ-count";
+            count.textContent = String(champ.count);
+
+            const badge = document.createElement("span");
+            badge.className = "champ-badge";
+            badge.dataset.tier = champ.hardestTier || "";
+            badge.title = champ.hardestLabel || "";
+            badge.innerHTML = this.championBadgeSvg(champ.hardestTier);
+            const badgeName = document.createElement("span");
+            badgeName.className = "visually-hidden";
+            badgeName.textContent = champ.hardestLabel || "";
+            badge.appendChild(badgeName);
+
+            btn.append(twist, rank, tag, score, count, badge);
+
+            const panel = document.createElement("div");
+            panel.id = panelId;
+            panel.className = "champion-deeds hidden";
+            panel.setAttribute("role", "region");
+            panel.setAttribute("aria-label", `${champ.playerTag} accomplishments`);
+            if (champ.diamond) {
+                const bonus = document.createElement("div");
+                bonus.className = "champion-deed champion-deed-diamond";
+                const bonusText = document.createElement("span");
+                bonusText.className = "deed-name";
+                bonusText.textContent = "Diamond · Full set · +10 pts";
+                bonus.appendChild(bonusText);
+                panel.appendChild(bonus);
             }
-            rows.appendChild(tr);
+            for (const deed of champ.deeds) {
+                const line = document.createElement("div");
+                line.className = "champion-deed";
+                const name = document.createElement("span");
+                name.className = "deed-name";
+                name.textContent = deed.milestone || "";
+                const tier = document.createElement("span");
+                tier.className = "deed-tier";
+                tier.textContent = `${deed.tier} · ${deed.weight} pts`;
+                const when = document.createElement("span");
+                when.className = "deed-when";
+                when.textContent = HallOfDeeds.formatWhen(deed.achievedAt);
+                line.append(name, tier, when);
+                panel.appendChild(line);
+            }
+
+            btn.addEventListener("click", () => {
+                const open = btn.getAttribute("aria-expanded") === "true";
+                btn.setAttribute("aria-expanded", open ? "false" : "true");
+                twist.textContent = open ? "▸" : "▾";
+                panel.classList.toggle("hidden", open);
+            });
+
+            block.append(btn, panel);
+            rows.appendChild(block);
+        });
+        const board = rows.closest(".hall-scroll");
+        if (board) {
+            const range = document.createRange();
+            let nameWidth = 0;
+            rows.querySelectorAll(".champ-tag").forEach((el) => {
+                range.selectNodeContents(el);
+                nameWidth = Math.max(nameWidth, range.getBoundingClientRect().width);
+            });
+            board.style.setProperty("--champ-name", Math.ceil(nameWidth + 12) + "px");
+        }
+        const first = rows.querySelector(".champion-row");
+        if (first) first.focus();
+        else {
+            const back = document.getElementById("hall-close");
+            if (back) back.focus();
         }
     }
 
+    championBadgeSvg(tier) {
+        // One crown for every tier. Color, set on the badge, is the metal.
+        const crown = '<path class="champ-crown" fill="currentColor" d="M1.4 11.4h13.2v2.2H1.4Zm.7-1.3 1.7-5.1 2.5 2.6L8 2.1l1.7 5.5 2.5-2.6 1.7 5.1Z"/>';
+        if (tier !== "Diamond") {
+            return `<svg class="champ-badge-icon" viewBox="0 0 16 16" aria-hidden="true">${crown}</svg>`;
+        }
+        // A readable gem sits on the crown, with a spark that can shimmer.
+        const gem = '<path class="champ-gem" fill="#5adfff" d="M8-2.2 11.4 1.5 8 5.2 4.6 1.5Z"/>';
+        const facet = '<path class="champ-gem-facet" fill="#dff8ff" d="M8-.8 9.7 1.5 8 3.8 6.3 1.5Z"/>';
+        const spark = '<path class="champ-spark" fill="#ffffff" d="M13.2-1.6 13.55-.55 14.6-.2 13.55.15 13.2 1.2 12.85.15 11.8-.2 12.85-.55Z"/>';
+        return `<svg class="champ-badge-icon champ-badge-diamond" viewBox="0 -3.4 16 19.4" aria-hidden="true">${crown}${gem}${facet}${spark}</svg>`;
+    }
+
+    bindHallKeys() {
+        if (this._hallKeys) return;
+        this._hallKeys = (e) => {
+            if (!this.isHallOpen()) return;
+            if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+            if (e.code === "ArrowUp" || e.code === "ArrowDown") {
+                e.preventDefault();
+                e.stopPropagation();
+                this.moveChampionFocus(e.code === "ArrowDown" ? 1 : -1);
+            } else if (e.code === "Space") {
+                const overlay = document.getElementById("hall-overlay");
+                const btn = document.activeElement;
+                e.preventDefault();
+                e.stopPropagation();
+                if (!e.repeat && btn && overlay && overlay.contains(btn) && btn.tagName === "BUTTON") btn.click();
+            } else if (e.code === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!e.repeat) this.closeHall();
+            }
+        };
+        window.addEventListener("keydown", this._hallKeys, true);
+    }
+
+    moveChampionFocus(dir) {
+        const rows = [...document.querySelectorAll("#hall-rows .champion-row")];
+        if (!rows.length) return;
+        let index = rows.indexOf(document.activeElement);
+        if (index < 0) index = dir > 0 ? -1 : rows.length;
+        const next = rows[Math.max(0, Math.min(rows.length - 1, index + dir))];
+        if (next) next.focus();
+    }
+
+    applyChampionPad(state) {
+        const prev = this._padPrev || {};
+        const up = !!(state && state.up);
+        const down = !!(state && state.down);
+        const activate = !!(state && state.activate);
+        if (up && !prev.up) this.moveChampionFocus(-1);
+        if (down && !prev.down) this.moveChampionFocus(1);
+        if (activate && !prev.activate) {
+            const btn = document.activeElement;
+            if (btn && btn.classList && btn.classList.contains("champion-row")) btn.click();
+        }
+        this._padPrev = { up, down, activate };
+    }
+
+    startChampionPad() {
+        this.stopChampionPad();
+        this._padPrev = {};
+        const tick = () => {
+            if (!this.isHallOpen()) {
+                this._padFrame = 0;
+                return;
+            }
+            this._padFrame = requestAnimationFrame(tick);
+            const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let up = false;
+            let down = false;
+            let activate = false;
+            for (const pad of pads) {
+                if (!pad) continue;
+                const axis = pad.axes && pad.axes.length > 1 ? pad.axes[1] : 0;
+                const buttons = pad.buttons || [];
+                up = up || !!(buttons[12] && buttons[12].pressed) || axis < -0.5;
+                down = down || !!(buttons[13] && buttons[13].pressed) || axis > 0.5;
+                activate = activate || !!(buttons[0] && buttons[0].pressed);
+            }
+            this.applyChampionPad({ up, down, activate });
+        };
+        this._padFrame = requestAnimationFrame(tick);
+    }
+
+    stopChampionPad() {
+        if (this._padFrame) cancelAnimationFrame(this._padFrame);
+        this._padFrame = 0;
+    }
+
     closeHall() {
+        this.stopChampionPad();
         this.game.sound.menuSelect();
         const overlay = document.getElementById("hall-overlay");
         if (overlay) overlay.classList.add("hidden");
@@ -775,6 +962,7 @@ class UIManager {
         this.controlsScreen.classList.add("hidden");
         const hall = document.getElementById("hall-overlay");
         if (hall) hall.classList.add("hidden");
+        this.stopChampionPad();
         const tag = document.getElementById("tag-screen");
         if (tag) tag.classList.add("hidden");
         this.pauseOverlay.classList.add("hidden");

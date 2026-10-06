@@ -1240,6 +1240,7 @@ class Game {
                 this.combat.addArrow(arrowData);
                 if (arrowData.isLaser) this.sound.laserZap();
                 if (arrowData.hypercharged) this.sound.hyperCrackle();
+                if (arrowData.isLaser && arrowData.isFireArrow) this.sound.laserFireWhoosh();
                 if (arrowData.hypercharged && !this.hyperchargeTold) {
                     this.hyperchargeTold = true;
                     this.ui.showNotification("Hypercharged!");

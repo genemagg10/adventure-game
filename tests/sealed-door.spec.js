@@ -425,6 +425,231 @@ test.describe("three keys and the door beside the Hollow", () => {
         expect(shot.bolts).toBe(0);
     });
 
+    test("a fire laser burns like a fire arrow and opens the Worldtree", async ({ page }) => {
+        await startNewGame(page);
+        const shot = await page.evaluate(() => {
+            const g = window.game;
+            g.player.addBow("laser_gun");
+            g.player.equipBow("laser_gun");
+            g.player.hasZeusBolts = false;
+            g.player.elements.fire = true;
+            g.player.activeElement = "fire";
+            g.player.arrows = 12;
+            g.player.facing = { x: 1, y: 0 };
+            g.player.lastShootTime = 0;
+            g.combat.arrowProjectiles.length = 0;
+            g.combat.elementEffects.length = 0;
+
+            const ax = g.player.x + 80;
+            const ay = g.player.y;
+            const primary = new Monster("skeleton", ax, ay);
+            const beside = new Monster("skeleton", ax, ay + 100);
+            const arrow = g.player.shootArrow();
+            g.combat.addArrow(arrow);
+            for (let i = 0; i < 8; i++) g.combat.updateArrows(80, [primary, beside], null, g.world, null);
+            const burned = g.combat.elementEffects.filter(e => e.element === "fire").length;
+
+            const st = g.world.skyTree;
+            const before = st.state;
+            function looseAtTree(fire) {
+                g.player.elements.fire = !!fire;
+                g.player.activeElement = fire ? "fire" : null;
+                g.player.hasZeusBolts = false;
+                g.player.lastShootTime = 0;
+                g.player.x = st.x - 100;
+                g.player.y = st.y;
+                g.player.facing = { x: 1, y: 0 };
+                g.combat.arrowProjectiles.length = 0;
+                g.combat.worldEvents.length = 0;
+                const shot = g.player.shootArrow();
+                g.combat.addArrow(shot);
+                for (let i = 0; i < 14; i++) g.combat.updateArrows(16, [], null, g.world, null);
+                return {
+                    fire: shot.isFireArrow,
+                    hyper: shot.hypercharged,
+                    left: g.combat.arrowProjectiles.length,
+                };
+            }
+            const plain = looseAtTree(false);
+            const afterPlain = st.state;
+            const resisted = g.combat.worldEvents.some(ev => ev.type === "skyTreeResisted");
+            const lit = looseAtTree(true);
+            g.combat.worldEvents.length = 0;
+            g.ui.dialogQueue = [];
+            g.ui.dialogActive = false;
+            document.getElementById("dialog-box").classList.add("hidden");
+
+            const calls = { zap: 0, crackle: 0, whoosh: 0 };
+            const snd = g.sound;
+            const zap = snd.laserZap.bind(snd);
+            const crack = snd.hyperCrackle.bind(snd);
+            const whoosh = snd.laserFireWhoosh.bind(snd);
+            snd.laserZap = () => { calls.zap++; zap(); };
+            snd.hyperCrackle = () => { calls.crackle++; crack(); };
+            snd.laserFireWhoosh = () => { calls.whoosh++; whoosh(); };
+            g.player.elements.fire = true;
+            g.player.activeElement = "fire";
+            g.player.hasZeusBolts = false;
+            g.player.arrows = 4;
+            g.player.lastShootTime = 0;
+            g.hyperchargeTold = true;
+            g.keyJustPressed = { shoot: true };
+            g.update(16);
+            const fireCalls = { zap: calls.zap, crackle: calls.crackle, whoosh: calls.whoosh };
+            g.player.hasZeusBolts = true;
+            g.player.lastShootTime = 0;
+            calls.zap = 0;
+            calls.crackle = 0;
+            calls.whoosh = 0;
+            g.ui.dialogQueue = [];
+            g.ui.dialogActive = false;
+            g.keyJustPressed = { shoot: true };
+            g.update(16);
+
+            return {
+                fire: arrow.isFireArrow,
+                hyper: arrow.hypercharged,
+                damage: arrow.damage,
+                base: BOWS.laser_gun.damage,
+                fireBonus: Math.floor(ELEMENTS.fire.damage * 0.5),
+                primaryDead: primary.alive === false,
+                beside: beside.hp,
+                burned,
+                before,
+                plain,
+                afterPlain,
+                resisted,
+                lit,
+                afterFire: st.state,
+                fireCalls,
+                bothCalls: { zap: calls.zap, crackle: calls.crackle, whoosh: calls.whoosh },
+            };
+        });
+
+        expect(shot.fire).toBe(true);
+        expect(shot.hyper).toBe(false);
+        expect(shot.damage).toBe(shot.base + shot.fireBonus);
+        expect(shot.primaryDead).toBe(true);
+        expect(shot.beside).toBe(50);
+        expect(shot.burned).toBeGreaterThan(0);
+        expect(shot.plain.fire).toBe(false);
+        expect(shot.plain.left).toBe(0);
+        expect(shot.afterPlain).toBe(shot.before);
+        expect(shot.resisted).toBe(true);
+        expect(shot.lit.fire).toBe(true);
+        expect(shot.lit.hyper).toBe(false);
+        expect(shot.afterFire).toBe("burning");
+        expect(shot.fireCalls).toEqual({ zap: 1, crackle: 0, whoosh: 1 });
+        expect(shot.bothCalls).toEqual({ zap: 1, crackle: 1, whoosh: 1 });
+    });
+
+    test("a fiery chain burns every foe it jumps to", async ({ page }) => {
+        await startNewGame(page);
+        const shot = await page.evaluate(() => {
+            const g = window.game;
+            g.player.addBow("laser_gun");
+            g.player.equipBow("laser_gun");
+            g.player.hasZeusBolts = true;
+            g.player.elements.fire = true;
+            g.player.activeElement = "fire";
+            g.player.arrows = 8;
+            g.player.facing = { x: 1, y: 0 };
+            g.player.lastShootTime = 0;
+            g.combat.arrowProjectiles.length = 0;
+            g.combat.elementEffects.length = 0;
+
+            const ax = g.player.x + 80;
+            const ay = g.player.y;
+            const primary = new Monster("skeleton", ax, ay);
+            const b = new Monster("skeleton", ax, ay + 100);
+            const c = new Monster("skeleton", ax, ay + 200);
+            const d = new Monster("skeleton", ax, ay + 300);
+            const far = new Monster("skeleton", ax + 400, ay + 300);
+            const pack = [primary, b, c, d, far];
+            const arrow = g.player.shootArrow();
+            g.combat.addArrow(arrow);
+            for (let i = 0; i < 6; i++) g.combat.updateArrows(80, pack, null, g.world, null);
+
+            const nearFire = (m) => g.combat.elementEffects.some(e =>
+                e.element === "fire" && Math.hypot(e.x - m.x, e.y - m.y) < 8);
+            const bolts = g.combat.elementEffects.filter(e => e.element === "lightning_bolt");
+            const burns = {
+                b: nearFire(b),
+                c: nearFire(c),
+                d: nearFire(d),
+                far: nearFire(far),
+            };
+            const boltInfo = {
+                bolts: bolts.length,
+                fieryBolts: bolts.filter(e => e.fiery && e.hyper).length,
+                embers: bolts.reduce((n, e) => n + (e.embers ? e.embers.length : 0), 0),
+            };
+
+            g.combat.elementEffects.length = 0;
+            g.combat.arrowProjectiles.length = 0;
+            g.player.activeElement = null;
+            g.player.lastShootTime = 0;
+            const quietLead = new Monster("skeleton", ax, ay);
+            const quietNext = new Monster("skeleton", ax, ay + 100);
+            const quiet = g.player.shootArrow();
+            g.combat.addArrow(quiet);
+            for (let i = 0; i < 6; i++) g.combat.updateArrows(80, [quietLead, quietNext], null, g.world, null);
+            const quietFires = g.combat.elementEffects.filter(e => e.element === "fire").length;
+            const quietFiery = g.combat.elementEffects.some(e => e.element === "lightning_bolt" && e.fiery);
+
+            const luca = new LucaBoss(ax, ay + 100);
+            luca.spawned = true;
+            luca.spawnAnimation = 0;
+            const lead = new Monster("skeleton", ax, ay);
+            g.player.activeElement = "fire";
+            g.player.lastShootTime = 0;
+            g.combat.arrowProjectiles.length = 0;
+            const jump = g.player.shootArrow();
+            g.combat.addArrow(jump);
+            for (let i = 0; i < 6; i++) g.combat.updateArrows(80, [lead], luca, g.world, null);
+
+            return {
+                fire: arrow.hypercharged && arrow.isFireArrow,
+                damage: arrow.damage,
+                cap: HYPER_LASER.lucaChainCap,
+                primaryDead: primary.alive === false,
+                b: b.hp,
+                c: c.hp,
+                d: d.hp,
+                far: far.hp,
+                burnB: burns.b,
+                burnC: burns.c,
+                burnD: burns.d,
+                burnFar: burns.far,
+                bolts: boltInfo.bolts,
+                fieryBolts: boltInfo.fieryBolts,
+                embers: boltInfo.embers,
+                quietFires,
+                quietFiery,
+                lucaDrop: luca.maxHp - luca.hp,
+                lucaAlive: luca.alive,
+            };
+        });
+
+        expect(shot.fire).toBe(true);
+        expect(shot.primaryDead).toBe(true);
+        expect(shot.b).toBe(50 - Math.floor(shot.damage * 0.6));
+        expect(shot.c).toBe(50 - Math.floor(shot.damage * 0.4));
+        expect(shot.d).toBe(50 - Math.floor(shot.damage * 0.25));
+        expect(shot.far).toBe(50);
+        expect(shot.burnB).toBe(true);
+        expect(shot.burnC).toBe(true);
+        expect(shot.burnD).toBe(true);
+        expect(shot.burnFar).toBe(false);
+        expect(shot.bolts).toBe(3);
+        expect(shot.fieryBolts).toBe(3);
+        expect(shot.embers).toBeGreaterThan(0);
+        expect(shot.quietFires).toBe(0);
+        expect(shot.quietFiery).toBe(false);
+        expect(shot.lucaDrop).toBe(Math.min(Math.floor(shot.damage * 0.6), shot.cap));
+        expect(shot.lucaAlive).toBe(true);
+    });
+
     test("the tag, the keys, and the laser gun survive a save", async ({ page }) => {
         await startNewGame(page);
         await page.evaluate(() => {

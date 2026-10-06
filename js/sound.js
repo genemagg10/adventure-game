@@ -1530,6 +1530,45 @@ class SoundSystem {
         noise.stop(t + len);
     }
 
+    // Laid over the laser when the shot is fire: a short whoosh, not the spell's roar.
+    laserFireWhoosh() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const len = 0.22;
+        const bufSize = Math.max(1, Math.floor(this.ctx.sampleRate * len));
+        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) {
+            const env = Math.sin((i / bufSize) * Math.PI);
+            data[i] = (Math.random() * 2 - 1) * env * Math.pow(1 - i / bufSize, 0.55);
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buf;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(980, t);
+        filter.frequency.exponentialRampToValueAtTime(220, t + len);
+        filter.Q.value = 0.7;
+        const gain = this.createGain(0.16);
+        gain.gain.setValueAtTime(0.16 * this.masterVolume, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + len);
+        noise.connect(filter);
+        filter.connect(gain);
+        noise.start(t);
+        noise.stop(t + len);
+
+        const osc = this.ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(190, t);
+        osc.frequency.exponentialRampToValueAtTime(55, t + 0.18);
+        const oGain = this.createGain(0.05);
+        oGain.gain.setValueAtTime(0.05 * this.masterVolume, t);
+        oGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        osc.connect(oGain);
+        osc.start(t);
+        osc.stop(t + 0.2);
+    }
+
     // Two dry clicks, nothing explained.
     lockClick() {
         if (!this.ensureContext()) return;

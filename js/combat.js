@@ -313,7 +313,7 @@ class CombatSystem {
         });
     }
 
-    spawnLightningBolt(x1, y1, x2, y2, hyper) {
+    spawnLightningBolt(x1, y1, x2, y2, hyper, fiery) {
         // Create a jagged lightning path
         const segments = [];
         const steps = 8;
@@ -325,20 +325,34 @@ class CombatSystem {
                 y: lerp(y1, y2, t) + (i > 0 && i < steps ? randFloat(-jag, jag) : 0),
             });
         }
+        const embers = [];
+        if (fiery) {
+            for (let i = 1; i < steps; i++) {
+                embers.push({
+                    x: segments[i].x + randFloat(-8, 8),
+                    y: segments[i].y + randFloat(-8, 8),
+                    r: randFloat(1.6, 3.4),
+                    hot: Math.random() > 0.45,
+                });
+            }
+        }
         this.elementEffects.push({
             x: x1, y: y1, element: "lightning_bolt", duration: 400, maxDuration: 400,
             segments: segments,
             hyper: !!hyper,
+            fiery: !!fiery,
+            embers: embers,
         });
     }
 
     // The beam that just connected, held for a moment so the chain reads as one shot.
-    spawnHyperBeam(x1, y1, x2, y2) {
+    spawnHyperBeam(x1, y1, x2, y2, fiery) {
         this.elementEffects.push({
             x: x1, y: y1, x2, y2,
             element: "hyper_beam",
             duration: 320,
             maxDuration: 320,
+            fiery: !!fiery,
         });
     }
 
@@ -546,13 +560,13 @@ class CombatSystem {
                         crit = true;
                     }
                     const killed = m.takeDamage(damage, a.x, a.y);
-                    this.spawnHitParticles(m.x, m.y, a.isLaser ? "#7ef0ff" : (a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#ff4444")), 5);
+                    this.spawnHitParticles(m.x, m.y, a.isFireArrow ? "#ff6600" : (a.isLaser ? "#7ef0ff" : (a.isZeusBolt ? "#ffee00" : "#ff4444")), 5);
                     this.addDamageNumber(m.x, m.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(m.x, m.y, "fire", 500);
                     }
                     if (a.isZeusBolt) this.spawnBoltImpact(a, m);
-                    if (a.hypercharged) this.spawnHyperBeam(prevX, prevY, m.x, m.y);
+                    if (a.hypercharged) this.spawnHyperBeam(prevX, prevY, m.x, m.y, a.isFireArrow);
                     this.chainHyperLaser(a, m, monsters, boss, greenKnight);
                     // Bow enchantment hit effect
                     if (a.bowEnchant) {
@@ -581,13 +595,13 @@ class CombatSystem {
                         crit = true;
                     }
                     const killed = boss.takeDamage(damage, a.x, a.y);
-                    this.spawnHitParticles(boss.x, boss.y, a.isLaser ? "#7ef0ff" : (a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#ff8800")), 8);
+                    this.spawnHitParticles(boss.x, boss.y, a.isFireArrow ? "#ff6600" : (a.isLaser ? "#7ef0ff" : (a.isZeusBolt ? "#ffee00" : "#ff8800")), 8);
                     this.addDamageNumber(boss.x, boss.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(boss.x, boss.y, "fire", 500);
                     }
                     if (a.isZeusBolt) this.spawnBoltImpact(a, boss);
-                    if (a.hypercharged) this.spawnHyperBeam(prevX, prevY, boss.x, boss.y);
+                    if (a.hypercharged) this.spawnHyperBeam(prevX, prevY, boss.x, boss.y, a.isFireArrow);
                     this.chainHyperLaser(a, boss, monsters, boss, greenKnight);
                     if (a.bowEnchant) {
                         this.spawnEnchantHitEffect(a.bowEnchant, { x: a.x, y: a.y }, boss);
@@ -612,13 +626,13 @@ class CombatSystem {
                         crit = true;
                     }
                     const killed = greenKnight.takeDamage(damage, a.x, a.y);
-                    this.spawnHitParticles(greenKnight.x, greenKnight.y, a.isLaser ? "#7ef0ff" : (a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#44ff44")), 8);
+                    this.spawnHitParticles(greenKnight.x, greenKnight.y, a.isFireArrow ? "#ff6600" : (a.isLaser ? "#7ef0ff" : (a.isZeusBolt ? "#ffee00" : "#44ff44")), 8);
                     this.addDamageNumber(greenKnight.x, greenKnight.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(greenKnight.x, greenKnight.y, "fire", 500);
                     }
                     if (a.isZeusBolt) this.spawnBoltImpact(a, greenKnight);
-                    if (a.hypercharged) this.spawnHyperBeam(prevX, prevY, greenKnight.x, greenKnight.y);
+                    if (a.hypercharged) this.spawnHyperBeam(prevX, prevY, greenKnight.x, greenKnight.y, a.isFireArrow);
                     this.chainHyperLaser(a, greenKnight, monsters, boss, greenKnight);
                     if (a.bowEnchant) {
                         this.spawnEnchantHitEffect(a.bowEnchant, { x: a.x, y: a.y }, greenKnight);
@@ -653,10 +667,11 @@ class CombatSystem {
                 damage = Math.min(damage, HYPER_LASER.lucaChainCap);
             }
             next.takeDamage(damage, from.x, from.y);
-            this.spawnLightningBolt(from.x, from.y, next.x, next.y, true);
-            this.spawnHitParticles(next.x, next.y, "#fff6d0", 5);
+            const fiery = !!arrow.isFireArrow;
+            this.spawnLightningBolt(from.x, from.y, next.x, next.y, true, fiery);
+            this.spawnHitParticles(next.x, next.y, fiery ? "#ff5500" : "#fff6d0", fiery ? 8 : 5);
             this.addDamageNumber(next.x, next.y, damage, false);
-            if (arrow.isFireArrow) this.spawnElementEffect(next.x, next.y, "fire", 400);
+            if (fiery) this.spawnElementEffect(next.x, next.y, "fire", 500);
             from = next;
         }
     }
@@ -719,9 +734,30 @@ class CombatSystem {
                 ctx.save();
                 ctx.translate(Math.round(sx), Math.round(sy));
                 ctx.rotate(angle);
-                if (a.hypercharged) {
+                if (a.isFireArrow) {
+                    const thick = !!a.hypercharged;
+                    const flick = Math.sin(Date.now() / 40 + a.x);
+                    ctx.fillStyle = "rgba(255, 60, 16, 0.5)";
+                    ctx.fillRect(thick ? -66 : -54, thick ? -9 : -6, thick ? 96 : 76, thick ? 18 : 12);
+                    ctx.fillStyle = "#e23212";
+                    ctx.fillRect(thick ? -58 : -48, thick ? -4 : -3, thick ? 84 : 66, thick ? 8 : 6);
+                    ctx.fillStyle = "#ffb000";
+                    ctx.fillRect(thick ? -50 : -42, -2, thick ? 74 : 56, 4);
+                    ctx.fillStyle = "#fff1a0";
+                    ctx.fillRect(thick ? -40 : -34, -1, thick ? 56 : 42, 2);
+                    ctx.fillStyle = "#ff6a14";
+                    ctx.fillRect(-32, -9 + Math.round(flick * 2), 4, 3);
+                    ctx.fillRect(-14, 6, 3, 3);
+                    ctx.fillRect(6, -8, 3, 3);
+                    ctx.fillStyle = "#ffe14a";
+                    ctx.fillRect(-22, 7 + Math.round(flick), 3, 3);
+                    ctx.fillRect(2, -10, 2, 2);
+                    ctx.fillRect(16, 5, 3, 2);
+                    ctx.fillStyle = "#fff6c2";
+                    ctx.fillRect(thick ? 14 : 8, thick ? -4 : -3, thick ? 12 : 8, thick ? 8 : 6);
+                } else if (a.hypercharged) {
                     const flick = Math.sin(Date.now() / 45 + a.x);
-                    ctx.fillStyle = a.isFireArrow ? "rgba(255, 140, 60, 0.35)" : "rgba(80, 220, 255, 0.5)";
+                    ctx.fillStyle = "rgba(80, 220, 255, 0.5)";
                     ctx.fillRect(-64, -9, 90, 18);
                     ctx.fillStyle = "#7ef0ff";
                     ctx.fillRect(-56, -4, 78, 8);
@@ -737,13 +773,11 @@ class CombatSystem {
                     ctx.fillStyle = "#fff8e0";
                     ctx.fillRect(10, -5, 12, 10);
                 } else {
-                    const hot = a.isFireArrow ? "#ff8844" : "#7ef0ff";
-                    const core = a.isFireArrow ? "#fff1d0" : "#f4fdff";
-                    ctx.fillStyle = a.isFireArrow ? "rgba(255, 120, 40, 0.35)" : "rgba(80, 220, 255, 0.4)";
+                    ctx.fillStyle = "rgba(80, 220, 255, 0.4)";
                     ctx.fillRect(-52, -5, 70, 10);
-                    ctx.fillStyle = hot;
+                    ctx.fillStyle = "#7ef0ff";
                     ctx.fillRect(-46, -2, 60, 4);
-                    ctx.fillStyle = core;
+                    ctx.fillStyle = "#f4fdff";
                     ctx.fillRect(-40, -1, 52, 2);
                     ctx.fillStyle = "#ffffff";
                     ctx.fillRect(6, -3, 8, 6);
@@ -1153,19 +1187,19 @@ class CombatSystem {
                     ctx.save();
                     ctx.globalAlpha = alpha;
                     ctx.lineCap = "round";
-                    ctx.strokeStyle = "rgba(80, 220, 255, 0.45)";
+                    ctx.strokeStyle = e.fiery ? "rgba(255, 70, 16, 0.5)" : "rgba(80, 220, 255, 0.45)";
                     ctx.lineWidth = 16;
                     ctx.beginPath();
                     ctx.moveTo(x1, y1);
                     ctx.lineTo(x2, y2);
                     ctx.stroke();
-                    ctx.strokeStyle = "#7ef0ff";
+                    ctx.strokeStyle = e.fiery ? "#e23212" : "#7ef0ff";
                     ctx.lineWidth = 7;
                     ctx.stroke();
-                    ctx.strokeStyle = "#fff6d0";
+                    ctx.strokeStyle = e.fiery ? "#ffb000" : "#fff6d0";
                     ctx.lineWidth = 3;
                     ctx.stroke();
-                    ctx.strokeStyle = "#fff4c2";
+                    ctx.strokeStyle = e.fiery ? "#ffe14a" : "#fff4c2";
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     for (let i = 1; i <= 5; i++) {
@@ -1192,7 +1226,28 @@ class CombatSystem {
                         for (let i = 1; i < e.segments.length; i++) {
                             ctx.lineTo(e.segments[i].x - camera.x, e.segments[i].y - camera.y);
                         }
-                        if (e.hyper) {
+                        if (e.fiery) {
+                            ctx.strokeStyle = `rgba(255, 50, 10, ${0.55 * alpha})`;
+                            ctx.lineWidth = 12;
+                            ctx.stroke();
+                            ctx.shadowColor = "#ff7a18";
+                            ctx.shadowBlur = 8;
+                            ctx.strokeStyle = `rgba(255, 90, 20, ${alpha})`;
+                            ctx.lineWidth = 4;
+                            ctx.stroke();
+                            ctx.shadowBlur = 0;
+                            ctx.strokeStyle = `rgba(255, 210, 60, ${alpha})`;
+                            ctx.lineWidth = 1.6;
+                            ctx.stroke();
+                            if (e.embers) {
+                                for (const ember of e.embers) {
+                                    ctx.fillStyle = ember.hot ? `rgba(255, 220, 80, ${alpha})` : `rgba(255, 80, 20, ${alpha})`;
+                                    ctx.beginPath();
+                                    ctx.arc(ember.x - camera.x, ember.y - camera.y, ember.r, 0, Math.PI * 2);
+                                    ctx.fill();
+                                }
+                            }
+                        } else if (e.hyper) {
                             ctx.strokeStyle = `rgba(80, 220, 255, ${0.55 * alpha})`;
                             ctx.lineWidth = 11;
                             ctx.stroke();

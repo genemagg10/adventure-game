@@ -642,6 +642,11 @@ class UIManager {
             btn.setAttribute("aria-label",
                 `Rank ${champ.rank}, ${champ.playerTag}, score ${champ.score}, ${champ.count} deeds, hardest ${champ.hardestLabel}`);
 
+            const twist = document.createElement("span");
+            twist.className = "champ-twist";
+            twist.setAttribute("aria-hidden", "true");
+            twist.textContent = "▸";
+
             const rank = document.createElement("span");
             rank.className = "champ-rank";
             rank.textContent = String(champ.rank);
@@ -668,7 +673,7 @@ class UIManager {
             badgeName.textContent = champ.hardestLabel || "";
             badge.appendChild(badgeName);
 
-            btn.append(rank, tag, score, count, badge);
+            btn.append(twist, rank, tag, score, count, badge);
 
             const panel = document.createElement("div");
             panel.id = panelId;
@@ -683,7 +688,7 @@ class UIManager {
                 name.textContent = deed.milestone || "";
                 const tier = document.createElement("span");
                 tier.className = "deed-tier";
-                tier.textContent = `${deed.tier} · ${deed.weight}`;
+                tier.textContent = `${deed.tier} · ${deed.weight} pts`;
                 const when = document.createElement("span");
                 when.className = "deed-when";
                 when.textContent = HallOfDeeds.formatWhen(deed.achievedAt);
@@ -694,12 +699,23 @@ class UIManager {
             btn.addEventListener("click", () => {
                 const open = btn.getAttribute("aria-expanded") === "true";
                 btn.setAttribute("aria-expanded", open ? "false" : "true");
+                twist.textContent = open ? "▸" : "▾";
                 panel.classList.toggle("hidden", open);
             });
 
             block.append(btn, panel);
             rows.appendChild(block);
         });
+        const board = rows.closest(".hall-scroll");
+        if (board) {
+            const range = document.createRange();
+            let nameWidth = 0;
+            rows.querySelectorAll(".champ-tag").forEach((el) => {
+                range.selectNodeContents(el);
+                nameWidth = Math.max(nameWidth, range.getBoundingClientRect().width);
+            });
+            board.style.setProperty("--champ-name", Math.ceil(nameWidth + 12) + "px");
+        }
         const first = rows.querySelector(".champion-row");
         if (first) first.focus();
         else {
@@ -708,15 +724,9 @@ class UIManager {
         }
     }
 
-    championBadgeSvg(tier) {
-        const paths = {
-            Early: '<circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.7"/>',
-            Road: '<path fill="currentColor" d="M8 1.6 14.2 8 8 14.4 1.8 8Z"/>',
-            Mid: '<path fill="currentColor" d="M9.1 1.2 14.6 6.7 13.2 8.1 11.5 6.4 7.4 10.5 8.6 11.7 7.4 12.9H5.6L4.8 12.1 3.2 13.7 2.3 12.8 3.9 11.2 3.1 10.4V8.6L4.3 7.4 5.5 8.6 9.6 4.5 7.9 2.8Z"/>',
-            Late: '<path fill="currentColor" d="M8 1.2 9.8 5.5 14.4 5.9 10.9 9 12 13.6 8 11.2 4 13.6 5.1 9 1.6 5.9 6.2 5.5Z"/>',
-            Ending: '<path fill="currentColor" d="M1.6 11.2h12.8v2H1.6Zm.5-1.1 1.5-5.4 2.7 2.8L8 2.4l1.7 5.1 2.7-2.8 1.5 5.4Z"/>',
-        };
-        const body = paths[tier] || paths.Early;
+    championBadgeSvg() {
+        // One crown for every tier. Color, set on the badge, is the metal.
+        const body = '<path fill="currentColor" d="M1.4 11.4h13.2v2.2H1.4Zm.7-1.3 1.7-5.1 2.5 2.6L8 2.1l1.7 5.5 2.5-2.6 1.7 5.1Z"/>';
         return `<svg class="champ-badge-icon" viewBox="0 0 16 16" aria-hidden="true">${body}</svg>`;
     }
 

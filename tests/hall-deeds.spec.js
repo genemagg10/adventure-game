@@ -61,7 +61,8 @@ test.describe("Hall of Champions", () => {
         await row.click();
         const deed = page.locator(".champion-deed");
         await expect(deed).toContainText("Found Maker's Hollow");
-        await expect(deed).toContainText("Early · 1");
+        await expect(deed).toContainText("Early · 1 pts");
+        await expect(row.locator(".champ-twist")).toHaveText("▾");
         await expect(deed).toContainText("Oct 5, 2026 · 7:00 PM PT");
         await page.click("#hall-close");
         await expect(page.locator("#title-screen")).toBeVisible();
@@ -192,6 +193,7 @@ test.describe("Hall of Champions", () => {
         const rows = page.locator(".champion-row");
         await expect(rows).toHaveCount(2);
         await expect(rows.first()).toBeFocused();
+        await expect(rows.first().locator(".champ-twist")).toHaveText("▸");
         await expect(rows.first().locator(".champ-tag")).toHaveText("Ivo");
         await expect(rows.first().locator(".champ-score")).toHaveText("21");
         await expect(rows.nth(1).locator(".champ-tag")).toHaveText("Nia");
@@ -201,9 +203,10 @@ test.describe("Hall of Champions", () => {
         const ivoDeeds = page.locator(".champion").first().locator(".champion-deed");
         await expect(ivoDeeds).toHaveCount(4);
         await expect(ivoDeeds.first().locator(".deed-name")).toHaveText("Beat Zeus");
-        await expect(ivoDeeds.first().locator(".deed-tier")).toHaveText("Ending · 8");
+        await expect(rows.first().locator(".champ-twist")).toHaveText("▾");
+        await expect(ivoDeeds.first().locator(".deed-tier")).toHaveText("Ending · 8 pts");
         await expect(ivoDeeds.nth(1).locator(".deed-name")).toHaveText("Planted the Worldtree");
-        await expect(ivoDeeds.nth(1).locator(".deed-tier")).toHaveText("Late · 5");
+        await expect(ivoDeeds.nth(1).locator(".deed-tier")).toHaveText("Late · 5 pts");
 
         await page.keyboard.press("ArrowDown");
         await expect(rows.nth(1)).toBeFocused();
@@ -217,6 +220,7 @@ test.describe("Hall of Champions", () => {
         });
         await expect(rows.first()).toBeFocused();
         await expect(rows.first()).toHaveAttribute("aria-expanded", "false");
+        await expect(rows.first().locator(".champ-twist")).toHaveText("▸");
     });
 
     test("the champion list fits a phone landscape screen", async ({ page }) => {
@@ -231,9 +235,14 @@ test.describe("Hall of Champions", () => {
         await expect(page.locator(".champion-row")).toHaveCount(3);
         await page.locator(".champion-row").first().click();
         const panel = await page.locator(".hall-panel").boundingBox();
+        const scroll = await page.locator(".hall-scroll").boundingBox();
+        const back = await page.locator("#hall-close").boundingBox();
         expect(panel).toBeTruthy();
+        expect(scroll).toBeTruthy();
+        expect(back).toBeTruthy();
         expect(panel.y).toBeGreaterThanOrEqual(0);
         expect(panel.y + panel.height).toBeLessThanOrEqual(392);
+        expect(scroll.y + scroll.height).toBeLessThanOrEqual(back.y + 1);
         await expect(page.locator(".champion-deed").first()).toBeVisible();
     });
 

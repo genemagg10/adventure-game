@@ -1244,6 +1244,8 @@ class Game {
                 if (arrowData.hypercharged && !this.hyperchargeTold) {
                     this.hyperchargeTold = true;
                     this.ui.showNotification("Hypercharged!");
+                } else if (arrowData.isFireArrow && arrowData.isLaser) {
+                    this.ui.showNotification("Fire laser!");
                 } else if (arrowData.isFireArrow) {
                     this.ui.showNotification("Fire arrow!");
                 }

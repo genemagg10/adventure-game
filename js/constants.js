@@ -720,6 +720,14 @@ const LUCA_BOSS = {
     // Early bolts stay under half of a full health bar. The late patterns
     // carry the listed bolt, and elemental powers feed those later shots.
     windup: 400,
+    // Close-in punish: a short glow, one shove, then a pause. Between
+    // those he holds a ring so a blade can step in.
+    swipeWindup: 350,
+    swipeCooldown: 1500,
+    standoff: 20,
+    swipeReach: 14,
+    chargeWindup: 360,
+    chargeTime: 220,
     phases: [
         { hpThreshold: 1.0, speed: 1.05, attackRate: 1100, pattern: "bolt", bolt: 32 },
         { hpThreshold: 0.72, speed: 1.25, attackRate: 860, pattern: "fan", bolt: 40 },

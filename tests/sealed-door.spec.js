@@ -493,8 +493,12 @@ test.describe("three keys and the door beside the Hollow", () => {
             g.player.arrows = 4;
             g.player.lastShootTime = 0;
             g.hyperchargeTold = true;
+            g.ui.clearNotification();
             g.keyJustPressed = { shoot: true };
             g.update(16);
+            const fireToast = document.querySelector(".notification")
+                ? document.querySelector(".notification").textContent
+                : "";
             const fireCalls = { zap: calls.zap, crackle: calls.crackle, whoosh: calls.whoosh };
             g.player.hasZeusBolts = true;
             g.player.lastShootTime = 0;
@@ -522,6 +526,7 @@ test.describe("three keys and the door beside the Hollow", () => {
                 lit,
                 afterFire: st.state,
                 fireCalls,
+                fireToast,
                 bothCalls: { zap: calls.zap, crackle: calls.crackle, whoosh: calls.whoosh },
             };
         });
@@ -539,6 +544,7 @@ test.describe("three keys and the door beside the Hollow", () => {
         expect(shot.lit.fire).toBe(true);
         expect(shot.lit.hyper).toBe(false);
         expect(shot.afterFire).toBe("burning");
+        expect(shot.fireToast).toBe("Fire laser!");
         expect(shot.fireCalls).toEqual({ zap: 1, crackle: 0, whoosh: 1 });
         expect(shot.bothCalls).toEqual({ zap: 1, crackle: 1, whoosh: 1 });
     });
@@ -684,6 +690,82 @@ test.describe("three keys and the door beside the Hollow", () => {
         expect(back.arrows).toBe(40);
         expect(back.defeated).toBe(true);
         expect(back.copperGone).toBe(true);
+    });
+
+    test("standing in melee range deals no damage without Luca's swipe", async ({ page }) => {
+        await startNewGame(page);
+        const stood = await page.evaluate(() => {
+            const g = window.game;
+            const luca = new LucaBoss(g.player.x + 30, g.player.y);
+            luca.spawned = true;
+            luca.spawnAnimation = 0;
+            luca.swipeReadyAt = Date.now() + 10000;
+            luca.lastAttackTime = Date.now() + 5000;
+            const stuck = { isSolid() { return true; } };
+            const hp = g.player.hp;
+            let elapsed = 0;
+            while (elapsed < 2000) {
+                luca.update(16, g.player, stuck);
+                elapsed += 16;
+            }
+            const stoodHp = g.player.hp;
+            const stoodSwipe = luca.swipe;
+            const stoodBolts = luca.projectiles.length;
+            const stoodWindup = luca.windup;
+            const inside = Math.hypot(luca.x - g.player.x, luca.y - g.player.y) < luca.size + g.player.size + 6;
+
+            g.player.hp = hp;
+            g.player.invincible = false;
+            luca.projectiles.length = 0;
+            luca.windup = { left: 16, total: LUCA_BOSS.windup, pattern: "frenzy", bolt: 56, angle: 0 };
+            luca.swipe = null;
+            luca.update(16, g.player, stuck);
+            const told = luca.chargeWindup === LUCA_BOSS.chargeWindup && luca.charging === false;
+            luca.projectiles.length = 0;
+            g.player.hp = hp;
+            g.player.invincible = false;
+            let woundDamage = false;
+            while (luca.chargeWindup > 0) {
+                const before = g.player.hp;
+                luca.update(16, g.player, stuck);
+                if (g.player.hp !== before) woundDamage = true;
+            }
+            luca.x = g.player.x + 10;
+            luca.y = g.player.y;
+            luca.charging = true;
+            luca.chargeHit = false;
+            luca.chargeTimer = 400;
+            luca.chargeDir = { x: 0, y: 0 };
+            let hits = 0;
+            const orig = g.player.takeDamage.bind(g.player);
+            g.player.takeDamage = function(amount, fromX, fromY) {
+                const landed = orig(amount, fromX, fromY);
+                if (landed) hits++;
+                this.invincible = false;
+                return landed;
+            };
+            for (let i = 0; i < 20; i++) luca.update(16, g.player, stuck);
+
+            return {
+                hp: stoodHp,
+                before: hp,
+                swipe: stoodSwipe,
+                bolts: stoodBolts,
+                windup: stoodWindup,
+                inside,
+                told,
+                woundDamage,
+                chargeHits: hits,
+            };
+        });
+        expect(stood.hp).toBe(stood.before);
+        expect(stood.swipe).toBeNull();
+        expect(stood.bolts).toBe(0);
+        expect(stood.windup).toBeNull();
+        expect(stood.inside).toBe(true);
+        expect(stood.told).toBe(true);
+        expect(stood.woundDamage).toBe(false);
+        expect(stood.chargeHits).toBe(1);
     });
 
     test("public pages do not describe the sealed fight", async ({ page }) => {

@@ -1718,6 +1718,19 @@ class LucaBoss extends Boss {
         this.leashRadius = 640;
         this.sweep = null;
         this.windup = null;
+        this.swipe = null;
+        this.swipeReadyAt = 0;
+        this.chargeHit = false;
+        this.chargeWindupTotal = 0;
+        this.strafeSign = 1;
+    }
+
+    shove(player, force) {
+        const norm = normalize(player.x - this.x, player.y - this.y);
+        const fx = norm.x || this.facing.x || 1;
+        const fy = norm.y || this.facing.y || 0;
+        player.knockbackVx = fx * force;
+        player.knockbackVy = fy * force;
     }
 
     boltPower(phase, player) {
@@ -1778,44 +1791,92 @@ class LucaBoss extends Boss {
         if (this.charging) {
             this.chargeTimer -= dt;
             this.tryMove(this.chargeDir.x * spd * 3.2, this.chargeDir.y * spd * 3.2, world);
-            if (distToPlayer < this.size + player.size + 4) {
-                player.takeDamage(this.damage, this.x, this.y);
+            const hitDist = dist(this.x, this.y, player.x, player.y);
+            if (!this.chargeHit && hitDist < this.size + player.size + 4) {
+                if (player.takeDamage(this.damage, this.x, this.y)) {
+                    this.chargeHit = true;
+                    this.shove(player, 11);
+                }
             }
-            if (this.chargeTimer <= 0) this.charging = false;
+            if (this.chargeTimer <= 0) {
+                this.charging = false;
+                this.chargeHit = false;
+            }
             if (this.flashTimer > 0) this.flashTimer -= dt;
             return null;
         }
 
-        const norm = normalize(player.x - this.x, player.y - this.y);
-        this.tryMove(norm.x * spd, norm.y * spd, world);
-        this.facing = norm;
-        this.walkTimer += dt;
-        if (this.walkTimer > 140) {
-            this.walkFrame = (this.walkFrame + 1) % 4;
-            this.walkTimer = 0;
-        }
-
-        if (distToPlayer < this.size + player.size + 6) {
-            player.takeDamage(this.damage * 0.45, this.x, this.y);
-        }
-
-        if (this.windup) {
-            this.windup.left -= dt;
-            this.windup.angle = dirToAngle(player.x - this.x, player.y - this.y);
-            if (this.windup.left <= 0) {
-                const shot = this.windup;
-                this.windup = null;
-                this.releasePattern(shot, player, world);
+        if (this.chargeWindup > 0) {
+            this.chargeWindup -= dt;
+            const aim = normalize(player.x - this.x, player.y - this.y);
+            if (aim.x || aim.y) {
+                this.chargeDir = aim;
+                this.facing = aim;
             }
-        } else if (now - this.lastAttackTime > phase.attackRate) {
-            this.lastAttackTime = now;
-            this.windup = {
-                left: LUCA_BOSS.windup,
-                total: LUCA_BOSS.windup,
-                pattern: phase.pattern,
-                bolt: this.boltPower(phase, player),
-                angle: dirToAngle(player.x - this.x, player.y - this.y),
-            };
+            if (this.chargeWindup <= 0) {
+                this.charging = true;
+                this.chargeHit = false;
+                this.chargeTimer = LUCA_BOSS.chargeTime;
+            }
+            if (this.flashTimer > 0) this.flashTimer -= dt;
+            return null;
+        }
+
+        const pocket = this.size + player.size + LUCA_BOSS.standoff;
+        const swipeReach = this.size + player.size + LUCA_BOSS.swipeReach;
+        if (this.swipe) {
+            this.swipe.left -= dt;
+            const aim = normalize(player.x - this.x, player.y - this.y);
+            if (aim.x || aim.y) this.facing = aim;
+            if (this.swipe.left <= 0) {
+                this.swipe = null;
+                this.swipeReadyAt = now + LUCA_BOSS.swipeCooldown;
+                if (distToPlayer < swipeReach && player.takeDamage(this.damage, this.x, this.y)) {
+                    this.shove(player, 11);
+                }
+            }
+        } else if (distToPlayer < pocket && now >= this.swipeReadyAt && !this.windup) {
+            this.swipe = { left: LUCA_BOSS.swipeWindup, total: LUCA_BOSS.swipeWindup };
+        } else {
+            const away = normalize(this.x - player.x, this.y - player.y);
+            const toward = { x: -away.x, y: -away.y };
+            let mx = toward.x;
+            let my = toward.y;
+            if (distToPlayer < pocket - 4) {
+                mx = away.x;
+                my = away.y;
+            } else if (distToPlayer <= pocket + 36) {
+                mx = -away.y * this.strafeSign;
+                my = away.x * this.strafeSign;
+            }
+            this.tryMove(mx * spd, my * spd, world);
+            if (toward.x || toward.y) this.facing = toward;
+            this.walkTimer += dt;
+            if (this.walkTimer > 140) {
+                this.walkFrame = (this.walkFrame + 1) % 4;
+                this.walkTimer = 0;
+            }
+        }
+
+        if (!this.swipe) {
+            if (this.windup) {
+                this.windup.left -= dt;
+                this.windup.angle = dirToAngle(player.x - this.x, player.y - this.y);
+                if (this.windup.left <= 0) {
+                    const shot = this.windup;
+                    this.windup = null;
+                    this.releasePattern(shot, player, world);
+                }
+            } else if (now - this.lastAttackTime > phase.attackRate) {
+                this.lastAttackTime = now;
+                this.windup = {
+                    left: LUCA_BOSS.windup,
+                    total: LUCA_BOSS.windup,
+                    pattern: phase.pattern,
+                    bolt: this.boltPower(phase, player),
+                    angle: dirToAngle(player.x - this.x, player.y - this.y),
+                };
+            }
         }
 
         if (this.flashTimer > 0) this.flashTimer -= dt;
@@ -1838,8 +1899,10 @@ class LucaBoss extends Boss {
             this.fireBolt(shot.angle, 0.4, 5.0, bolt);
             this.fireBolt(shot.angle, -0.4, 5.0, bolt);
             this.dropMine();
-            this.charging = true;
-            this.chargeTimer = 220;
+            this.chargeWindup = LUCA_BOSS.chargeWindup;
+            this.chargeWindupTotal = LUCA_BOSS.chargeWindup;
+            this.chargeHit = false;
+            this.charging = false;
             this.chargeDir = normalize(player.x - this.x, player.y - this.y);
         }
     }
@@ -1930,6 +1993,35 @@ class LucaBoss extends Boss {
                 ctx.lineTo(sx + Math.cos(ang + offsets[i]) * reach, sy + Math.sin(ang + offsets[i]) * reach);
                 ctx.stroke();
             }
+        }
+
+        if (this.swipe) {
+            const p = 1 - this.swipe.left / this.swipe.total;
+            ctx.fillStyle = `rgba(255, 72, 36, ${0.22 + p * 0.55})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 14 + p * 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = `rgba(255, 186, 80, ${0.55 + p * 0.45})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(sx, sy, this.size + LUCA_BOSS.swipeReach, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        if (this.chargeWindup > 0) {
+            const total = this.chargeWindupTotal || LUCA_BOSS.chargeWindup;
+            const p = 1 - this.chargeWindup / total;
+            ctx.fillStyle = `rgba(255, 90, 40, ${0.18 + p * 0.6})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 16 + p * 24, 0, Math.PI * 2);
+            ctx.fill();
+            const ang = Math.atan2(this.chargeDir.y, this.chargeDir.x);
+            ctx.strokeStyle = `rgba(255, 150, 60, ${0.45 + p * 0.55})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx + Math.cos(ang) * (36 + p * 90), sy + Math.sin(ang) * (36 + p * 90));
+            ctx.stroke();
         }
 
         if (this.sweep) {

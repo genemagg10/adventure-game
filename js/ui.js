@@ -42,6 +42,7 @@ class UIManager {
         this.invWeapons = document.getElementById("inventory-weapons");
         this.invGems = document.getElementById("inventory-gems");
         this.arrowCount = document.getElementById("arrow-count");
+        this.keyPipRow = document.getElementById("key-pips");
         this.keyPips = document.querySelectorAll("#key-pips .key-pip");
         this.arrowIcon = document.getElementById("arrow-icon");
         this.greenGemCounter = document.getElementById("green-gem-counter");
@@ -339,6 +340,9 @@ class UIManager {
         this.arrowCount.textContent = player.arrows;
         if (this.keyPips && this.keyPips.length) {
             const held = player.heldKeys || [];
+            // The empty notches spell out that three strange keys exist.
+            // Keep the whole row off the HUD until the first one is in hand.
+            if (this.keyPipRow) this.keyPipRow.classList.toggle("hidden", held.length === 0);
             for (const pip of this.keyPips) {
                 pip.classList.toggle("on", held.indexOf(pip.dataset.key) !== -1);
             }

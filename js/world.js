@@ -4634,8 +4634,8 @@ class SealWorld {
             ctx.fillStyle = "#06140c";
             ctx.fillRect(sx + 4, sy + 5, TILE_SIZE - 8, TILE_SIZE - 14);
             const scroll = Math.abs(tx + ty) % 4;
-            ctx.fillStyle = "#39ff88";
-            ctx.globalAlpha = 0.85;
+            ctx.fillStyle = "#1c7a44";
+            ctx.globalAlpha = 0.5;
             ctx.fillRect(sx + 6, sy + 7 + scroll * 3, 8 + (tx % 3) * 4, 1);
             ctx.fillRect(sx + 6, sy + 12 + (scroll % 3) * 2, 14, 1);
             ctx.globalAlpha = 1;
@@ -4643,16 +4643,16 @@ class SealWorld {
             ctx.fillRect(sx + 10, sy + TILE_SIZE - 6, 12, 3);
             return;
         }
-        ctx.fillStyle = "#1a2030";
+        ctx.fillStyle = "#141820";
         ctx.fillRect(sx + 3, sy + 2, TILE_SIZE - 6, 8);
         ctx.fillRect(sx + 3, sy + 12, TILE_SIZE - 6, 8);
         ctx.fillRect(sx + 3, sy + 22, TILE_SIZE - 6, 8);
         const blink = (tx + ty) % 3;
-        ctx.fillStyle = blink === 0 ? "#39ff88" : "#14301c";
+        ctx.fillStyle = blink === 0 ? "#1c7a44" : "#0e2414";
         ctx.fillRect(sx + TILE_SIZE - 8, sy + 4, 2, 2);
-        ctx.fillStyle = blink === 1 ? "#7ef0ff" : "#163848";
+        ctx.fillStyle = blink === 1 ? "#3a7a88" : "#102430";
         ctx.fillRect(sx + TILE_SIZE - 8, sy + 14, 2, 2);
-        ctx.fillStyle = blink === 2 ? "#ff4466" : "#3a1820";
+        ctx.fillStyle = blink === 2 ? "#8a3040" : "#2a1218";
         ctx.fillRect(sx + TILE_SIZE - 8, sy + 24, 2, 2);
     }
 
@@ -4783,16 +4783,7 @@ class SealWorld {
         for (const [tx, ty] of plates) this.drawMetalPlate(ctx, camera, tx, ty);
         const vents = [[16, 6], [28, 6], [16, 11], [28, 11], [20, 9], [26, 9]];
         for (const [tx, ty] of vents) this.drawVent(ctx, camera, tx, ty);
-        for (let ty = c.y0; ty <= c.y1; ty++) {
-            for (let tx = c.x0; tx <= c.x1; tx++) {
-                const dx = Math.abs(tx - boss.x);
-                const dy = Math.abs(ty - boss.y);
-                const ring = Math.max(dx, dy);
-                if (ring < 2 || ring > 3) continue;
-                if (dx <= 1 && ty > boss.y) continue;
-                this.drawHazard(ctx, camera, tx, ty);
-            }
-        }
+        this.drawHazardRing(ctx, camera);
     }
 
     drawMetalPlate(ctx, camera, tx, ty) {
@@ -4820,12 +4811,21 @@ class SealWorld {
         for (let i = 0; i < 5; i++) ctx.fillRect(x + 2, y + 2 + i * 4, 20, 1);
     }
 
-    drawHazard(ctx, camera, tx, ty) {
-        const x = tx * TILE_SIZE - camera.x;
-        const y = ty * TILE_SIZE - camera.y;
-        for (let i = 0; i < 4; i++) {
-            ctx.fillStyle = i % 2 === 0 ? "#d7b43a" : "#161616";
-            ctx.fillRect(x, y + i * 8, TILE_SIZE, 8);
+    // A thin caution band around the sigil. The lane south stays open.
+    drawHazardRing(ctx, camera) {
+        const boss = this.bossSpawn;
+        if (!boss) return;
+        const cx = boss.worldX - camera.x;
+        const cy = boss.worldY - camera.y;
+        const radius = 78;
+        const steps = 72;
+        for (let i = 0; i < steps; i++) {
+            const a = (i / steps) * Math.PI * 2;
+            if (Math.sin(a) > 0.35 && Math.abs(Math.cos(a)) < 0.62) continue;
+            ctx.fillStyle = i % 2 === 0 ? "#8a6a28" : "#141414";
+            const x = Math.round(cx + Math.cos(a) * radius);
+            const y = Math.round(cy + Math.sin(a) * radius);
+            ctx.fillRect(x - 1, y - 1, 4, 3);
         }
     }
 
@@ -4865,8 +4865,9 @@ class SealWorld {
             if (i > 0) length += Math.hypot(x - pts[i - 1].x, y - pts[i - 1].y);
             pts.push({ x, y });
         }
-        const glow = awake ? "rgba(80, 220, 255, 0.35)" : "rgba(30, 90, 110, 0.55)";
-        const core = awake ? "#7ef0ff" : "#1d5a6c";
+        // The resting trace sits about 30% under the traveling pulse.
+        const glow = awake ? "rgba(80, 220, 255, 0.24)" : "rgba(30, 90, 110, 0.38)";
+        const core = awake ? "rgba(126, 240, 255, 0.7)" : "rgba(29, 90, 108, 0.7)";
         this.strokeWorldPath(ctx, pts, 5, glow);
         this.strokeWorldPath(ctx, pts, 2, core);
         if (length < 8) return;
@@ -5097,34 +5098,34 @@ class SealWorld {
     }
 
     drawRack(ctx, x, y, time, seed) {
-        ctx.fillStyle = "#12161e";
+        ctx.fillStyle = "#10141a";
         ctx.fillRect(x, y - 64, 28, 66);
-        ctx.fillStyle = "#2a3344";
+        ctx.fillStyle = "#1c2430";
         ctx.fillRect(x + 3, y - 60, 22, 14);
         ctx.fillRect(x + 3, y - 42, 22, 14);
         ctx.fillRect(x + 3, y - 24, 22, 14);
         const blink = Math.floor(time / 140 + seed);
-        ctx.fillStyle = blink % 2 ? "#39ff88" : "#14301c";
+        ctx.fillStyle = blink % 2 ? "#1c7a44" : "#0e2414";
         ctx.fillRect(x + 20, y - 54, 3, 3);
-        ctx.fillStyle = blink % 3 ? "#7ef0ff" : "#163848";
+        ctx.fillStyle = blink % 3 ? "#3a7a88" : "#102430";
         ctx.fillRect(x + 20, y - 36, 3, 3);
-        ctx.fillStyle = blink % 5 === 0 ? "#ff4466" : "#3a1820";
+        ctx.fillStyle = blink % 5 === 0 ? "#8a3040" : "#2a1218";
         ctx.fillRect(x + 20, y - 18, 3, 3);
     }
 
     drawCrt(ctx, x, y, time, seed) {
-        ctx.fillStyle = "#1a1e28";
+        ctx.fillStyle = "#141820";
         ctx.fillRect(x, y - 36, 52, 38);
-        ctx.fillStyle = "#2a3340";
+        ctx.fillStyle = "#1e2630";
         ctx.fillRect(x + 18, y + 2, 16, 6);
         ctx.fillStyle = "#06140c";
         ctx.fillRect(x + 4, y - 32, 44, 28);
         const scroll = Math.floor(time / 90 + seed) % 6;
-        ctx.fillStyle = "#39ff88";
+        ctx.fillStyle = "#1c7a44";
         for (let row = 0; row < 5; row++) {
             const w = 10 + ((row * 3 + scroll) % 5) * 6;
             const glitch = (row + scroll) % 5 === 0;
-            ctx.globalAlpha = glitch ? 0.35 : 0.9;
+            ctx.globalAlpha = glitch ? 0.22 : 0.55;
             ctx.fillRect(x + 7, y - 28 + row * 5, glitch ? 30 : w, 2);
         }
         ctx.globalAlpha = 1;
@@ -5194,7 +5195,7 @@ class SealWorld {
         ctx.globalAlpha = 1;
     }
 
-    paintSealMap(ctx, view, player) {
+    paintSealMap(ctx, view, player, luca) {
         const c = this.chamber || { x0: 0, y0: 0, x1: SEAL_W - 1, y1: SEAL_H - 1 };
         const x0 = Math.max(0, c.x0 - 1);
         const y0 = Math.max(0, c.y0 - 1);
@@ -5210,16 +5211,29 @@ class SealWorld {
         for (let y = y0; y <= y1; y++) {
             for (let x = x0; x <= x1; x++) {
                 const wall = this.tiles[y][x] === TILE.WALL;
-                ctx.fillStyle = wall ? "#10141c" : "#8d96a6";
+                ctx.fillStyle = wall ? "#10141c" : "#3c4250";
                 ctx.fillRect(ox + (x - x0) * s, oy + (y - y0) * s, s + 0.6, s + 0.6);
             }
         }
         if (this.bossSpawn) {
             const bx = ox + (this.bossSpawn.x - x0 + 0.5) * s;
             const by = oy + (this.bossSpawn.y - y0 + 0.5) * s;
+            const rad = Math.max(5, s * 1.15);
             ctx.fillStyle = "#7ef0ff";
+            for (let i = 0; i < 16; i++) {
+                const a = (i / 16) * Math.PI * 2;
+                ctx.fillRect(Math.round(bx + Math.cos(a) * rad) - 1, Math.round(by + Math.sin(a) * rad) - 1, 2, 2);
+            }
+            ctx.fillStyle = "#d8fbff";
+            ctx.fillRect(Math.round(bx) - 1, Math.round(by - rad * 0.65), 2, Math.round(rad * 1.3));
+            ctx.fillRect(Math.round(bx - rad * 0.65), Math.round(by) - 1, Math.round(rad * 1.3), 2);
+        }
+        if (luca && luca.alive && luca.spawned) {
+            ctx.fillStyle = "#ff3355";
+            const lx = ox + (luca.x / TILE_SIZE - x0) * s;
+            const ly = oy + (luca.y / TILE_SIZE - y0) * s;
             ctx.beginPath();
-            ctx.arc(bx, by, Math.max(3, s * 0.55), 0, Math.PI * 2);
+            ctx.arc(lx, ly, Math.max(2.5, s * 0.32), 0, Math.PI * 2);
             ctx.fill();
         }
         if (player) {
@@ -5230,19 +5244,20 @@ class SealWorld {
         }
     }
 
-    renderMinimap(ctx, player) {
+    renderMinimap(ctx, player, _monsters, luca) {
         const M = MINIMAP_LAYOUT;
         ctx.fillStyle = "#070b16";
         ctx.fillRect(0, 0, M.w, M.h);
-        this.paintSealMap(ctx, M.view, player);
+        this.paintSealMap(ctx, M.view, player, luca);
         MapArt.minimapFrame(ctx, M.w, M.h);
         MapArt.minimapCaption(ctx, M.caption, "");
     }
 
-    renderWorldMap(ctx, player) {
+    renderWorldMap(ctx, player, luca) {
         const L = WORLD_MAP_LAYOUT;
         ctx.fillStyle = "#070b16";
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        this.paintSealMap(ctx, L.view, player);
+        const mark = luca && typeof luca.x === "number" ? luca : null;
+        this.paintSealMap(ctx, L.view, player, mark);
     }
 }

@@ -1376,6 +1376,10 @@ class Game {
                 this.ui.hideBossHealth();
             }
         }
+        // Luca's bar belongs to that room. Any other state — stepped out, fallen,
+        // respawned, or the fight already won — takes it down.
+        const lucaBarUp = this.inSeal && this.luca && this.luca.spawned && this.luca.alive && this.sealIntro <= 0;
+        if (this.ui.bossBarName === "Luca" && !lucaBarUp) this.ui.hideBossHealth();
 
         // Update cave boss
         if (this.inCave && this.caveBoss && this.caveBoss.spawned) {
@@ -4217,7 +4221,7 @@ class Game {
         // Render world map if open
         if (this.ui.isMapOpen()) {
             if (this.inSeal && this.sealWorld) {
-                this.sealWorld.renderWorldMap(this.worldmapCtx, this.player, mapOpts);
+                this.sealWorld.renderWorldMap(this.worldmapCtx, this.player, this.luca);
             } else if (this.inCave && this.caveWorlds[this.activeCaveId]) {
                 this.caveWorlds[this.activeCaveId].renderWorldMap(this.worldmapCtx, this.player, mapOpts);
             } else if (this.inSky) {

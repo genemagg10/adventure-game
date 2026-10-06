@@ -768,6 +768,119 @@ test.describe("three keys and the door beside the Hollow", () => {
         expect(stood.chargeHits).toBe(1);
     });
 
+    test("Luca's health bar stays in the sealed room", async ({ page }) => {
+        await startNewGame(page);
+        const bar = await page.evaluate(() => {
+            const g = window.game;
+            const shown = () => {
+                const el = document.getElementById("boss-health-container");
+                const name = document.getElementById("boss-name");
+                return el ? (name ? name.textContent : "") : "";
+            };
+            const arm = () => {
+                g.player.holdKey("copper");
+                g.player.holdKey("jade");
+                g.player.holdKey("crystal");
+            };
+            const wake = () => {
+                g.sealIntro = 0;
+                if (!g.luca) return;
+                g.luca.spawnAnimation = 0;
+                g.luca.swipeReadyAt = Date.now() + 60000;
+                g.luca.lastAttackTime = Date.now() + 60000;
+            };
+            arm();
+            g.trySealedDoor();
+            wake();
+            g.update(16);
+            const during = shown();
+            g.inSeal = false;
+            g.update(16);
+            const leaked = shown();
+            g.inSeal = true;
+            wake();
+            g.update(16);
+            const back = shown();
+            g.exitSeal();
+            const left = shown();
+            arm();
+            g.trySealedDoor();
+            wake();
+            g.update(16);
+            g.player.hp = 0;
+            g.update(16);
+            const fallen = shown();
+            const meadow = g.inSeal === false;
+            arm();
+            g.trySealedDoor();
+            wake();
+            g.update(16);
+            g.luca.hp = 1;
+            const killed = g.luca.takeDamage(5, g.player.x, g.player.y);
+            if (killed) g.onEntityKilled(g.luca, true);
+            return { during, leaked, back, left, fallen, meadow, won: shown() };
+        });
+        expect(bar.during).toBe("Luca");
+        expect(bar.leaked).toBe("");
+        expect(bar.back).toBe("Luca");
+        expect(bar.left).toBe("");
+        expect(bar.fallen).toBe("");
+        expect(bar.meadow).toBe(true);
+        expect(bar.won).toBe("");
+    });
+
+    test("the sealed room map draws the chamber in pixels", async ({ page }) => {
+        await startNewGame(page);
+        const px = await page.evaluate(() => {
+            const g = window.game;
+            g.player.holdKey("copper");
+            g.player.holdKey("jade");
+            g.player.holdKey("crystal");
+            g.trySealedDoor();
+            g.sealIntro = 0;
+            g.luca.spawnAnimation = 0;
+            g.luca.alive = true;
+            g.luca.spawned = true;
+            const spot = g.sealWorld.bossSpawn;
+            g.player.x = spot.worldX;
+            g.player.y = spot.worldY + 90;
+            g.minimapDirty = true;
+            g.render();
+            const canvas = document.getElementById("minimap");
+            const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+            const count = (r, gch, b, tol) => {
+                let n = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                    if (Math.abs(data[i] - r) <= tol && Math.abs(data[i + 1] - gch) <= tol && Math.abs(data[i + 2] - b) <= tol) n++;
+                }
+                return n;
+            };
+            let gold = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const gch = data[i + 1];
+                const b = data[i + 2];
+                if (r > 170 && gch > 120 && b < 140 && r > b + 40 && gch > b) gold++;
+            }
+            return {
+                gold,
+                floor: count(0x3c, 0x42, 0x50, 2),
+                pale: count(0x8d, 0x96, 0xa6, 2),
+                wall: count(0x10, 0x14, 0x1c, 2),
+                sigil: count(0x7e, 0xf0, 0xff, 2),
+                player: count(0x4e, 0xf0, 0x6a, 2),
+                luca: count(0xff, 0x33, 0x55, 10),
+            };
+        });
+        expect(px.pale, "the blank pale-grey fill").toBe(0);
+        expect(px.floor, "chamber floor").toBeGreaterThan(400);
+        expect(px.wall, "chamber walls").toBeGreaterThan(80);
+        expect(px.gold, "gold frame").toBeGreaterThan(40);
+        expect(px.sigil, "sigil").toBeGreaterThan(8);
+        expect(px.player, "player dot").toBeGreaterThan(8);
+        expect(px.luca, "Luca dot").toBeGreaterThan(4);
+    });
+
     test("public pages do not describe the sealed fight", async ({ page }) => {
         await openTitle(page);
         const readme = await (await page.request.get("/README.md")).text();

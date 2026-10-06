@@ -4011,6 +4011,14 @@ body.touch-mode * {
     vertical-align: -4px;
 }
 
+#weapon-display .laser-icon {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin: 0 3px 0 0;
+    vertical-align: -3px;
+}
+
 #key-pips {
     display: flex;
     gap: 3px;

@@ -395,9 +395,17 @@ class UIManager {
             }
         }
 
-        // Weapon & Armor
+        // Weapon & Armor. The laser uses the same drawn icon as the inventory.
         const defText = armor.defense > 0 ? `  |  ${armor.icon} DEF: ${armor.defense}` : "";
-        this.weaponDisplay.textContent = `${weapon.icon} ${weapon.name}  |  ${bow.icon} ${bow.name}${defText}`;
+        const laserHud = bow.bolt === "laser" && typeof LaserIcon !== "undefined";
+        const hudKey = weapon.name + "|" + bow.name + "|" + (laserHud ? "laser" : bow.icon) + "|" + armor.defense;
+        if (this._weaponHudKey !== hudKey) {
+            this._weaponHudKey = hudKey;
+            const bowMark = laserHud ? LaserIcon.markup() : bow.icon;
+            const line = `${weapon.icon} ${weapon.name}  |  ${bowMark} ${bow.name}${defText}`;
+            if (laserHud) this.weaponDisplay.innerHTML = line;
+            else this.weaponDisplay.textContent = line;
+        }
 
         // Carried quest items sit at the end of the counter row: a small
         // gold-edged chip each, with the errand in its tooltip.
@@ -1768,6 +1776,7 @@ class UIManager {
         const nameEl = document.getElementById("boss-name");
         if (nameEl && bossName) {
             nameEl.textContent = bossName;
+            this.bossBarName = bossName;
         }
 
         const fill = document.getElementById("boss-health-fill");
@@ -1779,6 +1788,7 @@ class UIManager {
     hideBossHealth() {
         const container = document.getElementById("boss-health-container");
         if (container) container.remove();
+        this.bossBarName = null;
     }
 
     // Removed mana bar - mana system no longer exists

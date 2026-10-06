@@ -720,19 +720,27 @@ const LUCA_BOSS = {
     // Early bolts stay under half of a full health bar. The late patterns
     // carry the listed bolt, and elemental powers feed those later shots.
     windup: 400,
-    // Close-in punish: a short glow, one shove, then a pause. Between
-    // those he holds a ring so a blade can step in.
+    // The glow stops tracking this long before the bolt leaves. Phase 1
+    // locks at the start of the glow, so a sidestep during it is a dodge.
+    aimLock: 200,
+    // Center distance he prefers while a bolt is coming. Far enough that
+    // the shot has time to be read.
+    boltRange: 164,
+    // After a bolt or a shove he stands still and can be hit.
+    plant: 760,
+    // Close-in punish: a short glow, one shove, then a pause. The pocket
+    // sits inside a normal blade's reach.
     swipeWindup: 350,
     swipeCooldown: 1500,
-    standoff: 20,
+    standoff: 8,
     swipeReach: 14,
     chargeWindup: 360,
     chargeTime: 220,
     phases: [
         { hpThreshold: 1.0, speed: 1.05, attackRate: 1100, pattern: "bolt", bolt: 32 },
-        { hpThreshold: 0.72, speed: 1.25, attackRate: 860, pattern: "fan", bolt: 40 },
-        { hpThreshold: 0.45, speed: 1.45, attackRate: 560, pattern: "sweep", bolt: 56 },
-        { hpThreshold: 0.22, speed: 1.75, attackRate: 400, pattern: "frenzy", bolt: 56 },
+        { hpThreshold: 0.72, speed: 1.25, attackRate: 980, pattern: "fan", bolt: 40 },
+        { hpThreshold: 0.45, speed: 1.45, attackRate: 680, pattern: "sweep", bolt: 56 },
+        { hpThreshold: 0.22, speed: 1.75, attackRate: 640, pattern: "frenzy", bolt: 56 },
     ],
 };
 

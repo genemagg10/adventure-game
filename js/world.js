@@ -5211,8 +5211,25 @@ class SealWorld {
         for (let y = y0; y <= y1; y++) {
             for (let x = x0; x <= x1; x++) {
                 const wall = this.tiles[y][x] === TILE.WALL;
-                ctx.fillStyle = wall ? "#10141c" : "#3c4250";
+                ctx.fillStyle = wall ? "#10141c" : "#313846";
                 ctx.fillRect(ox + (x - x0) * s, oy + (y - y0) * s, s + 0.6, s + 0.6);
+            }
+        }
+        ctx.fillStyle = "#7d8798";
+        const floorAt = (tx, ty) => {
+            if (tx < 0 || ty < 0 || tx >= SEAL_W || ty >= SEAL_H) return false;
+            return this.tiles[ty][tx] !== TILE.WALL;
+        };
+        for (let y = y0; y <= y1; y++) {
+            for (let x = x0; x <= x1; x++) {
+                if (this.tiles[y][x] !== TILE.WALL) continue;
+                const px = ox + (x - x0) * s;
+                const py = oy + (y - y0) * s;
+                const rw = Math.ceil(s);
+                if (floorAt(x, y - 1)) ctx.fillRect(Math.round(px), Math.round(py), rw, 1);
+                if (floorAt(x, y + 1)) ctx.fillRect(Math.round(px), Math.round(py + s) - 1, rw, 1);
+                if (floorAt(x - 1, y)) ctx.fillRect(Math.round(px), Math.round(py), 1, rw);
+                if (floorAt(x + 1, y)) ctx.fillRect(Math.round(px + s) - 1, Math.round(py), 1, rw);
             }
         }
         if (this.bossSpawn) {

@@ -1297,9 +1297,10 @@ class CombatSystem {
             ctx.globalAlpha = Math.min(1, d.life / 300);
             ctx.font = d.crit ? "bold 20px monospace" : "bold 16px monospace";
             ctx.textAlign = "center";
-            ctx.fillStyle = d.isHeal ? "#4caf50" : (d.crit ? "#ffd700" : "#ff4444");
+            ctx.fillStyle = d.isHeal ? "#4caf50" : (d.crit ? "#fff56a" : "#ff4444");
             ctx.strokeStyle = "#000";
-            ctx.lineWidth = 3;
+            ctx.lineJoin = "round";
+            ctx.lineWidth = d.crit ? 3 : 3;
             const text = d.isHeal ? `+${d.amount}` : `-${d.amount}`;
             ctx.strokeText(text, sx, sy);
             ctx.fillText(text, sx, sy);

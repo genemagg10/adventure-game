@@ -1723,6 +1723,8 @@ class LucaBoss extends Boss {
         this.chargeHit = false;
         this.chargeWindupTotal = 0;
         this.strafeSign = 1;
+        this.plant = 0;
+        this.plantAfterCharge = false;
     }
 
     shove(player, force) {
@@ -1801,6 +1803,10 @@ class LucaBoss extends Boss {
             if (this.chargeTimer <= 0) {
                 this.charging = false;
                 this.chargeHit = false;
+                if (this.plantAfterCharge) {
+                    this.plant = LUCA_BOSS.plant;
+                    this.plantAfterCharge = false;
+                }
             }
             if (this.flashTimer > 0) this.flashTimer -= dt;
             return null;
@@ -1824,7 +1830,11 @@ class LucaBoss extends Boss {
 
         const pocket = this.size + player.size + LUCA_BOSS.standoff;
         const swipeReach = this.size + player.size + LUCA_BOSS.swipeReach;
-        if (this.swipe) {
+        if (this.plant > 0) {
+            this.plant -= dt;
+            const aim = normalize(player.x - this.x, player.y - this.y);
+            if (aim.x || aim.y) this.facing = aim;
+        } else if (this.swipe) {
             this.swipe.left -= dt;
             const aim = normalize(player.x - this.x, player.y - this.y);
             if (aim.x || aim.y) this.facing = aim;
@@ -1833,6 +1843,7 @@ class LucaBoss extends Boss {
                 this.swipeReadyAt = now + LUCA_BOSS.swipeCooldown;
                 if (distToPlayer < swipeReach && player.takeDamage(this.damage, this.x, this.y)) {
                     this.shove(player, 11);
+                    this.plant = LUCA_BOSS.plant;
                 }
             }
         } else if (distToPlayer < pocket && now >= this.swipeReadyAt && !this.windup) {
@@ -1840,12 +1851,14 @@ class LucaBoss extends Boss {
         } else {
             const away = normalize(this.x - player.x, this.y - player.y);
             const toward = { x: -away.x, y: -away.y };
+            const bandNear = LUCA_BOSS.boltRange - 18;
+            const bandFar = LUCA_BOSS.boltRange + 36;
             let mx = toward.x;
             let my = toward.y;
-            if (distToPlayer < pocket - 4) {
+            if (distToPlayer < bandNear) {
                 mx = away.x;
                 my = away.y;
-            } else if (distToPlayer <= pocket + 36) {
+            } else if (distToPlayer <= bandFar) {
                 mx = -away.y * this.strafeSign;
                 my = away.x * this.strafeSign;
             }
@@ -1858,10 +1871,13 @@ class LucaBoss extends Boss {
             }
         }
 
-        if (!this.swipe) {
+        if (!this.swipe && this.plant <= 0) {
             if (this.windup) {
                 this.windup.left -= dt;
-                this.windup.angle = dirToAngle(player.x - this.x, player.y - this.y);
+                if (!this.windup.locked) {
+                    this.windup.angle = dirToAngle(player.x - this.x, player.y - this.y);
+                    if (this.windup.left <= LUCA_BOSS.aimLock) this.windup.locked = true;
+                }
                 if (this.windup.left <= 0) {
                     const shot = this.windup;
                     this.windup = null;
@@ -1875,6 +1891,7 @@ class LucaBoss extends Boss {
                     pattern: phase.pattern,
                     bolt: this.boltPower(phase, player),
                     angle: dirToAngle(player.x - this.x, player.y - this.y),
+                    locked: phase.pattern === "bolt",
                 };
             }
         }
@@ -1887,12 +1904,15 @@ class LucaBoss extends Boss {
         const bolt = shot.bolt;
         if (shot.pattern === "bolt") {
             this.fireBolt(shot.angle, 0, 4.2, bolt);
+            this.plant = LUCA_BOSS.plant;
         } else if (shot.pattern === "fan") {
             for (const off of [-0.45, -0.22, 0, 0.22, 0.45]) this.fireBolt(shot.angle, off, 4.6, bolt);
+            this.plant = LUCA_BOSS.plant;
         } else if (shot.pattern === "sweep") {
             this.startSweep(player);
             this.fireBolt(shot.angle, 0.15, 5.4, bolt);
             this.fireBolt(shot.angle, -0.15, 5.4, bolt);
+            this.plant = LUCA_BOSS.plant;
         } else {
             this.blinkToward(player, world);
             this.fireBolt(shot.angle, 0, 5.6, bolt);
@@ -1904,6 +1924,7 @@ class LucaBoss extends Boss {
             this.chargeHit = false;
             this.charging = false;
             this.chargeDir = normalize(player.x - this.x, player.y - this.y);
+            this.plantAfterCharge = true;
         }
     }
 
@@ -2063,12 +2084,30 @@ class LucaBoss extends Boss {
 
         const x = Math.round(sx);
         const y = Math.round(sy + bob);
-        const coat = flash ? "#d8f6ff" : "#12161c";
-        const plate = flash ? "#ffffff" : "#243040";
-        const steel = flash ? "#e8fbff" : "#1a222c";
-        const boot = flash ? "#f4fdff" : "#0c1016";
-        const sole = flash ? "#ffffff" : "#3a4558";
-        const glow = "#7ef0ff";
+        const recovering = this.plant > 0 && !flash;
+        const pulse = recovering ? 0.5 + 0.5 * Math.sin((time || 0) * 0.005) : 0;
+        const tone = (hex) => {
+            const n = parseInt(hex.slice(1), 16);
+            let r = (n >> 16) & 255;
+            let g = (n >> 8) & 255;
+            let b = n & 255;
+            const lift = 0.14 + pulse * 0.22;
+            const pale = pulse * 0.28;
+            r = r + (176 - r) * lift;
+            g = g + (184 - g) * lift;
+            b = b + (196 - b) * lift;
+            r = r + (244 - r) * pale;
+            g = g + (247 - g) * pale;
+            b = b + (251 - b) * pale;
+            const h = (v) => Math.round(v).toString(16).padStart(2, "0");
+            return "#" + h(r) + h(g) + h(b);
+        };
+        const coat = flash ? "#d8f6ff" : (recovering ? tone("#12161c") : "#12161c");
+        const plate = flash ? "#ffffff" : (recovering ? tone("#243040") : "#243040");
+        const steel = flash ? "#e8fbff" : (recovering ? tone("#1a222c") : "#1a222c");
+        const boot = flash ? "#f4fdff" : (recovering ? tone("#0c1016") : "#0c1016");
+        const sole = flash ? "#ffffff" : (recovering ? tone("#3a4558") : "#3a4558");
+        const glow = recovering ? tone("#d5dbe4") : "#7ef0ff";
 
         // Helmet: a dome and visor, set above the shoulders.
         ctx.fillStyle = glow;
@@ -2107,9 +2146,9 @@ class LucaBoss extends Boss {
         ctx.save();
         ctx.translate(x + Math.cos(ang) * 8, y - 2 + Math.sin(ang) * 8);
         ctx.rotate(ang);
-        ctx.fillStyle = "#1a222c";
+        ctx.fillStyle = recovering ? tone("#1a222c") : "#1a222c";
         ctx.fillRect(0, -2, 16, 4);
-        ctx.fillStyle = "#9af6ff";
+        ctx.fillStyle = recovering ? tone("#c5ccd6") : "#9af6ff";
         ctx.fillRect(14, -1, 5, 2);
         ctx.restore();
 

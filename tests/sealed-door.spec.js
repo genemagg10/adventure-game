@@ -869,9 +869,10 @@ test.describe("three keys and the door beside the Hollow", () => {
             }
             return {
                 gold,
-                floor: count(0x3c, 0x42, 0x50, 2),
+                floor: count(0x31, 0x38, 0x46, 2),
                 pale: count(0x8d, 0x96, 0xa6, 2),
                 wall: count(0x10, 0x14, 0x1c, 2),
+                outline: count(0x7d, 0x87, 0x98, 8),
                 sigil: count(0x7e, 0xf0, 0xff, 2),
                 player: count(0x4e, 0xf0, 0x6a, 2),
                 luca: count(0xff, 0x33, 0x55, 10),
@@ -880,10 +881,302 @@ test.describe("three keys and the door beside the Hollow", () => {
         expect(px.pale, "the blank pale-grey fill").toBe(0);
         expect(px.floor, "chamber floor").toBeGreaterThan(400);
         expect(px.wall, "chamber walls").toBeGreaterThan(80);
+        expect(px.outline, "wall outline").toBeGreaterThan(40);
         expect(px.gold, "gold frame").toBeGreaterThan(40);
         expect(px.sigil, "sigil").toBeGreaterThan(8);
         expect(px.player, "player dot").toBeGreaterThan(8);
         expect(px.luca, "Luca dot").toBeGreaterThan(4);
+    });
+
+    test("a sidestep during the locked glow avoids the bolt", async ({ page }) => {
+        await startNewGame(page);
+        const dodge = await page.evaluate(() => {
+            const g = window.game;
+            const open = { isSolid() { return false; } };
+            const luca = new LucaBoss(500, 500);
+            luca.spawned = true;
+            luca.spawnAnimation = 0;
+            luca.swipeReadyAt = Date.now() + 600000;
+            const player = g.player;
+            player.x = luca.x + LUCA_BOSS.boltRange;
+            player.y = luca.y;
+            player.hp = 100;
+            player.invincible = false;
+            player.shieldActive = false;
+            const origNow = Date.now;
+            let clock = origNow.call(Date);
+            Date.now = () => clock;
+            luca.lastAttackTime = clock - 5000;
+            clock += 16;
+            luca.update(16, player, open);
+            const started = luca.windup && luca.windup.pattern === "bolt" && luca.windup.locked === true;
+            const aim = luca.windup ? luca.windup.angle : null;
+            player.y += 140;
+            let guard = 0;
+            while (luca.windup && guard < 40) {
+                clock += 16;
+                luca.update(16, player, open);
+                guard++;
+            }
+            const bolt = luca.projectiles.find(p => p.kind === "bolt");
+            let aimDrift = 99;
+            if (bolt && aim != null) {
+                const fired = Math.atan2(bolt.vy, bolt.vx);
+                aimDrift = Math.abs(fired - aim);
+                if (aimDrift > Math.PI) aimDrift = Math.PI * 2 - aimDrift;
+            }
+            const hp = player.hp;
+            if (bolt) {
+                for (let i = 0; i < 80; i++) {
+                    bolt.x += bolt.vx * 16 * 0.1;
+                    bolt.y += bolt.vy * 16 * 0.1;
+                    if (circleOverlap(bolt.x, bolt.y, 6, player.x, player.y, player.size)) {
+                        player.takeDamage(bolt.damage, bolt.x, bolt.y);
+                    }
+                }
+            }
+            luca.hp = luca.maxHp * 0.6;
+            luca.projectiles.length = 0;
+            luca.windup = null;
+            luca.plant = 0;
+            luca.swipe = null;
+            luca.lastAttackTime = clock - 5000;
+            player.x = luca.x + 160;
+            player.y = luca.y;
+            clock += 16;
+            luca.update(16, player, open);
+            const tracked = !!(luca.windup && luca.windup.pattern === "fan" && luca.windup.locked === false);
+            const before = luca.windup ? luca.windup.angle : 0;
+            player.y += 220;
+            clock += 16;
+            luca.update(16, player, open);
+            const followed = luca.windup ? Math.abs(luca.windup.angle - before) > 0.2 : false;
+            const stillOpen = luca.windup ? luca.windup.locked === false : false;
+            luca.windup.left = LUCA_BOSS.aimLock;
+            clock += 16;
+            luca.update(16, player, open);
+            const lockedAngle = luca.windup.angle;
+            const didLock = luca.windup.locked === true;
+            player.y -= 400;
+            clock += 16;
+            luca.update(16, player, open);
+            const held = luca.windup.angle === lockedAngle && luca.windup.locked === true;
+            Date.now = origNow;
+            return {
+                started,
+                aimDrift,
+                missed: player.hp === hp,
+                hadBolt: !!bolt,
+                tracked,
+                followed,
+                stillOpen,
+                didLock,
+                held,
+            };
+        });
+        expect(dodge.started).toBe(true);
+        expect(dodge.hadBolt).toBe(true);
+        expect(dodge.aimDrift).toBeLessThan(0.05);
+        expect(dodge.missed).toBe(true);
+        expect(dodge.tracked).toBe(true);
+        expect(dodge.followed).toBe(true);
+        expect(dodge.stillOpen).toBe(true);
+        expect(dodge.didLock).toBe(true);
+        expect(dodge.held).toBe(true);
+    });
+
+    test("a melee hit lands during the plant window", async ({ page }) => {
+        await startNewGame(page);
+        const planted = await page.evaluate(() => {
+            const g = window.game;
+            const open = { isSolid() { return false; } };
+            const luca = new LucaBoss(400, 400);
+            luca.spawned = true;
+            luca.spawnAnimation = 0;
+            luca.plant = LUCA_BOSS.plant;
+            luca.swipe = null;
+            luca.windup = null;
+            const player = g.player;
+            const pocket = luca.size + player.size + LUCA_BOSS.standoff;
+            player.x = luca.x + pocket;
+            player.y = luca.y;
+            player.facing = { x: -1, y: 0 };
+            player.shieldActive = false;
+            const swing = (weapon) => {
+                luca.hp = luca.maxHp;
+                luca.alive = true;
+                player.currentWeapon = weapon;
+                player.attacking = false;
+                player.lastAttackTime = 0;
+                player.attackHitTargets = null;
+                const before = luca.hp;
+                const swung = player.attack();
+                g.combat.checkPlayerAttack(player, [], luca, null);
+                return { swung, hit: luca.hp < before, hp: luca.hp, before, dist: pocket };
+            };
+            const dark = swing("dark_blade");
+            const rusty = swing("rusty_sword");
+            const x0 = luca.x;
+            const y0 = luca.y;
+            luca.plant = LUCA_BOSS.plant;
+            luca.lastAttackTime = 0;
+            luca.windup = null;
+            luca.swipe = null;
+            luca.swipeReadyAt = Date.now() + 600000;
+            const origNow = Date.now;
+            let clock = origNow.call(Date);
+            Date.now = () => clock;
+            for (let t = 0; t < 700; t += 16) {
+                clock += 16;
+                luca.update(16, player, open);
+            }
+            Date.now = origNow;
+            return {
+                dark,
+                rusty,
+                pocket,
+                darkReach: WEAPONS.dark_blade.range + luca.size,
+                rustyReach: WEAPONS.rusty_sword.range + luca.size,
+                still: luca.x === x0 && luca.y === y0,
+                quiet: luca.windup == null && luca.projectiles.length === 0,
+                planting: luca.plant > 0,
+            };
+        });
+        expect(planted.pocket).toBeLessThan(planted.rustyReach);
+        expect(planted.pocket).toBeLessThan(planted.darkReach);
+        expect(planted.dark.swung).toBe(true);
+        expect(planted.dark.hit).toBe(true);
+        expect(planted.rusty.swung).toBe(true);
+        expect(planted.rusty.hit).toBe(true);
+        expect(planted.still).toBe(true);
+        expect(planted.quiet).toBe(true);
+        expect(planted.planting).toBe(true);
+    });
+
+    test("an honest 300 HP run reaches phase 2", async ({ page }) => {
+        await startNewGame(page);
+        const run = await page.evaluate(() => {
+            const g = window.game;
+            g.player.holdKey("copper");
+            g.player.holdKey("jade");
+            g.player.holdKey("crystal");
+            g.trySealedDoor();
+            g.sealIntro = 0;
+            const luca = g.luca;
+            const player = g.player;
+            luca.spawned = true;
+            luca.spawnAnimation = 0;
+            luca.alive = true;
+            luca.hp = luca.maxHp;
+            luca.swipe = null;
+            luca.windup = null;
+            luca.plant = 0;
+            luca.projectiles.length = 0;
+            const spot = g.sealWorld.bossSpawn;
+            luca.x = spot.worldX;
+            luca.y = spot.worldY;
+            player.x = luca.x;
+            player.y = luca.y + 48;
+            player.currentWeapon = "dark_blade";
+            player.currentArmor = "cloth_tunic";
+            player.greenGemDefense = false;
+            player.purpleGemArmor = false;
+            player.hasRainbowGem = false;
+            player.maxHp = 300;
+            player.hp = 300;
+            player.invincible = false;
+            player.invincibleTimer = 0;
+            player.shieldActive = false;
+            player.attacking = false;
+            player.lastAttackTime = 0;
+            const origNow = Date.now;
+            let clock = origNow.call(Date);
+            Date.now = () => clock;
+            luca.lastAttackTime = clock - 5000;
+            const hold = 48;
+            const speed = PLAYER_DEFAULTS.speed;
+            let steps = 0;
+            while (luca.hp / luca.maxHp > 0.72 && player.hp > 0 && luca.alive && steps < 8000) {
+                clock += 16;
+                let dx = luca.x - player.x;
+                let dy = luca.y - player.y;
+                let d = Math.hypot(dx, dy) || 1;
+                player.facing = { x: dx / d, y: dy / d };
+                if (d > hold) {
+                    const step = Math.min(speed, d - hold);
+                    player.x += (dx / d) * step;
+                    player.y += (dy / d) * step;
+                } else if (d < hold - 6) {
+                    const step = Math.min(speed, (hold - 6) - d);
+                    player.x -= (dx / d) * step;
+                    player.y -= (dy / d) * step;
+                }
+                dx = luca.x - player.x;
+                dy = luca.y - player.y;
+                d = Math.hypot(dx, dy) || 1;
+                player.facing = { x: dx / d, y: dy / d };
+                if (d <= WEAPONS.dark_blade.range + luca.size && player.attack()) {
+                    g.combat.checkPlayerAttack(player, [], luca, null);
+                }
+                if (player.attacking) {
+                    player.attackTimer -= 16;
+                    if (player.attackTimer <= 0) player.attacking = false;
+                }
+                if (player.invincible) {
+                    player.invincibleTimer -= 16;
+                    if (player.invincibleTimer <= 0) player.invincible = false;
+                }
+                luca.update(16, player, g.sealWorld);
+                steps++;
+            }
+            const phase2 = luca.hp / luca.maxHp <= 0.72;
+            const playerHp = player.hp;
+            const ratio = luca.hp / luca.maxHp;
+            const lucaHp = luca.hp;
+
+            const soakIframe = (ratioHp, ms) => {
+                luca.hp = Math.floor(luca.maxHp * ratioHp);
+                luca.alive = true;
+                luca.projectiles.length = 0;
+                luca.windup = null;
+                luca.plant = 0;
+                luca.plantAfterCharge = false;
+                luca.swipe = null;
+                luca.charging = false;
+                luca.chargeWindup = 0;
+                luca.sweep = null;
+                luca.lastAttackTime = clock - 5000;
+                player.hp = 100000;
+                player.invincible = false;
+                player.invincibleTimer = 0;
+                const open = { isSolid() { return false; } };
+                const start = player.hp;
+                for (let t = 0; t < ms; t += 16) {
+                    clock += 16;
+                    luca.x = 400;
+                    luca.y = 400;
+                    player.x = 480;
+                    player.y = 400;
+                    if (player.invincible) {
+                        player.invincibleTimer -= 16;
+                        if (player.invincibleTimer <= 0) player.invincible = false;
+                    }
+                    luca.update(16, player, open);
+                }
+                return start - player.hp;
+            };
+            const sweep = soakIframe(0.40, 4000);
+            const frenzy = soakIframe(0.18, 4000);
+            Date.now = origNow;
+            return { phase2, playerHp, ratio, lucaHp, steps, sweep, frenzy };
+        });
+        expect(run.phase2).toBe(true);
+        expect(run.playerHp).toBeGreaterThan(0);
+        expect(run.ratio).toBeLessThanOrEqual(0.72);
+        expect(run.sweep).toBeGreaterThan(80);
+        expect(run.sweep).toBeLessThan(320);
+        expect(run.frenzy).toBeGreaterThan(80);
+        expect(run.frenzy).toBeLessThan(360);
     });
 
     test("public pages do not describe the sealed fight", async ({ page }) => {

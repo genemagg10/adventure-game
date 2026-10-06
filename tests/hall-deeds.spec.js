@@ -212,6 +212,12 @@ test.describe("Hall of Champions", () => {
         await expect(row.locator(".champ-score")).toHaveText("72");
         await expect(row.locator(".champ-count")).toHaveText("18");
         await expect(row.locator(".champ-badge")).toHaveAttribute("data-tier", "Diamond");
+        await expect(row).toHaveClass(/champion-row-diamond/);
+        const badgeColor = await row.locator(".champ-badge").evaluate((el) => getComputedStyle(el).color);
+        expect(badgeColor).toBe("rgb(46, 196, 230)");
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        const still = await row.locator(".champ-badge-icon").evaluate((el) => getComputedStyle(el).animationName);
+        expect(still).toBe("none");
         await row.click();
         await expect(page.locator(".champion-deed").first()).toHaveText("Diamond · Full set · +10 pts");
         await expect(page.locator(".champion-deed").nth(1).locator(".deed-tier")).toHaveText("Ending · 8 pts");

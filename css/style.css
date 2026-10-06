@@ -4061,6 +4061,28 @@ body.touch-mode * {
     }
 }
 
+.champion .champion-row-diamond,
+.champion .champion-row-diamond:focus-visible,
+.champion .champion-row-diamond[aria-expanded="true"] {
+    background: rgba(46, 196, 230, 0.12);
+    box-shadow: inset 3px 0 0 #3ec8ea, 0 0 12px rgba(46, 196, 230, 0.28);
+}
+
+.champion .champion-row-diamond:focus-visible {
+    outline: 2px solid #3ec8ea;
+    outline-offset: -2px;
+}
+
+.champion .champion-row-diamond:active {
+    background: rgba(46, 196, 230, 0.22);
+}
+
+@media (hover: hover) {
+    .champion .champion-row-diamond:hover {
+        background: rgba(46, 196, 230, 0.18);
+    }
+}
+
 .champ-rank,
 .champ-score,
 .champ-count {
@@ -4087,13 +4109,42 @@ body.touch-mode * {
 
 .champ-badge[data-tier="Early"] { color: #c17a3a; }
 .champ-badge[data-tier="Road"] { color: #e0a15c; }
-.champ-badge[data-tier="Mid"] { color: #e4ebf2; }
+.champ-badge[data-tier="Mid"] { color: #8f99a4; }
 .champ-badge[data-tier="Late"] { color: #f0d48a; }
 .champ-badge[data-tier="Ending"] { color: #ffe56a; }
-.champ-badge[data-tier="Diamond"] { color: #e7fbff; }
+.champ-badge[data-tier="Diamond"] { color: #2ec4e6; }
+
+.champ-badge[data-tier="Diamond"] .champ-badge-icon {
+    width: 22px;
+    height: 26px;
+    animation: champ-diamond-shimmer 2.6s ease-in-out infinite;
+}
+
+.champ-spark {
+    animation: champ-spark 2.6s ease-in-out infinite;
+}
+
+@keyframes champ-diamond-shimmer {
+    0%, 100% { filter: drop-shadow(0 0 0.5px rgba(46, 196, 230, 0.35)); }
+    50% { filter: drop-shadow(0 0 3px rgba(90, 220, 255, 0.95)); }
+}
+
+@keyframes champ-spark {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .champ-badge[data-tier="Diamond"] .champ-badge-icon,
+    .champ-spark {
+        animation: none;
+    }
+
+    .champ-spark { opacity: 0.85; }
+}
 
 .champion-deed-diamond .deed-name {
-    color: #e7fbff;
+    color: #7fd8ee;
     white-space: normal;
 }
 

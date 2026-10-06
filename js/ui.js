@@ -635,7 +635,7 @@ class UIManager {
 
             const btn = document.createElement("button");
             btn.type = "button";
-            btn.className = "champion-row";
+            btn.className = champ.diamond ? "champion-row champion-row-diamond" : "champion-row";
             btn.setAttribute("aria-expanded", "false");
             const panelId = "champion-deeds-" + i;
             btn.setAttribute("aria-controls", panelId);
@@ -735,12 +735,15 @@ class UIManager {
 
     championBadgeSvg(tier) {
         // One crown for every tier. Color, set on the badge, is the metal.
-        // Diamond keeps that crown and adds a small white sparkle.
-        const crown = '<path fill="currentColor" d="M1.4 11.4h13.2v2.2H1.4Zm.7-1.3 1.7-5.1 2.5 2.6L8 2.1l1.7 5.5 2.5-2.6 1.7 5.1Z"/>';
-        const sparkle = tier === "Diamond"
-            ? '<path fill="#ffffff" d="m14.2 3.1.38.95.95.38-.95.38-.38.95-.38-.95-.95-.38.95-.38z"/>'
-            : "";
-        return `<svg class="champ-badge-icon" viewBox="0 0 16 16" aria-hidden="true">${crown}${sparkle}</svg>`;
+        const crown = '<path class="champ-crown" fill="currentColor" d="M1.4 11.4h13.2v2.2H1.4Zm.7-1.3 1.7-5.1 2.5 2.6L8 2.1l1.7 5.5 2.5-2.6 1.7 5.1Z"/>';
+        if (tier !== "Diamond") {
+            return `<svg class="champ-badge-icon" viewBox="0 0 16 16" aria-hidden="true">${crown}</svg>`;
+        }
+        // A readable gem sits on the crown, with a spark that can shimmer.
+        const gem = '<path class="champ-gem" fill="#5adfff" d="M8-2.2 11.4 1.5 8 5.2 4.6 1.5Z"/>';
+        const facet = '<path class="champ-gem-facet" fill="#dff8ff" d="M8-.8 9.7 1.5 8 3.8 6.3 1.5Z"/>';
+        const spark = '<path class="champ-spark" fill="#ffffff" d="M13.2-1.6 13.55-.55 14.6-.2 13.55.15 13.2 1.2 12.85.15 11.8-.2 12.85-.55Z"/>';
+        return `<svg class="champ-badge-icon champ-badge-diamond" viewBox="0 -3.4 16 19.4" aria-hidden="true">${crown}${gem}${facet}${spark}</svg>`;
     }
 
     bindHallKeys() {

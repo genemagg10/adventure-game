@@ -544,7 +544,7 @@ class Game {
         } else {
             this.ui.showDialog("Press SPACE to attack, R to shoot arrows. Unlock Fire power to ignite your arrows!");
         }
-        this.ui.showDialog("Harmless animals roam the land. Feed one an apple to tame it and it will fight at your side - up to 5 at a time. You start with 2 apples; find more in the wild or buy them at any shop.");
+        this.ui.showDialog("Harmless animals roam the land, bats roost in the caves, and eagles circle the Cloudlands. Feed one an apple to tame it and it will fight at your side - up to 5 at a time. You start with 2 apples; find more in the wild or buy them at any shop.");
     }
 
     beginLoop() {
@@ -754,14 +754,64 @@ class Game {
     spawnInitialAnimals() {
         for (const [type, def] of Object.entries(ANIMAL_TYPES)) {
             for (const zoneName of def.zones) {
+                // Bats and eagles live in the caves and the Cloudlands, not on
+                // a surface biome. Those flocks are placed when you arrive.
+                if (!ZONES[zoneName]) continue;
                 for (let i = 0; i < ANIMAL_CONFIG.perZone; i++) {
                     const margin = zoneName === "lake" ? 3 : 0;
                     const pos = this.findAnimalSpawnPos(zoneName, margin);
                     if (!pos) continue;
                     const animal = new Animal(type, pos.x, pos.y);
                     animal.homeZone = zoneName;
+                    animal.realm = "surface";
                     this.wildAnimals.push(animal);
                 }
+            }
+        }
+    }
+
+    // Where the untamed flock for this visit belongs.
+    animalRealm() {
+        if (this.inCave) return "cave";
+        if (this.inSky) return "sky";
+        if (this.inSeal) return "seal";
+        return "surface";
+    }
+
+    // A walkable tile in a cave or in the Cloudlands, clear of the ladder.
+    findRealmAnimalPos(realm, world) {
+        if (!world) return null;
+        const width = realm === "cave" ? CAVE_W : SKY_W;
+        const height = realm === "cave" ? CAVE_H : SKY_H;
+        const exit = world.exit;
+        for (let attempt = 0; attempt < 80; attempt++) {
+            const tx = randInt(3, width - 4);
+            const ty = randInt(3, height - 4);
+            if (world.isSolid(tx, ty)) continue;
+            if (exit && Math.abs(tx - exit.x) <= 3 && Math.abs(ty - exit.y) <= 3) continue;
+            const pos = tileToWorld(tx, ty);
+            if (this.player && dist(pos.x, pos.y, this.player.x, this.player.y) < 90) continue;
+            return pos;
+        }
+        return null;
+    }
+
+    // Place a fresh flock. Caves do this on every descent. The Cloudlands keep
+    // the same eagles until the run replaces the living world.
+    spawnRealmFlock(realm) {
+        const zoneName = realm === "cave" ? "cave" : "cloudlands";
+        const world = realm === "cave" ? this.caveWorlds[this.activeCaveId] : this.skyWorld;
+        if (!world) return;
+        this.wildAnimals = this.wildAnimals.filter(a => a.realm !== realm);
+        for (const [type, def] of Object.entries(ANIMAL_TYPES)) {
+            if (!def.zones.includes(zoneName)) continue;
+            for (let i = 0; i < ANIMAL_CONFIG.perZone; i++) {
+                const pos = this.findRealmAnimalPos(realm, world);
+                if (!pos) continue;
+                const animal = new Animal(type, pos.x, pos.y);
+                animal.homeZone = zoneName;
+                animal.realm = realm;
+                this.wildAnimals.push(animal);
             }
         }
     }
@@ -771,8 +821,16 @@ class Game {
         if (this.animalSpawnTimer < ANIMAL_CONFIG.spawnInterval) return;
         this.animalSpawnTimer = 0;
 
+        const realm = this.animalRealm();
+        if (realm === "cave" || realm === "sky") {
+            this.spawnRealmWildTick(realm);
+            return;
+        }
+        if (realm !== "surface") return;
+
         for (const [type, def] of Object.entries(ANIMAL_TYPES)) {
             for (const zoneName of def.zones) {
+                if (!ZONES[zoneName]) continue;
                 const count = this.wildAnimals.filter(a => a.alive && a.type === type && a.homeZone === zoneName).length;
                 if (count >= ANIMAL_CONFIG.maxPerZone) continue;
                 if (Math.random() > ANIMAL_CONFIG.spawnChance) continue;
@@ -785,8 +843,28 @@ class Game {
 
                 const animal = new Animal(type, pos.x, pos.y);
                 animal.homeZone = zoneName;
+                animal.realm = "surface";
                 this.wildAnimals.push(animal);
             }
+        }
+    }
+
+    spawnRealmWildTick(realm) {
+        const zoneName = realm === "cave" ? "cave" : "cloudlands";
+        const world = realm === "cave" ? this.caveWorlds[this.activeCaveId] : this.skyWorld;
+        if (!world) return;
+        for (const [type, def] of Object.entries(ANIMAL_TYPES)) {
+            if (!def.zones.includes(zoneName)) continue;
+            const count = this.wildAnimals.filter(a => a.alive && a.type === type && a.realm === realm).length;
+            if (count >= ANIMAL_CONFIG.maxPerZone) continue;
+            if (Math.random() > ANIMAL_CONFIG.spawnChance) continue;
+            const pos = this.findRealmAnimalPos(realm, world);
+            if (!pos) continue;
+            if (dist(pos.x, pos.y, this.player.x, this.player.y) < 180) continue;
+            const animal = new Animal(type, pos.x, pos.y);
+            animal.homeZone = zoneName;
+            animal.realm = realm;
+            this.wildAnimals.push(animal);
         }
     }
 
@@ -845,9 +923,12 @@ class Game {
             if (c.alive) c.followIndex = slot++;
         }
 
-        // Wild animals only roam the overworld - not the caves, not the Cloudlands
-        if (!this.onSurface) return;
+        // Wild animals roam the realm you are standing in. A cave bat does not
+        // wander the meadow, and a surface fox does not flutter through a cave.
+        const realm = this.animalRealm();
+        if (realm === "seal") return;
         for (const animal of this.wildAnimals) {
+            if ((animal.realm || "surface") !== realm) continue;
             animal.update(dt, this.player, activeWorld, [], this.combat);
         }
         this.wildAnimals = this.wildAnimals.filter(a => a.alive);
@@ -870,6 +951,25 @@ class Game {
             companion.knockbackVx = 0;
             companion.knockbackVy = 0;
             i++;
+        }
+    }
+
+    // The animal close enough to feed. Surface, cave, and Cloudlands each
+    // only offer the flock that lives there.
+    checkNearAnimal() {
+        this.nearAnimal = null;
+        if (this.inSeal) return;
+        if (this.aliveCompanionCount() >= ANIMAL_CONFIG.maxCompanions) return;
+        const realm = this.animalRealm();
+        let closest = Infinity;
+        for (const animal of this.wildAnimals) {
+            if (!animal.alive || animal.tamed) continue;
+            if ((animal.realm || "surface") !== realm) continue;
+            const d = dist(this.player.x, this.player.y, animal.x, animal.y);
+            if (d < ANIMAL_CONFIG.tameRange && d < closest) {
+                closest = d;
+                this.nearAnimal = animal;
+            }
         }
     }
 
@@ -1564,6 +1664,7 @@ class Game {
         this.checkSealedDoor();
         this.checkStrangeKeys();
         this.checkSkyProximity();
+        this.checkNearAnimal();
         if (this.onSurface) {
             this.checkProximity();
         }
@@ -2140,20 +2241,6 @@ class Game {
             }
         }
 
-        // Check for a nearby wild animal to tame
-        this.nearAnimal = null;
-        if (this.aliveCompanionCount() < ANIMAL_CONFIG.maxCompanions) {
-            let closest = Infinity;
-            for (const animal of this.wildAnimals) {
-                if (!animal.alive || animal.tamed) continue;
-                const d = dist(this.player.x, this.player.y, animal.x, animal.y);
-                if (d < ANIMAL_CONFIG.tameRange && d < closest) {
-                    closest = d;
-                    this.nearAnimal = animal;
-                }
-            }
-        }
-
         // A planting that never took can always be lifted out again. While it is
         // still a shoot there is no ladder in it yet, so E digs it up; once it
         // is a grown Worldtree E belongs to the climb and P does the digging.
@@ -2228,6 +2315,9 @@ class Game {
         if (this.nearSkyExit && this.inSky) {
             return { icon: "⬇️", short: "climb down", long: "climb back down" };
         }
+        if (this.nearAnimal) {
+            return this.animalInteract();
+        }
         if (!this.onSurface) return null;
 
         if (this.nearFountain) {
@@ -2251,19 +2341,20 @@ class Game {
         if (this.nearMerlinHut) {
             return { icon: "📖", short: "enter hut", long: "read ancient lore" };
         }
-        if (this.nearAnimal) {
-            // The apple is the whole interaction, so it is the whole symbol; a
-            // paw stands in when there is no apple left to offer.
-            const fed = this.player.apples > 0;
-            const short = fed
-                ? `feed an apple to the ${this.nearAnimal.name} (${this.player.apples} left)`
-                : `tame the ${this.nearAnimal.name} - you need an apple!`;
-            const long = fed
-                ? `feed an apple to the ${this.nearAnimal.name} (${APPLE_ITEM.icon} ${this.player.apples})`
-                : short;
-            return { icon: fed ? APPLE_ITEM.icon : "🐾", short, long };
-        }
         return null;
+    }
+
+    // The apple is the whole interaction, so it is the whole symbol; a paw
+    // stands in when there is no apple left to offer. Works in every realm.
+    animalInteract() {
+        const fed = this.player.apples > 0;
+        const short = fed
+            ? `feed an apple to the ${this.nearAnimal.name} (${this.player.apples} left)`
+            : `tame the ${this.nearAnimal.name} - you need an apple!`;
+        const long = fed
+            ? `feed an apple to the ${this.nearAnimal.name} (${APPLE_ITEM.icon} ${this.player.apples})`
+            : short;
+        return { icon: fed ? APPLE_ITEM.icon : "🐾", short, long };
     }
 
     handleInteraction() {
@@ -2298,6 +2389,10 @@ class Game {
         }
         if (this.nearSkyExit && this.inSky) {
             this.exitSky();
+            return;
+        }
+        if (this.nearAnimal) {
+            this.tameNearbyAnimal();
             return;
         }
 
@@ -2346,11 +2441,6 @@ class Game {
             this.sound.menuSelect();
             this.ui.openLore();
             return;
-        }
-
-        // Tame a nearby wild animal with an apple
-        if (this.nearAnimal) {
-            this.tameNearbyAnimal();
         }
     }
 
@@ -2714,8 +2804,10 @@ class Game {
             this.player.y = caveWorld.exit.worldY - TILE_SIZE;
         }
 
-        // Spawn monsters for this cave
+        // Spawn monsters for this cave. Bats are not among them: they roost
+        // here as wild animals, and an apple makes one a companion.
         this.spawnCaveMonstersForCave(caveWorld);
+        this.spawnRealmFlock("cave");
         this.caveBoss = null;
         this.snapCamera();
 
@@ -3505,6 +3597,7 @@ class Game {
         this.snapCamera();
 
         if (this.skyMonsters.length === 0) this.spawnInitialSkyMonsters();
+        if (!this.wildAnimals.some(a => a.alive && a.realm === "sky")) this.spawnRealmFlock("sky");
 
         // The pack climbs the Worldtree with you
         this.nearAnimal = null;
@@ -4037,11 +4130,11 @@ class Game {
         // Player
         renderables.push({ y: this.player.y, render: () => this.player.render(ctx, this.camera, this.time) });
 
-        // Wild animals (overworld only) and companions
-        if (this.onSurface) {
-            for (const a of this.wildAnimals) {
-                renderables.push({ y: a.y, render: () => a.render(ctx, this.camera, this.time) });
-            }
+        // Wild animals of this realm, and companions in every realm
+        const animalRealm = this.animalRealm();
+        for (const a of this.wildAnimals) {
+            if ((a.realm || "surface") !== animalRealm) continue;
+            renderables.push({ y: a.y, render: () => a.render(ctx, this.camera, this.time) });
         }
         for (const c of this.companions) {
             renderables.push({ y: c.y, render: () => c.render(ctx, this.camera, this.time) });

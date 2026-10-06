@@ -579,6 +579,18 @@ const ANIMAL_TYPES = {
         zones: ["lake"],
         flavor: "Slow, ancient, and shelled like a walking shield",
     },
+    bat: {
+        name: "Bat", icon: "🦇", hp: 34, damage: 10, speed: 2.4, size: 11,
+        color: "#6b5488", accent: "#e6d4f5",
+        zones: ["cave"],
+        flavor: "A soft-winged cave bat with a sweet tooth",
+    },
+    eagle: {
+        name: "Eagle", icon: "🦅", hp: 42, damage: 10, speed: 2.2, size: 13,
+        color: "#8d5a32", accent: "#f4e2c4",
+        zones: ["cloudlands"],
+        flavor: "A bright-eyed eagle of the Cloudlands, fierce only for its friends",
+    },
 };
 
 const ANIMAL_CONFIG = {
@@ -763,12 +775,6 @@ const CAVE_MONSTER_TYPES = {
         xp: 50, goldDrop: [30, 60], color: "#4a2a4a", size: 15,
         weaponDrop: "knights_blade", weaponDropChance: 0.2, gemDrop: false,
         armorDrop: "iron_plate", armorDropChance: 0.15
-    },
-    cave_bat: {
-        name: "Shadow Bat", icon: "🦇", hp: 55, damage: 12, speed: 2.2,
-        xp: 35, goldDrop: [20, 45], color: "#3a2a3a", size: 12,
-        weaponDrop: null, gemDrop: false,
-        armorDrop: "shadow_cloak", armorDropChance: 0.1
     },
     deep_troll: {
         name: "Deep Troll", icon: "👹", hp: 140, damage: 22, speed: 0.8,

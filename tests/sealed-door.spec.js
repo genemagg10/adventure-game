@@ -260,6 +260,171 @@ test.describe("three keys and the door beside the Hollow", () => {
         expect(shot.far.hp).toBeLessThanOrEqual(0);
     });
 
+    test("a hypercharged laser chains across nearby enemies", async ({ page }) => {
+        await startNewGame(page);
+        const shot = await page.evaluate(() => {
+            const g = window.game;
+            g.player.addBow("laser_gun");
+            g.player.equipBow("laser_gun");
+            g.player.hasZeusBolts = true;
+            g.player.arrows = 6;
+            g.player.facing = { x: 1, y: 0 };
+            g.player.lastShootTime = 0;
+            g.combat.arrowProjectiles.length = 0;
+            g.combat.elementEffects.length = 0;
+
+            const ax = g.player.x + 80;
+            const ay = g.player.y;
+            const primary = new Monster("skeleton", ax, ay);
+            const b = new Monster("skeleton", ax, ay + 100);
+            const c = new Monster("skeleton", ax, ay + 200);
+            const d = new Monster("skeleton", ax, ay + 300);
+            const far = new Monster("skeleton", ax + 400, ay + 300);
+            const pack = [primary, b, c, d, far];
+
+            const arrow = g.player.shootArrow();
+            g.combat.addArrow(arrow);
+            for (let i = 0; i < 6; i++) g.combat.updateArrows(80, pack, null, g.world, null);
+
+            const bolts = g.combat.elementEffects.filter(e => e.element === "lightning_bolt" && e.hyper).length;
+            const beam = g.combat.elementEffects.some(e => e.element === "hyper_beam");
+
+            g.player.lastShootTime = 0;
+            g.player.elements.fire = true;
+            g.player.activeElement = "fire";
+            const fired = g.player.shootArrow();
+
+            const luca = new LucaBoss(ax, ay + 100);
+            luca.spawned = true;
+            luca.spawnAnimation = 0;
+            const lead = new Monster("skeleton", ax, ay);
+            const after = new Monster("skeleton", ax, ay + 200);
+            g.player.activeElement = null;
+            g.player.lastShootTime = 0;
+            g.combat.arrowProjectiles.length = 0;
+            const jump = g.player.shootArrow();
+            g.combat.addArrow(jump);
+            for (let i = 0; i < 6; i++) g.combat.updateArrows(80, [lead, after], luca, g.world, null);
+
+            const lucaDirect = new LucaBoss(ax, ay);
+            lucaDirect.spawned = true;
+            lucaDirect.spawnAnimation = 0;
+            const beside = new Monster("skeleton", ax, ay + 110);
+            g.player.lastShootTime = 0;
+            g.combat.arrowProjectiles.length = 0;
+            const direct = g.player.shootArrow();
+            g.combat.addArrow(direct);
+            for (let i = 0; i < 6; i++) g.combat.updateArrows(80, [beside], lucaDirect, g.world, null);
+
+            g.hyperchargeTold = false;
+            g.ui.clearNotification();
+            g.player.lastShootTime = 0;
+            g.player.arrows = 4;
+            g.keyJustPressed = { shoot: true };
+            g.update(16);
+            const toast = document.querySelector(".notification")
+                ? document.querySelector(".notification").textContent
+                : "";
+            g.ui.clearNotification();
+            g.player.lastShootTime = 0;
+            g.keyJustPressed = { shoot: true };
+            g.update(16);
+            const second = document.querySelector(".notification")
+                ? document.querySelector(".notification").textContent
+                : "";
+
+            return {
+                hypercharged: arrow.hypercharged,
+                zeusSprite: arrow.isZeusBolt,
+                damage: arrow.damage,
+                fireBonus: Math.floor(ELEMENTS.fire.damage * 0.5),
+                cap: HYPER_LASER.lucaChainCap,
+                primaryHp: primary.hp,
+                b: b.hp,
+                c: c.hp,
+                d: d.hp,
+                far: far.hp,
+                bolts,
+                beam,
+                fireDamage: fired.damage,
+                fireHyper: fired.hypercharged,
+                lucaDrop: luca.maxHp - luca.hp,
+                afterHp: after.hp,
+                lucaAlive: luca.alive,
+                directDrop: lucaDirect.maxHp - lucaDirect.hp,
+                directDamage: direct.damage,
+                besideHp: beside.hp,
+                toast,
+                second,
+                told: g.hyperchargeTold,
+            };
+        });
+
+        expect(shot.hypercharged).toBe(true);
+        expect(shot.zeusSprite).toBe(false);
+        expect(shot.damage).toBeGreaterThan(50);
+        expect(shot.primaryHp).toBeLessThanOrEqual(0);
+        expect(shot.b).toBe(50 - Math.floor(shot.damage * 0.6));
+        expect(shot.c).toBe(50 - Math.floor(shot.damage * 0.4));
+        expect(shot.d).toBe(50 - Math.floor(shot.damage * 0.25));
+        expect(shot.far).toBe(50);
+        expect(shot.bolts).toBe(3);
+        expect(shot.beam).toBe(true);
+        expect(shot.fireHyper).toBe(true);
+        expect(shot.fireDamage).toBe(shot.damage + shot.fireBonus);
+        expect(shot.lucaDrop).toBe(Math.min(Math.floor(shot.damage * 0.6), shot.cap));
+        expect(shot.afterHp).toBe(50 - Math.floor(shot.damage * 0.4));
+        expect(shot.lucaAlive).toBe(true);
+        const directHits = [shot.directDamage, Math.floor(shot.directDamage * 1.6)];
+        expect(directHits).toContain(shot.directDrop);
+        expect(shot.besideHp).toBe(50 - Math.floor(shot.directDamage * 0.6));
+        expect(shot.toast).toBe("Hypercharged!");
+        expect(shot.told).toBe(true);
+        expect(shot.second).not.toBe("Hypercharged!");
+    });
+
+    test("a laser without Zeus's bolts does not chain", async ({ page }) => {
+        await startNewGame(page);
+        const shot = await page.evaluate(() => {
+            const g = window.game;
+            g.player.addBow("laser_gun");
+            g.player.equipBow("laser_gun");
+            g.player.hasZeusBolts = false;
+            g.player.arrows = 4;
+            g.player.facing = { x: 1, y: 0 };
+            g.player.lastShootTime = 0;
+            g.combat.arrowProjectiles.length = 0;
+            g.combat.elementEffects.length = 0;
+
+            const ax = g.player.x + 80;
+            const ay = g.player.y;
+            const primary = new Monster("skeleton", ax, ay);
+            const b = new Monster("skeleton", ax, ay + 100);
+            const c = new Monster("skeleton", ax, ay + 200);
+            const pack = [primary, b, c];
+            const arrow = g.player.shootArrow();
+            g.combat.addArrow(arrow);
+            for (let i = 0; i < 6; i++) g.combat.updateArrows(80, pack, null, g.world, null);
+            return {
+                hypercharged: arrow.hypercharged,
+                zeusSprite: arrow.isZeusBolt,
+                damage: arrow.damage,
+                primaryHp: primary.hp,
+                b: b.hp,
+                c: c.hp,
+                bolts: g.combat.elementEffects.filter(e => e.element === "lightning_bolt").length,
+            };
+        });
+
+        expect(shot.hypercharged).toBe(false);
+        expect(shot.zeusSprite).toBe(false);
+        expect(shot.damage).toBeGreaterThanOrEqual(50);
+        expect(shot.primaryHp).toBeLessThanOrEqual(0);
+        expect(shot.b).toBe(50);
+        expect(shot.c).toBe(50);
+        expect(shot.bolts).toBe(0);
+    });
+
     test("the tag, the keys, and the laser gun survive a save", async ({ page }) => {
         await startNewGame(page);
         await page.evaluate(() => {

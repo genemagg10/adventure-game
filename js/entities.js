@@ -250,6 +250,7 @@ class Player {
             isFireArrow: isFireArrow,
             isLaser: isLaser,
             isZeusBolt: !!this.hasZeusBolts && !isLaser,
+            hypercharged: isLaser && !!this.hasZeusBolts,
             bowEnchant: bowEnchant,
         };
     }

@@ -169,6 +169,7 @@ class Game {
         this.sealDroneOn = false;
         this.sealPhase = "off";
         this.sealIntro = 0;
+        this.hyperchargeTold = false;
 
         // Camera
         this.camera = { x: 0, y: 0 };
@@ -424,6 +425,7 @@ class Game {
         this.sealDroneOn = false;
         this.sealPhase = "off";
         this.sealIntro = 0;
+        this.hyperchargeTold = false;
         this.sound.stopSealMusic();
         this.sound.stopSealDrone();
 
@@ -1237,7 +1239,11 @@ class Game {
             if (arrowData) {
                 this.combat.addArrow(arrowData);
                 if (arrowData.isLaser) this.sound.laserZap();
-                if (arrowData.isFireArrow) {
+                if (arrowData.hypercharged) this.sound.hyperCrackle();
+                if (arrowData.hypercharged && !this.hyperchargeTold) {
+                    this.hyperchargeTold = true;
+                    this.ui.showNotification("Hypercharged!");
+                } else if (arrowData.isFireArrow) {
                     this.ui.showNotification("Fire arrow!");
                 }
             } else if (this.player.arrows <= 0) {

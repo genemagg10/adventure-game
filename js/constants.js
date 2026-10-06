@@ -1042,6 +1042,14 @@ const ZEUS_BOLT = {
     description: "Every arrow you loose is now a bolt of Zeus. +4 damage on top of your bow.",
 };
 
+// A laser loosed after Zeus's lightning is in the quiver. The first hit is the
+// full shot; each jump is a smaller share, and a jump onto Luca is capped.
+const HYPER_LASER = {
+    range: 120,
+    falloff: [0.6, 0.4, 0.25],
+    lucaChainCap: 20,
+};
+
 // Ambrosia caches hidden on the cloud islands
 const AMBROSIA = {
     name: "Ambrosia of Olympus",

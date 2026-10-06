@@ -58,6 +58,7 @@ const SaveSystem = {
         "loreUnlocks", "firstTameShown", "surfaceCharted",
         "clubhouseUnlocked", "clubhouseBoonTaken",
         "lucaDefeated",
+        "hyperchargeTold",
         "ladyQuestState", "ladyQuestAsked", "merlinQuestState",
         "monsterGemDrops", "currentZone",
     ],

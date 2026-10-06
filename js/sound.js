@@ -1493,6 +1493,43 @@ class SoundSystem {
         osc.stop(t + 0.1);
     }
 
+    // Laid over the laser zap: a brighter strike and a short electric crackle.
+    hyperCrackle() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const zap = this.ctx.createOscillator();
+        zap.type = "sawtooth";
+        zap.frequency.setValueAtTime(2200, t);
+        zap.frequency.exponentialRampToValueAtTime(180, t + 0.14);
+        const zapGain = this.createGain(0.07);
+        zapGain.gain.setValueAtTime(0.07 * this.masterVolume, t);
+        zapGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        zap.connect(zapGain);
+        zap.start(t);
+        zap.stop(t + 0.16);
+
+        const len = 0.16;
+        const bufSize = Math.max(1, Math.floor(this.ctx.sampleRate * len));
+        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) {
+            const crack = Math.random() > 0.78 ? 1 : 0.08;
+            data[i] = (Math.random() * 2 - 1) * crack * Math.pow(1 - i / bufSize, 1.4);
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buf;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "highpass";
+        filter.frequency.value = 1600;
+        const noiseGain = this.createGain(0.09);
+        noiseGain.gain.setValueAtTime(0.09 * this.masterVolume, t);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, t + len);
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noise.start(t);
+        noise.stop(t + len);
+    }
+
     // Two dry clicks, nothing explained.
     lockClick() {
         if (!this.ensureContext()) return;

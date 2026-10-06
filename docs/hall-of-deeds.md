@@ -51,7 +51,7 @@ Keep this list in step with `HALL_MILESTONES` in `js/hall.js`. Anything not on t
 
 The database is unchanged. The client reads `tag_key`, `player_tag`, `milestone_id`, `milestone`, and `achieved_at`, paging with `limit` and `offset`. It groups those rows by tag. The same tag and milestone keep the earliest timestamp. Each champion is one row.
 
-Score is the sum of the weights below. A higher score ranks first. Ties break by number of deeds, then by the hardest single deed, then by who reached that score first (the time of their latest counted deed). The badge on the row is that hardest deed. Opening a champion lists every deed, hardest first, with its tier and the Pacific time it happened.
+Score is the sum of the weights below. A champion who has every public deed also receives 10 points. That is the sixteen lines in the table, and the strange-key line counts only when the copper, jade, and crystal keys have all been found. The Best column then shows a diamond crown, and opening that champion starts with "Diamond · Full set · +10 pts". A higher score ranks first. Ties break by number of deeds, then by the hardest mark (a full set outranks any single deed), then by who reached that score first. The full-set bonus is reached when the last of those deeds lands. Opening a champion lists every deed, hardest first, with its tier and the Pacific time it happened.
 
 | `milestone_id` | Weight | Tier |
 |---|---:|---|
@@ -74,7 +74,7 @@ Score is the sum of the weights below. A higher score ranks first. Ties break by
 | `beat-zeus` | 8 | Ending |
 | `mended-worldtree` | 8 | Ending |
 
-A champion who has done all eighteen scores 62. These weights live in `HALL_DEED_WEIGHT` in `js/hall.js`. They are not stored in Supabase.
+A champion who has done all eighteen scores 72, the weights plus the full-set bonus. These weights live in `HALL_DEED_WEIGHT` in `js/hall.js`. The bonus is not stored in Supabase.
 
 ## Supabase
 

@@ -4090,6 +4090,12 @@ body.touch-mode * {
 .champ-badge[data-tier="Mid"] { color: #e4ebf2; }
 .champ-badge[data-tier="Late"] { color: #f0d48a; }
 .champ-badge[data-tier="Ending"] { color: #ffe56a; }
+.champ-badge[data-tier="Diamond"] { color: #e7fbff; }
+
+.champion-deed-diamond .deed-name {
+    color: #e7fbff;
+    white-space: normal;
+}
 
 .champion-deeds {
     padding: 2px 10px 8px 2.8rem;

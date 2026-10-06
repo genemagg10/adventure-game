@@ -52,6 +52,10 @@ const HALL_DEED_WEIGHT = {
     "mended-worldtree": { weight: 8, tier: "Ending" },
 };
 
+// A champion who has every public deed, including all three strange keys,
+// earns this on top of the weights. It is not a nineteenth deed.
+const HALL_DIAMOND_BONUS = 10;
+
 const HallOfDeeds = {
     STORAGE_KEY: "ingoizersWorld.hall",
     PAGE_SIZE: 1000,
@@ -70,9 +74,17 @@ const HallOfDeeds = {
         return row ? row.tier : "";
     },
 
-    // One champion per tag. Score is the sum of deed weights. Ties break by
-    // how many deeds they hold, then by their hardest deed, then by who
-    // reached that score first.
+    // Every listed public deed. The three strange keys are one line on the
+    // board, and that line counts only when all three have been found.
+    hasFullSet(deeds) {
+        const ids = new Set((deeds || []).map((deed) => deed.milestoneId));
+        return Object.keys(HALL_MILESTONES).every((id) => ids.has(id));
+    },
+
+    // One champion per tag. Score is the sum of deed weights, plus ten for a
+    // full set. Ties break by how many deeds they hold, then by their hardest
+    // mark (a full set outranks any single deed), then by who reached that
+    // score first. The full-set bonus is reached when the last deed lands.
     champions(rows) {
         const deduped = this.merge(Array.isArray(rows) ? rows : [], []);
         const groups = new Map();
@@ -118,15 +130,22 @@ const HallOfDeeds = {
                 if (b.weight !== a.weight) return b.weight - a.weight;
                 return a.achievedAt - b.achievedAt;
             });
+            const diamond = this.hasFullSet(deeds);
+            if (diamond) score += HALL_DIAMOND_BONUS;
+            const deedWeight = hardest ? hardest.weight : 0;
             list.push({
                 tagKey: champ.tagKey,
                 playerTag: champ.playerTag,
                 score,
                 count: deeds.length,
-                hardest: hardest ? hardest.weight : 0,
-                hardestId: hardest ? hardest.milestoneId : "",
-                hardestLabel: hardest ? hardest.milestone : "",
-                hardestTier: hardest ? hardest.tier : "",
+                diamond,
+                bonus: diamond ? HALL_DIAMOND_BONUS : 0,
+                hardest: deedWeight,
+                // A full set is the mark in the Best column, above any ending.
+                hardestMark: diamond ? deedWeight + 1 : deedWeight,
+                hardestId: diamond ? "" : (hardest ? hardest.milestoneId : ""),
+                hardestLabel: diamond ? "Full set" : (hardest ? hardest.milestone : ""),
+                hardestTier: diamond ? "Diamond" : (hardest ? hardest.tier : ""),
                 reachedAt,
                 deeds,
             });
@@ -134,7 +153,7 @@ const HallOfDeeds = {
         list.sort((a, b) => {
             if (b.score !== a.score) return b.score - a.score;
             if (b.count !== a.count) return b.count - a.count;
-            if (b.hardest !== a.hardest) return b.hardest - a.hardest;
+            if (b.hardestMark !== a.hardestMark) return b.hardestMark - a.hardestMark;
             if (a.reachedAt !== b.reachedAt) return a.reachedAt - b.reachedAt;
             if (a.tagKey < b.tagKey) return -1;
             if (a.tagKey > b.tagKey) return 1;

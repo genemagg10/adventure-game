@@ -145,6 +145,78 @@ test.describe("Hall of Champions", () => {
         expect(mara.deeds[1].achievedAt).toBe(Date.parse("2026-10-06T02:00:00Z"));
     });
 
+    test("a full set of deeds is Diamond and worth ten more", async ({ page }) => {
+        await openTitle(page);
+        const ranked = await page.evaluate(() => {
+            const t = Date.parse("2026-10-06T02:00:00Z");
+            const hour = 60 * 60 * 1000;
+            const ids = Object.keys(HALL_MILESTONES);
+            function pack(tag, completeAt, dropId) {
+                return ids.filter((id) => id !== dropId).map((id, i) => ({
+                    tagKey: tag.toLowerCase(),
+                    playerTag: tag,
+                    milestoneId: id,
+                    milestone: HALL_MILESTONES[id],
+                    achievedAt: i === ids.length - 1 || (dropId && i === ids.length - 2) ? completeAt : t + i * 1000,
+                }));
+            }
+            const champs = HallOfDeeds.champions([
+                ...pack("Quin", t + hour),
+                ...pack("Vesper", t + 5 * hour),
+                ...pack("Nim", t + 2 * hour, "strange-key-crystal"),
+                ...pack("Pia", t + 3 * hour, "makers-hollow"),
+            ]);
+            return champs.map((c) => ({
+                tag: c.playerTag,
+                score: c.score,
+                count: c.count,
+                diamond: c.diamond,
+                bonus: c.bonus,
+                hardest: c.hardest,
+                hardestMark: c.hardestMark,
+                hardestTier: c.hardestTier,
+                hardestLabel: c.hardestLabel,
+                reachedAt: c.reachedAt,
+                keys: c.deeds.filter((d) => d.milestoneId.startsWith("strange-key-")).map((d) => d.milestoneId),
+            }));
+        });
+
+        expect(ranked.map((c) => c.tag)).toEqual(["Quin", "Vesper", "Pia", "Nim"]);
+        expect(ranked[0]).toMatchObject({
+            score: 72, count: 18, diamond: true, bonus: 10, hardest: 8, hardestMark: 9,
+            hardestTier: "Diamond", hardestLabel: "Full set",
+        });
+        expect(ranked[0].keys).toEqual(["strange-key-copper", "strange-key-jade", "strange-key-crystal"]);
+        expect(ranked[1]).toMatchObject({ score: 72, diamond: true, hardestMark: 9 });
+        expect(ranked[0].reachedAt).toBeLessThan(ranked[1].reachedAt);
+        expect(ranked[2]).toMatchObject({ tag: "Pia", diamond: false, bonus: 0, score: 61, count: 17, hardestMark: 8 });
+        expect(ranked[3]).toMatchObject({ tag: "Nim", diamond: false, bonus: 0, score: 60, count: 17 });
+        expect(ranked[3].keys).not.toContain("strange-key-crystal");
+
+        await page.evaluate(() => {
+            const t = Date.parse("2026-10-06T02:00:00Z");
+            const ids = Object.keys(HALL_MILESTONES);
+            HallOfDeeds.writeStore(ids.map((id, i) => ({
+                tagKey: "quin",
+                playerTag: "Quin",
+                siblingName: "Lyra",
+                milestoneId: id,
+                milestone: HALL_MILESTONES[id],
+                achievedAt: t + i * 1000,
+                synced: true,
+            })));
+        });
+        await page.click("#hallBtn");
+        const row = page.locator(".champion-row");
+        await expect(row).toHaveCount(1);
+        await expect(row.locator(".champ-score")).toHaveText("72");
+        await expect(row.locator(".champ-count")).toHaveText("18");
+        await expect(row.locator(".champ-badge")).toHaveAttribute("data-tier", "Diamond");
+        await row.click();
+        await expect(page.locator(".champion-deed").first()).toHaveText("Diamond · Full set · +10 pts");
+        await expect(page.locator(".champion-deed").nth(1).locator(".deed-tier")).toHaveText("Ending · 8 pts");
+    });
+
     test("the Luca fight and the laser stay off the champion board", async ({ page }) => {
         await openTitle(page);
         const result = await page.evaluate(() => {

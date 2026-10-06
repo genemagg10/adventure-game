@@ -680,6 +680,15 @@ class UIManager {
             panel.className = "champion-deeds hidden";
             panel.setAttribute("role", "region");
             panel.setAttribute("aria-label", `${champ.playerTag} accomplishments`);
+            if (champ.diamond) {
+                const bonus = document.createElement("div");
+                bonus.className = "champion-deed champion-deed-diamond";
+                const bonusText = document.createElement("span");
+                bonusText.className = "deed-name";
+                bonusText.textContent = "Diamond · Full set · +10 pts";
+                bonus.appendChild(bonusText);
+                panel.appendChild(bonus);
+            }
             for (const deed of champ.deeds) {
                 const line = document.createElement("div");
                 line.className = "champion-deed";
@@ -724,10 +733,14 @@ class UIManager {
         }
     }
 
-    championBadgeSvg() {
+    championBadgeSvg(tier) {
         // One crown for every tier. Color, set on the badge, is the metal.
-        const body = '<path fill="currentColor" d="M1.4 11.4h13.2v2.2H1.4Zm.7-1.3 1.7-5.1 2.5 2.6L8 2.1l1.7 5.5 2.5-2.6 1.7 5.1Z"/>';
-        return `<svg class="champ-badge-icon" viewBox="0 0 16 16" aria-hidden="true">${body}</svg>`;
+        // Diamond keeps that crown and adds a small white sparkle.
+        const crown = '<path fill="currentColor" d="M1.4 11.4h13.2v2.2H1.4Zm.7-1.3 1.7-5.1 2.5 2.6L8 2.1l1.7 5.5 2.5-2.6 1.7 5.1Z"/>';
+        const sparkle = tier === "Diamond"
+            ? '<path fill="#ffffff" d="m14.2 3.1.38.95.95.38-.95.38-.38.95-.38-.95-.95-.38.95-.38z"/>'
+            : "";
+        return `<svg class="champ-badge-icon" viewBox="0 0 16 16" aria-hidden="true">${crown}${sparkle}</svg>`;
     }
 
     bindHallKeys() {

@@ -148,6 +148,7 @@ const BOWS = {
     hunters_bow: { name: "Hunter's Bow", icon: "🏹", damage: 16, speed: 1.0, range: 280, price: 120, description: "A sturdy hunting bow", projectileSpeed: 6 },
     longbow: { name: "Longbow", icon: "🏹", damage: 22, speed: 1.1, range: 350, price: 200, description: "Powerful and precise", projectileSpeed: 7 },
     arrow_strength_bow: { name: "Bow of Arrow Strength", icon: "🏹", damage: 30, speed: 1.1, range: 320, price: 0, description: "A mighty bow from the hidden base — its arrows strike as hard as Excalibur, and grow stronger with every enchantment and gem", projectileSpeed: 7 },
+    laser_gun: { name: "Laser Gun", icon: "✦", damage: 58, speed: 1.45, range: 460, price: 0, description: "Fires a bolt of light.", projectileSpeed: 14, bolt: "laser" },
 };
 
 // Armor
@@ -689,6 +690,60 @@ const MAKERS_HOLLOW = {
     website: "luca.maggio.xyz",
 };
 
+// Three small keys. The names are labels for the things themselves.
+const STRANGE_KEYS = {
+    copper:  { id: "copper",  name: "Copper Key",  color: "#c4783a", highlight: "#f3c48a", shadow: "#6a3414", tooth: "#a85a28" },
+    jade:    { id: "jade",    name: "Jade Key",    color: "#2f9a62", highlight: "#b6f0d0", shadow: "#0e4a30", tooth: "#1d7a48" },
+    crystal: { id: "crystal", name: "Crystal Key", color: "#d5e6ff", highlight: "#ffffff", shadow: "#6e90c4", tooth: "#b7d0f5" },
+};
+
+// A stone door a few paces from the Hollow. Understated on purpose.
+const SEALED_DOOR = {
+    x: 11,
+    y: 144,
+    range: 78,
+};
+
+// The room behind that door. Wide enough that the widest window still shows
+// wall rather than void, and short enough that the chamber fills the view.
+const SEAL_W = 46;
+const SEAL_H = 19;
+
+const LUCA_BOSS = {
+    name: "Luca",
+    hp: 1500,
+    damage: 58,
+    boltDamage: 56,
+    speed: 1.45,
+    size: 20,
+    color: "#141820",
+    // Early bolts stay under half of a full health bar. The late patterns
+    // carry the listed bolt, and elemental powers feed those later shots.
+    windup: 400,
+    // The glow stops tracking this long before the bolt leaves. Phase 1
+    // locks at the start of the glow, so a sidestep during it is a dodge.
+    aimLock: 200,
+    // Center distance he prefers while a bolt is coming. Far enough that
+    // the shot has time to be read.
+    boltRange: 164,
+    // After a bolt or a shove he stands still and can be hit.
+    plant: 760,
+    // Close-in punish: a short glow, one shove, then a pause. The pocket
+    // sits inside a normal blade's reach.
+    swipeWindup: 350,
+    swipeCooldown: 1500,
+    standoff: 8,
+    swipeReach: 14,
+    chargeWindup: 360,
+    chargeTime: 220,
+    phases: [
+        { hpThreshold: 1.0, speed: 1.05, attackRate: 1100, pattern: "bolt", bolt: 32 },
+        { hpThreshold: 0.72, speed: 1.25, attackRate: 980, pattern: "fan", bolt: 40 },
+        { hpThreshold: 0.45, speed: 1.45, attackRate: 680, pattern: "sweep", bolt: 56 },
+        { hpThreshold: 0.22, speed: 1.75, attackRate: 640, pattern: "frenzy", bolt: 56 },
+    ],
+};
+
 // Obstacle tile types used around cave entrances
 const CAVE_OBSTACLE_TILES = {
     trees: TILE.TREE,
@@ -1001,6 +1056,14 @@ const ZEUS_BOLT = {
     icon: "⚡",
     damageBonus: 4,
     description: "Every arrow you loose is now a bolt of Zeus. +4 damage on top of your bow.",
+};
+
+// A laser loosed after Zeus's lightning is in the quiver. The first hit is the
+// full shot; each jump is a smaller share, and a jump onto Luca is capped.
+const HYPER_LASER = {
+    range: 120,
+    falloff: [0.6, 0.4, 0.25],
+    lucaChainCap: 20,
 };
 
 // Ambrosia caches hidden on the cloud islands

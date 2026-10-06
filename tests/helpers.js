@@ -23,7 +23,33 @@ const slotDelete = n => `${slotRow(n)} .save-slot-btn`;
 /**
  * Load the page with no saved games, so a test never inherits another's slots.
  */
+/**
+ * The Hall is pointed at the live table. Tests must not insert rows there.
+ * Playwright fulfills the Supabase calls itself.
+ */
+async function mockHallFetch(page) {
+    await page.route("**/*supabase.co/**", async (route) => {
+        const headers = {
+            "access-control-allow-origin": "*",
+            "access-control-allow-headers": "*",
+            "access-control-allow-methods": "GET,POST,OPTIONS",
+        };
+        if (route.request().method() === "OPTIONS") {
+            await route.fulfill({ status: 204, headers });
+            return;
+        }
+        const get = route.request().method() === "GET";
+        await route.fulfill({
+            status: get ? 200 : 201,
+            contentType: "application/json",
+            headers,
+            body: get ? "[]" : "",
+        });
+    });
+}
+
 async function openTitle(page) {
+    await mockHallFetch(page);
     await page.goto("/index.html");
     await page.waitForFunction(() => window.game);
     await page.evaluate(() => localStorage.clear());
@@ -51,6 +77,10 @@ async function chooseCharacterAndBegin(page, siblingId) {
     const card = siblingId ? `.char-card[data-id="${siblingId}"]` : ".char-card";
     await page.click(card);
     await page.click("#charBeginBtn");
+    await page.waitForSelector("#tag-screen:not(.hidden)");
+    await page.fill("#player-tag", "Wayfarer");
+    await page.waitForFunction(() => !document.getElementById("tagBeginBtn").disabled);
+    await page.click("#tagBeginBtn");
 }
 
 async function dismissDialogs(page) {
@@ -134,6 +164,8 @@ function readState(page) {
             gemSeed: g.world.gemSeed,
             // Player progress
             gold: p.gold, blueGems: p.blueGems, arrows: p.arrows, hp: p.hp, maxHp: p.maxHp,
+            playerTag: p.playerTag, heldKeys: (p.heldKeys || []).slice(),
+            siblingId: p.siblingId,
             potions: p.healthPotions, greaterPotions: p.greaterHealthPotions, apples: p.apples,
             weapons: p.weapons.slice(), currentWeapon: p.currentWeapon,
             bows: p.bows.slice(), currentBow: p.currentBow,
@@ -149,6 +181,7 @@ function readState(page) {
             ladyQuestState: g.ladyQuestState, merlinQuestState: g.merlinQuestState,
             greenlandsUnlocked: g.greenlandsUnlocked, tapestryRead: g.tapestryRead,
             bossDefeated: g.bossDefeated, greenKnightDefeated: g.greenKnightDefeated,
+            lucaDefeated: g.lucaDefeated,
             olympianSummoned: g.olympianSummoned, olympianDefeated: g.olympianDefeated,
             skyMonsterKills: g.skyMonsterKills, monsterGemDrops: g.monsterGemDrops,
             loreUnlocks: { ...g.loreUnlocks },
@@ -166,6 +199,9 @@ function readState(page) {
             wandCollected: g.world.merlinHut.wandCollected,
             tapestryUncovered: g.world.castleTapestry.uncovered,
             hollowDiscovered: g.world.makersHollow.discovered,
+            copperCollected: !!(g.world.strangeKey && g.world.strangeKey.collected),
+            jadeCollected: !!(g.caveWorlds[0].strangeKey && g.caveWorlds[0].strangeKey.collected),
+            crystalCollected: !!(g.skyWorld.strangeKey && g.skyWorld.strangeKey.collected),
             hiddenRevealed: g.world.hiddenLadder.revealed,
             skyTreeState: g.world.skyTree.state,
         };

@@ -313,20 +313,46 @@ class CombatSystem {
         });
     }
 
-    spawnLightningBolt(x1, y1, x2, y2) {
+    spawnLightningBolt(x1, y1, x2, y2, hyper, fiery) {
         // Create a jagged lightning path
         const segments = [];
         const steps = 8;
         for (let i = 0; i <= steps; i++) {
             const t = i / steps;
+            const jag = hyper ? 18 : 15;
             segments.push({
-                x: lerp(x1, x2, t) + (i > 0 && i < steps ? randFloat(-15, 15) : 0),
-                y: lerp(y1, y2, t) + (i > 0 && i < steps ? randFloat(-15, 15) : 0),
+                x: lerp(x1, x2, t) + (i > 0 && i < steps ? randFloat(-jag, jag) : 0),
+                y: lerp(y1, y2, t) + (i > 0 && i < steps ? randFloat(-jag, jag) : 0),
             });
+        }
+        const embers = [];
+        if (fiery) {
+            for (let i = 1; i < steps; i++) {
+                embers.push({
+                    x: segments[i].x + randFloat(-8, 8),
+                    y: segments[i].y + randFloat(-8, 8),
+                    r: randFloat(1.6, 3.4),
+                    hot: Math.random() > 0.45,
+                });
+            }
         }
         this.elementEffects.push({
             x: x1, y: y1, element: "lightning_bolt", duration: 400, maxDuration: 400,
             segments: segments,
+            hyper: !!hyper,
+            fiery: !!fiery,
+            embers: embers,
+        });
+    }
+
+    // The beam that just connected, held for a moment so the chain reads as one shot.
+    spawnHyperBeam(x1, y1, x2, y2, fiery) {
+        this.elementEffects.push({
+            x: x1, y: y1, x2, y2,
+            element: "hyper_beam",
+            duration: 320,
+            maxDuration: 320,
+            fiery: !!fiery,
         });
     }
 
@@ -414,11 +440,22 @@ class CombatSystem {
         const hits = [];
         for (let i = this.arrowProjectiles.length - 1; i >= 0; i--) {
             const a = this.arrowProjectiles[i];
+            const prevX = a.x;
+            const prevY = a.y;
             const moveX = a.vx * dt * 0.1;
             const moveY = a.vy * dt * 0.1;
             a.x += moveX;
             a.y += moveY;
             a.distTraveled += Math.sqrt(moveX * moveX + moveY * moveY);
+
+            if (a.isLaser) {
+                this.particles.push({
+                    x: a.x, y: a.y,
+                    vx: randFloat(-0.3, 0.3), vy: randFloat(-0.3, 0.3),
+                    life: 120, maxLife: 120, size: randFloat(1.5, 2.5),
+                    color: a.isFireArrow ? "#ffaa66" : "#9af6ff",
+                });
+            }
 
             // Fire arrow trail particles
             if (a.isFireArrow) {
@@ -507,10 +544,15 @@ class CombatSystem {
 
             let removed = false;
 
-            // Check monster collision
+            // Check monster collision. A fast bolt is tested along the segment
+            // it just crossed, so it cannot step clean over a body.
             for (const m of monsters) {
                 if (!m.alive) continue;
-                if (dist(a.x, a.y, m.x, m.y) < m.size + 4) {
+                const reach = m.size + 4;
+                const struck = a.isLaser
+                    ? this.segmentHits(prevX, prevY, a.x, a.y, m.x, m.y, reach)
+                    : dist(a.x, a.y, m.x, m.y) < reach;
+                if (struck) {
                     let damage = a.damage;
                     let crit = false;
                     if (Math.random() < 0.15) {
@@ -518,12 +560,14 @@ class CombatSystem {
                         crit = true;
                     }
                     const killed = m.takeDamage(damage, a.x, a.y);
-                    this.spawnHitParticles(m.x, m.y, a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#ff4444"), 5);
+                    this.spawnHitParticles(m.x, m.y, a.isFireArrow ? "#ff6600" : (a.isLaser ? "#7ef0ff" : (a.isZeusBolt ? "#ffee00" : "#ff4444")), 5);
                     this.addDamageNumber(m.x, m.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(m.x, m.y, "fire", 500);
                     }
                     if (a.isZeusBolt) this.spawnBoltImpact(a, m);
+                    if (a.hypercharged) this.spawnHyperBeam(prevX, prevY, m.x, m.y, a.isFireArrow);
+                    this.chainHyperLaser(a, m, monsters, boss, greenKnight);
                     // Bow enchantment hit effect
                     if (a.bowEnchant) {
                         this.spawnEnchantHitEffect(a.bowEnchant, { x: a.x, y: a.y }, m);
@@ -539,7 +583,11 @@ class CombatSystem {
 
             // Check boss collision
             if (boss && boss.alive && boss.spawned && boss.spawnAnimation <= 0) {
-                if (dist(a.x, a.y, boss.x, boss.y) < boss.size + 4) {
+                const reach = boss.size + 4;
+                const struck = a.isLaser
+                    ? this.segmentHits(prevX, prevY, a.x, a.y, boss.x, boss.y, reach)
+                    : dist(a.x, a.y, boss.x, boss.y) < reach;
+                if (struck) {
                     let damage = a.damage;
                     let crit = false;
                     if (Math.random() < 0.12) {
@@ -547,12 +595,14 @@ class CombatSystem {
                         crit = true;
                     }
                     const killed = boss.takeDamage(damage, a.x, a.y);
-                    this.spawnHitParticles(boss.x, boss.y, a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#ff8800"), 8);
+                    this.spawnHitParticles(boss.x, boss.y, a.isFireArrow ? "#ff6600" : (a.isLaser ? "#7ef0ff" : (a.isZeusBolt ? "#ffee00" : "#ff8800")), 8);
                     this.addDamageNumber(boss.x, boss.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(boss.x, boss.y, "fire", 500);
                     }
                     if (a.isZeusBolt) this.spawnBoltImpact(a, boss);
+                    if (a.hypercharged) this.spawnHyperBeam(prevX, prevY, boss.x, boss.y, a.isFireArrow);
+                    this.chainHyperLaser(a, boss, monsters, boss, greenKnight);
                     if (a.bowEnchant) {
                         this.spawnEnchantHitEffect(a.bowEnchant, { x: a.x, y: a.y }, boss);
                     }
@@ -564,7 +614,11 @@ class CombatSystem {
 
             // Check Green Knight collision
             if (greenKnight && greenKnight.alive && greenKnight.spawned && greenKnight.spawnAnimation <= 0) {
-                if (dist(a.x, a.y, greenKnight.x, greenKnight.y) < greenKnight.size + 4) {
+                const reach = greenKnight.size + 4;
+                const struck = a.isLaser
+                    ? this.segmentHits(prevX, prevY, a.x, a.y, greenKnight.x, greenKnight.y, reach)
+                    : dist(a.x, a.y, greenKnight.x, greenKnight.y) < reach;
+                if (struck) {
                     let damage = a.damage;
                     let crit = false;
                     if (Math.random() < 0.12) {
@@ -572,12 +626,14 @@ class CombatSystem {
                         crit = true;
                     }
                     const killed = greenKnight.takeDamage(damage, a.x, a.y);
-                    this.spawnHitParticles(greenKnight.x, greenKnight.y, a.isFireArrow ? "#ff6600" : (a.isZeusBolt ? "#ffee00" : "#44ff44"), 8);
+                    this.spawnHitParticles(greenKnight.x, greenKnight.y, a.isFireArrow ? "#ff6600" : (a.isLaser ? "#7ef0ff" : (a.isZeusBolt ? "#ffee00" : "#44ff44")), 8);
                     this.addDamageNumber(greenKnight.x, greenKnight.y, damage, crit);
                     if (a.isFireArrow) {
                         this.spawnElementEffect(greenKnight.x, greenKnight.y, "fire", 500);
                     }
                     if (a.isZeusBolt) this.spawnBoltImpact(a, greenKnight);
+                    if (a.hypercharged) this.spawnHyperBeam(prevX, prevY, greenKnight.x, greenKnight.y, a.isFireArrow);
+                    this.chainHyperLaser(a, greenKnight, monsters, boss, greenKnight);
                     if (a.bowEnchant) {
                         this.spawnEnchantHitEffect(a.bowEnchant, { x: a.x, y: a.y }, greenKnight);
                     }
@@ -587,6 +643,76 @@ class CombatSystem {
             }
         }
         return hits;
+    }
+
+    isLuca(target) {
+        return !!(target && (target instanceof LucaBoss || target.name === "Luca"));
+    }
+
+    // After the beam lands, lightning jumps to nearby foes. Luca is struck at
+    // most once by the whole shot, and a jump onto him is capped.
+    chainHyperLaser(arrow, origin, monsters, boss, greenKnight) {
+        if (!arrow || !arrow.hypercharged || !origin) return;
+        const hit = new Set([origin]);
+        let lucaAlready = this.isLuca(origin);
+        let from = origin;
+        const ratios = HYPER_LASER.falloff;
+        for (let i = 0; i < ratios.length; i++) {
+            const next = this.nearestChainTarget(from, hit, monsters, boss, greenKnight, lucaAlready);
+            if (!next) break;
+            hit.add(next);
+            let damage = Math.max(1, Math.floor(arrow.damage * ratios[i]));
+            if (this.isLuca(next)) {
+                lucaAlready = true;
+                damage = Math.min(damage, HYPER_LASER.lucaChainCap);
+            }
+            next.takeDamage(damage, from.x, from.y);
+            const fiery = !!arrow.isFireArrow;
+            this.spawnLightningBolt(from.x, from.y, next.x, next.y, true, fiery);
+            this.spawnHitParticles(next.x, next.y, fiery ? "#ff5500" : "#fff6d0", fiery ? 8 : 5);
+            this.addDamageNumber(next.x, next.y, damage, false);
+            if (fiery) this.spawnElementEffect(next.x, next.y, "fire", 500);
+            from = next;
+        }
+    }
+
+    nearestChainTarget(from, hit, monsters, boss, greenKnight, lucaAlready) {
+        const range = HYPER_LASER.range;
+        let best = null;
+        let bestD = Infinity;
+        const consider = (entity) => {
+            if (!entity || !entity.alive || hit.has(entity)) return;
+            if (entity.spawned === false || entity.spawnAnimation > 0) return;
+            if (lucaAlready && this.isLuca(entity)) return;
+            const d = dist(from.x, from.y, entity.x, entity.y);
+            if (d > range || d >= bestD) return;
+            best = entity;
+            bestD = d;
+        };
+        if (monsters) {
+            for (const m of monsters) consider(m);
+        }
+        consider(boss);
+        consider(greenKnight);
+        return best;
+    }
+
+    // True when the circle sits on the segment from (x0, y0) to (x1, y1).
+    segmentHits(x0, y0, x1, y1, cx, cy, r) {
+        const dx = x1 - x0;
+        const dy = y1 - y0;
+        const len2 = dx * dx + dy * dy;
+        let t = 0;
+        if (len2 > 0.0001) {
+            t = ((cx - x0) * dx + (cy - y0) * dy) / len2;
+            if (t < 0) t = 0;
+            else if (t > 1) t = 1;
+        }
+        const px = x0 + dx * t;
+        const py = y0 + dy * t;
+        const ex = px - cx;
+        const ey = py - cy;
+        return ex * ex + ey * ey < r * r;
     }
 
     // A bolt of Zeus striking home: a short jagged arc plus a flash
@@ -603,6 +729,62 @@ class CombatSystem {
             const sx = a.x - camera.x;
             const sy = a.y - camera.y;
             const angle = Math.atan2(a.vy, a.vx);
+
+            if (a.isLaser) {
+                ctx.save();
+                ctx.translate(Math.round(sx), Math.round(sy));
+                ctx.rotate(angle);
+                if (a.isFireArrow) {
+                    const thick = !!a.hypercharged;
+                    const flick = Math.sin(Date.now() / 40 + a.x);
+                    ctx.fillStyle = "rgba(255, 60, 16, 0.5)";
+                    ctx.fillRect(thick ? -66 : -54, thick ? -9 : -6, thick ? 96 : 76, thick ? 18 : 12);
+                    ctx.fillStyle = "#e23212";
+                    ctx.fillRect(thick ? -58 : -48, thick ? -4 : -3, thick ? 84 : 66, thick ? 8 : 6);
+                    ctx.fillStyle = "#ffb000";
+                    ctx.fillRect(thick ? -50 : -42, -2, thick ? 74 : 56, 4);
+                    ctx.fillStyle = "#fff1a0";
+                    ctx.fillRect(thick ? -40 : -34, -1, thick ? 56 : 42, 2);
+                    ctx.fillStyle = "#ff6a14";
+                    ctx.fillRect(-32, -9 + Math.round(flick * 2), 4, 3);
+                    ctx.fillRect(-14, 6, 3, 3);
+                    ctx.fillRect(6, -8, 3, 3);
+                    ctx.fillStyle = "#ffe14a";
+                    ctx.fillRect(-22, 7 + Math.round(flick), 3, 3);
+                    ctx.fillRect(2, -10, 2, 2);
+                    ctx.fillRect(16, 5, 3, 2);
+                    ctx.fillStyle = "#fff6c2";
+                    ctx.fillRect(thick ? 14 : 8, thick ? -4 : -3, thick ? 12 : 8, thick ? 8 : 6);
+                } else if (a.hypercharged) {
+                    const flick = Math.sin(Date.now() / 45 + a.x);
+                    ctx.fillStyle = "rgba(80, 220, 255, 0.5)";
+                    ctx.fillRect(-64, -9, 90, 18);
+                    ctx.fillStyle = "#7ef0ff";
+                    ctx.fillRect(-56, -4, 78, 8);
+                    ctx.fillStyle = "#fff6d0";
+                    ctx.fillRect(-50, -2, 70, 4);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(-40, -1, 54, 2);
+                    ctx.fillStyle = "#fff4c2";
+                    ctx.fillRect(-36, -10 + Math.round(flick * 2), 14, 2);
+                    ctx.fillRect(-18, 7, 10, 2);
+                    ctx.fillRect(-4, -11, 12, 2);
+                    ctx.fillRect(14, 6 + Math.round(flick), 8, 2);
+                    ctx.fillStyle = "#fff8e0";
+                    ctx.fillRect(10, -5, 12, 10);
+                } else {
+                    ctx.fillStyle = "rgba(80, 220, 255, 0.4)";
+                    ctx.fillRect(-52, -5, 70, 10);
+                    ctx.fillStyle = "#7ef0ff";
+                    ctx.fillRect(-46, -2, 60, 4);
+                    ctx.fillStyle = "#f4fdff";
+                    ctx.fillRect(-40, -1, 52, 2);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(6, -3, 8, 6);
+                }
+                ctx.restore();
+                continue;
+            }
 
             // Zeus's bolts are not arrows at all - draw them as forked lightning
             if (a.isZeusBolt) {
@@ -991,29 +1173,105 @@ class CombatSystem {
                     break;
                 }
 
+                case "hyper_beam": {
+                    const x1 = e.x - camera.x;
+                    const y1 = e.y - camera.y;
+                    const x2 = e.x2 - camera.x;
+                    const y2 = e.y2 - camera.y;
+                    const alpha = 1 - progress;
+                    const dx = x2 - x1;
+                    const dy = y2 - y1;
+                    const len = Math.hypot(dx, dy) || 1;
+                    const nx = -dy / len;
+                    const ny = dx / len;
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.lineCap = "round";
+                    ctx.strokeStyle = e.fiery ? "rgba(255, 70, 16, 0.5)" : "rgba(80, 220, 255, 0.45)";
+                    ctx.lineWidth = 16;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                    ctx.strokeStyle = e.fiery ? "#e23212" : "#7ef0ff";
+                    ctx.lineWidth = 7;
+                    ctx.stroke();
+                    ctx.strokeStyle = e.fiery ? "#ffb000" : "#fff6d0";
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    ctx.strokeStyle = e.fiery ? "#ffe14a" : "#fff4c2";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    for (let i = 1; i <= 5; i++) {
+                        const t = i / 6;
+                        const px = x1 + dx * t;
+                        const py = y1 + dy * t;
+                        const s = (i % 2 ? 1 : -1) * (7 + i);
+                        ctx.moveTo(px, py);
+                        ctx.lineTo(px + nx * s, py + ny * s);
+                    }
+                    ctx.stroke();
+                    ctx.restore();
+                    break;
+                }
+
                 case "lightning_bolt": {
                     if (e.segments) {
-                        ctx.strokeStyle = `rgba(255, 238, 0, ${1 - progress})`;
-                        ctx.lineWidth = 3;
-                        ctx.shadowColor = "#ffee00";
-                        ctx.shadowBlur = 10;
+                        const alpha = 1 - progress;
+                        ctx.save();
+                        ctx.lineCap = "round";
+                        ctx.lineJoin = "round";
                         ctx.beginPath();
                         ctx.moveTo(e.segments[0].x - camera.x, e.segments[0].y - camera.y);
                         for (let i = 1; i < e.segments.length; i++) {
                             ctx.lineTo(e.segments[i].x - camera.x, e.segments[i].y - camera.y);
                         }
-                        ctx.stroke();
-                        ctx.shadowBlur = 0;
-
-                        // Glow
-                        ctx.strokeStyle = `rgba(255, 255, 200, ${0.5 - progress * 0.5})`;
-                        ctx.lineWidth = 8;
-                        ctx.beginPath();
-                        ctx.moveTo(e.segments[0].x - camera.x, e.segments[0].y - camera.y);
-                        for (let i = 1; i < e.segments.length; i++) {
-                            ctx.lineTo(e.segments[i].x - camera.x, e.segments[i].y - camera.y);
+                        if (e.fiery) {
+                            ctx.strokeStyle = `rgba(255, 50, 10, ${0.55 * alpha})`;
+                            ctx.lineWidth = 12;
+                            ctx.stroke();
+                            ctx.shadowColor = "#ff7a18";
+                            ctx.shadowBlur = 8;
+                            ctx.strokeStyle = `rgba(255, 90, 20, ${alpha})`;
+                            ctx.lineWidth = 4;
+                            ctx.stroke();
+                            ctx.shadowBlur = 0;
+                            ctx.strokeStyle = `rgba(255, 210, 60, ${alpha})`;
+                            ctx.lineWidth = 1.6;
+                            ctx.stroke();
+                            if (e.embers) {
+                                for (const ember of e.embers) {
+                                    ctx.fillStyle = ember.hot ? `rgba(255, 220, 80, ${alpha})` : `rgba(255, 80, 20, ${alpha})`;
+                                    ctx.beginPath();
+                                    ctx.arc(ember.x - camera.x, ember.y - camera.y, ember.r, 0, Math.PI * 2);
+                                    ctx.fill();
+                                }
+                            }
+                        } else if (e.hyper) {
+                            ctx.strokeStyle = `rgba(80, 220, 255, ${0.55 * alpha})`;
+                            ctx.lineWidth = 11;
+                            ctx.stroke();
+                            ctx.shadowColor = "#fff6d0";
+                            ctx.shadowBlur = 8;
+                            ctx.strokeStyle = `rgba(255, 246, 208, ${alpha})`;
+                            ctx.lineWidth = 3.5;
+                            ctx.stroke();
+                            ctx.shadowBlur = 0;
+                            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                            ctx.lineWidth = 1.5;
+                            ctx.stroke();
+                        } else {
+                            ctx.strokeStyle = `rgba(255, 255, 200, ${0.5 * alpha})`;
+                            ctx.lineWidth = 8;
+                            ctx.stroke();
+                            ctx.shadowColor = "#ffee00";
+                            ctx.shadowBlur = 10;
+                            ctx.strokeStyle = `rgba(255, 238, 0, ${alpha})`;
+                            ctx.lineWidth = 3;
+                            ctx.stroke();
+                            ctx.shadowBlur = 0;
                         }
-                        ctx.stroke();
+                        ctx.restore();
                     }
                     break;
                 }
@@ -1039,9 +1297,10 @@ class CombatSystem {
             ctx.globalAlpha = Math.min(1, d.life / 300);
             ctx.font = d.crit ? "bold 20px monospace" : "bold 16px monospace";
             ctx.textAlign = "center";
-            ctx.fillStyle = d.isHeal ? "#4caf50" : (d.crit ? "#ffd700" : "#ff4444");
+            ctx.fillStyle = d.isHeal ? "#4caf50" : (d.crit ? "#fff56a" : "#ff4444");
             ctx.strokeStyle = "#000";
-            ctx.lineWidth = 3;
+            ctx.lineJoin = "round";
+            ctx.lineWidth = d.crit ? 3 : 3;
             const text = d.isHeal ? `+${d.amount}` : `-${d.amount}`;
             ctx.strokeText(text, sx, sy);
             ctx.fillText(text, sx, sy);

@@ -39,6 +39,19 @@ const CLUB_PROGRESSION = [
 // Where the bass lands inside a bar, and whether it hops the octave.
 const CLUB_BASS_PATTERN = [[0, 1], [0.75, 1], [1.5, 2], [2, 1], [2.75, 1], [3.5, 2]];
 
+// The sealed-room fight. Slower than the Clubhouse, in D dorian, with a
+// half-time pulse and a short electric ostinato instead of a dance lead.
+const SEAL_BPM = 104;
+const SEAL_BEAT = 60 / SEAL_BPM;
+const SEAL_BAR = SEAL_BEAT * 4;
+const SEAL_BARS = [
+    { bass: 73.42, chord: [146.83, 174.61, 220.00], lead: [[0, 293.66, 0.35], [1, 349.23, 0.25], [1.5, 440.00, 0.3], [2.5, 349.23, 0.35], [3.25, 293.66, 0.4]] },
+    { bass: 55.00, chord: [110.00, 130.81, 164.81], lead: [[0, 440.00, 0.3], [0.75, 349.23, 0.25], [1.5, 261.63, 0.4], [2.5, 329.63, 0.3], [3.5, 220.00, 0.35]] },
+    { bass: 58.27, chord: [116.54, 146.83, 174.61], lead: [[0, 233.08, 0.4], [1, 293.66, 0.25], [2, 349.23, 0.35], [2.75, 293.66, 0.25], [3.5, 233.08, 0.4]] },
+    { bass: 65.41, chord: [130.81, 164.81, 196.00], lead: [[0, 261.63, 0.3], [1, 329.63, 0.3], [2, 392.00, 0.35], [3, 329.63, 0.5]] },
+];
+const SEAL_BASS_HITS = [[0, 1], [1.5, 1], [2, 2], [3.25, 1]];
+
 class SoundSystem {
     constructor() {
         this.ctx = null;
@@ -51,6 +64,13 @@ class SoundSystem {
         this.clubTimer = null;
         this.clubNext = 0;
         this.clubBarIndex = 0;
+        this.sealBus = null;
+        this.sealTimer = null;
+        this.sealNext = 0;
+        this.sealBarIndex = 0;
+        this.sealDroneBus = null;
+        this.sealDroneTimer = null;
+        this.sealDroneOscs = null;
     }
 
     init() {
@@ -1455,5 +1475,514 @@ class SoundSystem {
         if (barIndex % CLUB_PROGRESSION.length === CLUB_PROGRESSION.length - 1) {
             this.clubNoise(at + 3.5 * CLUB_BEAT, 0.45, 0.07, 6000);
         }
+    }
+
+    // A short bright zap.
+    laserZap() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(1400, t);
+        osc.frequency.exponentialRampToValueAtTime(280, t + 0.09);
+        const gain = this.createGain(0.12);
+        gain.gain.setValueAtTime(0.12 * this.masterVolume, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        osc.connect(gain);
+        osc.start(t);
+        osc.stop(t + 0.1);
+    }
+
+    // Laid over the laser zap: a brighter strike and a short electric crackle.
+    hyperCrackle() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const zap = this.ctx.createOscillator();
+        zap.type = "sawtooth";
+        zap.frequency.setValueAtTime(2200, t);
+        zap.frequency.exponentialRampToValueAtTime(180, t + 0.14);
+        const zapGain = this.createGain(0.07);
+        zapGain.gain.setValueAtTime(0.07 * this.masterVolume, t);
+        zapGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        zap.connect(zapGain);
+        zap.start(t);
+        zap.stop(t + 0.16);
+
+        const len = 0.16;
+        const bufSize = Math.max(1, Math.floor(this.ctx.sampleRate * len));
+        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) {
+            const crack = Math.random() > 0.78 ? 1 : 0.08;
+            data[i] = (Math.random() * 2 - 1) * crack * Math.pow(1 - i / bufSize, 1.4);
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buf;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "highpass";
+        filter.frequency.value = 1600;
+        const noiseGain = this.createGain(0.09);
+        noiseGain.gain.setValueAtTime(0.09 * this.masterVolume, t);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, t + len);
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noise.start(t);
+        noise.stop(t + len);
+    }
+
+    // Laid over the laser when the shot is fire: a short whoosh, not the spell's roar.
+    laserFireWhoosh() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const len = 0.22;
+        const bufSize = Math.max(1, Math.floor(this.ctx.sampleRate * len));
+        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) {
+            const env = Math.sin((i / bufSize) * Math.PI);
+            data[i] = (Math.random() * 2 - 1) * env * Math.pow(1 - i / bufSize, 0.55);
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buf;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(980, t);
+        filter.frequency.exponentialRampToValueAtTime(220, t + len);
+        filter.Q.value = 0.7;
+        const gain = this.createGain(0.16);
+        gain.gain.setValueAtTime(0.16 * this.masterVolume, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + len);
+        noise.connect(filter);
+        filter.connect(gain);
+        noise.start(t);
+        noise.stop(t + len);
+
+        const osc = this.ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(190, t);
+        osc.frequency.exponentialRampToValueAtTime(55, t + 0.18);
+        const oGain = this.createGain(0.05);
+        oGain.gain.setValueAtTime(0.05 * this.masterVolume, t);
+        oGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        osc.connect(oGain);
+        osc.start(t);
+        osc.stop(t + 0.2);
+    }
+
+    // Two dry clicks, nothing explained.
+    lockClick() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        for (let i = 0; i < 2; i++) {
+            const osc = this.ctx.createOscillator();
+            osc.type = "square";
+            osc.frequency.setValueAtTime(180 - i * 40, t + i * 0.07);
+            const gain = this.createGain(0.08);
+            gain.gain.setValueAtTime(0.08 * this.masterVolume, t + i * 0.07);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.04);
+            osc.connect(gain);
+            osc.start(t + i * 0.07);
+            osc.stop(t + i * 0.07 + 0.05);
+        }
+    }
+
+    // The room waking: a sub hit, a filter opening, and a high electric stab.
+    systemWake() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const sub = this.ctx.createOscillator();
+        sub.type = "sine";
+        sub.frequency.setValueAtTime(70, t);
+        sub.frequency.exponentialRampToValueAtTime(34, t + 0.4);
+        const subGain = this.createGain(0.2);
+        subGain.gain.setValueAtTime(0.2 * this.masterVolume, t);
+        subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+        sub.connect(subGain);
+        sub.start(t);
+        sub.stop(t + 0.46);
+
+        const osc = this.ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(80, t);
+        osc.frequency.exponentialRampToValueAtTime(740, t + 0.62);
+        const fifth = this.ctx.createOscillator();
+        fifth.type = "square";
+        fifth.frequency.setValueAtTime(120, t + 0.12);
+        fifth.frequency.exponentialRampToValueAtTime(1110, t + 0.62);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(280, t);
+        filter.frequency.exponentialRampToValueAtTime(2800, t + 0.55);
+        const gain = this.createGain(0.09);
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.linearRampToValueAtTime(0.09 * this.masterVolume, t + 0.22);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.78);
+        osc.connect(filter);
+        fifth.connect(filter);
+        filter.connect(gain);
+        osc.start(t);
+        fifth.start(t + 0.12);
+        osc.stop(t + 0.8);
+        fifth.stop(t + 0.8);
+
+        const stab = this.ctx.createOscillator();
+        stab.type = "square";
+        stab.frequency.setValueAtTime(880, t + 0.58);
+        const stabGain = this.createGain(0.06);
+        stabGain.gain.setValueAtTime(0.06 * this.masterVolume, t + 0.58);
+        stabGain.gain.exponentialRampToValueAtTime(0.001, t + 0.78);
+        stab.connect(stabGain);
+        stab.start(t + 0.58);
+        stab.stop(t + 0.8);
+    }
+
+    // The door giving way: a low drop under a rising electric tone.
+    doorReveal() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const sub = this.ctx.createOscillator();
+        sub.type = "sine";
+        sub.frequency.setValueAtTime(96, t);
+        sub.frequency.exponentialRampToValueAtTime(34, t + 0.55);
+        const subGain = this.createGain(0.22);
+        subGain.gain.setValueAtTime(0.22 * this.masterVolume, t);
+        subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+        sub.connect(subGain);
+        sub.start(t);
+        sub.stop(t + 0.62);
+
+        const saw = this.ctx.createOscillator();
+        saw.type = "sawtooth";
+        saw.frequency.setValueAtTime(110, t + 0.05);
+        saw.frequency.exponentialRampToValueAtTime(620, t + 0.48);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(320, t);
+        filter.frequency.linearRampToValueAtTime(2400, t + 0.48);
+        const gain = this.createGain(0.07);
+        gain.gain.setValueAtTime(0.001, t + 0.05);
+        gain.gain.linearRampToValueAtTime(0.07 * this.masterVolume, t + 0.22);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+        saw.connect(filter);
+        filter.connect(gain);
+        saw.start(t + 0.05);
+        saw.stop(t + 0.56);
+    }
+
+    // Three dry clicks as the locks turn.
+    threeLocks() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const pitches = [150, 190, 250];
+        for (let i = 0; i < pitches.length; i++) {
+            const at = t + i * 0.16;
+            const osc = this.ctx.createOscillator();
+            osc.type = "square";
+            osc.frequency.setValueAtTime(pitches[i], at);
+            const gain = this.createGain(0.09);
+            gain.gain.setValueAtTime(0.09 * this.masterVolume, at);
+            gain.gain.exponentialRampToValueAtTime(0.001, at + 0.045);
+            osc.connect(gain);
+            osc.start(at);
+            osc.stop(at + 0.05);
+        }
+    }
+
+    startSealDrone() {
+        if (!this.ensureContext()) return;
+        if (this.sealDroneTimer) return;
+        const ctx = this.ctx;
+        const bus = ctx.createGain();
+        bus.gain.setValueAtTime(0.0001, ctx.currentTime);
+        bus.gain.linearRampToValueAtTime(this.masterVolume, ctx.currentTime + 0.55);
+        bus.connect(ctx.destination);
+        this.sealDroneBus = bus;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = 220;
+        filter.connect(bus);
+
+        const low = ctx.createOscillator();
+        low.type = "sine";
+        low.frequency.value = 46;
+        const lowGain = ctx.createGain();
+        lowGain.gain.value = 0.2;
+        low.connect(lowGain);
+        lowGain.connect(filter);
+        low.start();
+
+        const beat = ctx.createOscillator();
+        beat.type = "sawtooth";
+        beat.frequency.value = 49.2;
+        const beatGain = ctx.createGain();
+        beatGain.gain.value = 0.035;
+        beat.connect(beatGain);
+        beatGain.connect(filter);
+        beat.start();
+
+        this.sealDroneOscs = [low, beat];
+        this.sealPulse();
+        this.sealDroneTimer = setInterval(() => this.sealPulse(), 980);
+    }
+
+    sealPulse() {
+        if (!this.ctx || !this.sealDroneBus) return;
+        const t = this.ctx.currentTime;
+        this.sealThump(t, 82);
+        this.sealThump(t + 0.16, 54);
+        const tick = this.ctx.createOscillator();
+        tick.type = "square";
+        tick.frequency.setValueAtTime(990, t + 0.02);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.045, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+        tick.connect(gain);
+        gain.connect(this.sealDroneBus);
+        tick.start(t + 0.02);
+        tick.stop(t + 0.06);
+    }
+
+    sealThump(at, freq) {
+        const osc = this.ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, at);
+        osc.frequency.exponentialRampToValueAtTime(30, at + 0.12);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.32, at);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.16);
+        osc.connect(gain);
+        gain.connect(this.sealDroneBus);
+        osc.start(at);
+        osc.stop(at + 0.18);
+    }
+
+    stopSealDrone() {
+        if (this.sealDroneTimer) {
+            clearInterval(this.sealDroneTimer);
+            this.sealDroneTimer = null;
+        }
+        const oscs = this.sealDroneOscs;
+        this.sealDroneOscs = null;
+        const bus = this.sealDroneBus;
+        this.sealDroneBus = null;
+        if (bus && this.ctx) {
+            const t = this.ctx.currentTime;
+            bus.gain.cancelScheduledValues(t);
+            bus.gain.setValueAtTime(Math.max(0.0001, bus.gain.value), t);
+            bus.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+        }
+        setTimeout(() => {
+            if (oscs) {
+                for (const osc of oscs) {
+                    try { osc.stop(); } catch (e) { /* already stopped */ }
+                }
+            }
+            if (bus) {
+                try { bus.disconnect(); } catch (e) { /* already gone */ }
+            }
+        }, 500);
+    }
+
+    isSealDronePlaying() {
+        return !!this.sealDroneTimer;
+    }
+
+    startSealMusic() {
+        if (!this.ensureContext()) return;
+        if (this.sealTimer) return;
+        this.sealBus = this.ctx.createGain();
+        this.sealBus.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+        this.sealBus.gain.linearRampToValueAtTime(this.masterVolume, this.ctx.currentTime + 0.35);
+        this.sealBus.connect(this.ctx.destination);
+        this.sealBarIndex = 0;
+        this.sealNext = this.ctx.currentTime + 0.08;
+        this.scheduleSealBars();
+        this.sealTimer = setInterval(() => this.scheduleSealBars(), 200);
+    }
+
+    stopSealMusic() {
+        if (this.sealTimer) {
+            clearInterval(this.sealTimer);
+            this.sealTimer = null;
+        }
+        const bus = this.sealBus;
+        this.sealBus = null;
+        if (!bus || !this.ctx) return;
+        const t = this.ctx.currentTime;
+        bus.gain.cancelScheduledValues(t);
+        bus.gain.setValueAtTime(Math.max(0.0001, bus.gain.value), t);
+        bus.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+        setTimeout(() => {
+            try { bus.disconnect(); } catch (e) { /* already gone */ }
+        }, 500);
+    }
+
+    isSealMusicPlaying() {
+        return !!this.sealTimer;
+    }
+
+    scheduleSealBars() {
+        if (!this.ctx || !this.sealBus) return;
+        while (this.sealNext < this.ctx.currentTime + SEAL_BAR * 1.5) {
+            if (this.sealNext < this.ctx.currentTime) this.sealNext = this.ctx.currentTime + 0.05;
+            this.playSealBar(this.sealNext, this.sealBarIndex);
+            this.sealNext += SEAL_BAR;
+            this.sealBarIndex++;
+        }
+    }
+
+    sealVoice(type, freq, at, len, volume) {
+        const osc = this.ctx.createOscillator();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, at);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(type === "sawtooth" ? 420 : 1800, at);
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(volume, at + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+        osc.connect(filter);
+        filter.connect(g);
+        g.connect(this.sealBus);
+        osc.start(at);
+        osc.stop(at + len + 0.02);
+    }
+
+    playSealBar(at, barIndex) {
+        const bar = SEAL_BARS[barIndex % SEAL_BARS.length];
+
+        // Half-time kick, with one pushed beat so it drives without a dance floor.
+        for (const beat of [0, 2]) {
+            const kt = at + beat * SEAL_BEAT;
+            const kick = this.ctx.createOscillator();
+            kick.type = "sine";
+            kick.frequency.setValueAtTime(140, kt);
+            kick.frequency.exponentialRampToValueAtTime(40, kt + 0.16);
+            const kg = this.ctx.createGain();
+            kg.gain.setValueAtTime(0.4, kt);
+            kg.gain.exponentialRampToValueAtTime(0.0001, kt + 0.2);
+            kick.connect(kg);
+            kg.connect(this.sealBus);
+            kick.start(kt);
+            kick.stop(kt + 0.22);
+        }
+        const push = at + 3.5 * SEAL_BEAT;
+        const ghost = this.ctx.createOscillator();
+        ghost.type = "sine";
+        ghost.frequency.setValueAtTime(90, push);
+        ghost.frequency.exponentialRampToValueAtTime(40, push + 0.08);
+        const gg = this.ctx.createGain();
+        gg.gain.setValueAtTime(0.16, push);
+        gg.gain.exponentialRampToValueAtTime(0.0001, push + 0.1);
+        ghost.connect(gg);
+        gg.connect(this.sealBus);
+        ghost.start(push);
+        ghost.stop(push + 0.12);
+
+        // Metallic ticks on the eighths. Not a clap, not a hat pattern from the club.
+        for (let i = 0; i < 8; i++) {
+            const tt = at + i * SEAL_BEAT / 2;
+            const tick = this.ctx.createOscillator();
+            tick.type = "square";
+            tick.frequency.setValueAtTime(i % 2 === 0 ? 1480 : 980, tt);
+            const tg = this.ctx.createGain();
+            tg.gain.setValueAtTime(i % 2 === 0 ? 0.045 : 0.02, tt);
+            tg.gain.exponentialRampToValueAtTime(0.0001, tt + 0.03);
+            tick.connect(tg);
+            tg.connect(this.sealBus);
+            tick.start(tt);
+            tick.stop(tt + 0.04);
+        }
+
+        for (const [beat, octave] of SEAL_BASS_HITS) {
+            this.sealVoice("sawtooth", bar.bass * octave, at + beat * SEAL_BEAT, SEAL_BEAT * 0.55, 0.11);
+        }
+
+        for (const f of bar.chord) {
+            const osc = this.ctx.createOscillator();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(f, at);
+            const g = this.ctx.createGain();
+            g.gain.setValueAtTime(0.0001, at);
+            g.gain.linearRampToValueAtTime(0.04, at + 0.08);
+            g.gain.exponentialRampToValueAtTime(0.0001, at + SEAL_BAR);
+            osc.connect(g);
+            g.connect(this.sealBus);
+            osc.start(at);
+            osc.stop(at + SEAL_BAR + 0.02);
+        }
+
+        for (const [beat, freq, len] of bar.lead) {
+            this.sealVoice("square", freq, at + beat * SEAL_BEAT, len * SEAL_BEAT, 0.06);
+        }
+    }
+
+    // A short synth fanfare, not the cave's triangle tune.
+    sealVictory() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const notes = [
+            { f: 293.66, d: 0.0 },
+            { f: 369.99, d: 0.12 },
+            { f: 440.00, d: 0.24 },
+            { f: 587.33, d: 0.4 },
+            { f: 880.00, d: 0.62 },
+        ];
+        for (const note of notes) {
+            const osc = this.ctx.createOscillator();
+            osc.type = "square";
+            osc.frequency.setValueAtTime(note.f, t + note.d);
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = "lowpass";
+            filter.frequency.setValueAtTime(1800, t + note.d);
+            const gain = this.createGain(0.08);
+            gain.gain.setValueAtTime(0.08 * this.masterVolume, t + note.d);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + note.d + 0.28);
+            osc.connect(filter);
+            filter.connect(gain);
+            osc.start(t + note.d);
+            osc.stop(t + note.d + 0.3);
+        }
+    }
+
+    // The prize locking in: a rising pair of tones and a bright ping.
+    laserAcquire() {
+        if (!this.ensureContext()) return;
+        const t = this.ctx.currentTime;
+        const rise = this.ctx.createOscillator();
+        rise.type = "sawtooth";
+        rise.frequency.setValueAtTime(220, t);
+        rise.frequency.exponentialRampToValueAtTime(880, t + 0.28);
+        const upper = this.ctx.createOscillator();
+        upper.type = "square";
+        upper.frequency.setValueAtTime(330, t);
+        upper.frequency.exponentialRampToValueAtTime(1320, t + 0.28);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(400, t);
+        filter.frequency.exponentialRampToValueAtTime(3200, t + 0.28);
+        const gain = this.createGain(0.07);
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.linearRampToValueAtTime(0.07 * this.masterVolume, t + 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.36);
+        rise.connect(filter);
+        upper.connect(filter);
+        filter.connect(gain);
+        rise.start(t);
+        upper.start(t);
+        rise.stop(t + 0.38);
+        upper.stop(t + 0.38);
+
+        const ping = this.ctx.createOscillator();
+        ping.type = "sine";
+        ping.frequency.setValueAtTime(1760, t + 0.3);
+        const pingGain = this.createGain(0.08);
+        pingGain.gain.setValueAtTime(0.08 * this.masterVolume, t + 0.3);
+        pingGain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+        ping.connect(pingGain);
+        ping.start(t + 0.3);
+        ping.stop(t + 0.72);
     }
 }

@@ -384,3 +384,89 @@ const TreasureChestSprite = {
         ctx.restore();
     },
 };
+
+// Small held objects drawn in the world and, as markup, in the inventory.
+const KeySprite = {
+    palette(id) {
+        return (typeof STRANGE_KEYS !== "undefined" && STRANGE_KEYS[id]) || STRANGE_KEYS.copper;
+    },
+
+    draw(ctx, x, y, id, time) {
+        const p = this.palette(id);
+        const bob = Math.sin((time || 0) * 0.004 + x * 0.02) * 1.5;
+        // The bow's hole is punched on its own canvas, so it shows the ground
+        // under the key and does not erase the world behind it.
+        const off = this._off || (this._off = document.createElement("canvas"));
+        off.width = 32;
+        off.height = 24;
+        const o = off.getContext("2d");
+        o.setTransform(1, 0, 0, 1, 0, 0);
+        o.clearRect(0, 0, 32, 24);
+        o.save();
+        o.translate(10, 12);
+
+        // Bow of the key
+        o.fillStyle = p.shadow;
+        o.beginPath();
+        o.arc(-4, -1, 5.2, 0, Math.PI * 2);
+        o.fill();
+        o.fillStyle = p.color;
+        o.beginPath();
+        o.arc(-4, -2, 4.2, 0, Math.PI * 2);
+        o.fill();
+        o.fillStyle = p.highlight;
+        o.beginPath();
+        o.arc(-5, -3.2, 1.6, 0, Math.PI * 2);
+        o.fill();
+        o.globalCompositeOperation = "destination-out";
+        o.beginPath();
+        o.arc(-4, -2, 1.7, 0, Math.PI * 2);
+        o.fill();
+        o.globalCompositeOperation = "source-over";
+
+        // Shaft and tooth
+        o.fillStyle = p.shadow;
+        o.fillRect(-1, -1, 12, 3.2);
+        o.fillStyle = p.color;
+        o.fillRect(-1, -2, 12, 2.4);
+        o.fillStyle = p.tooth;
+        o.fillRect(7, 0, 2.2, 3.4);
+        o.fillRect(10, 0, 2.2, 2.4);
+        if (id === "crystal") {
+            o.fillStyle = "rgba(255,255,255,0.85)";
+            o.fillRect(1, -2, 2, 1);
+        }
+        const glint = 0.35 + 0.65 * Math.abs(Math.sin((time || 0) * 0.009));
+        o.globalAlpha = glint;
+        o.fillStyle = p.highlight;
+        o.fillRect(8, -8, 2, 2);
+        o.fillRect(11, -6, 2, 2);
+        o.fillRect(-10, -7, 2, 2);
+        o.restore();
+        ctx.drawImage(off, Math.round(x) - 10, Math.round(y + bob) - 12);
+    },
+
+    icon(id) {
+        const p = this.palette(id);
+        return `<svg class="key-icon" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+            <circle cx="11" cy="15" r="7" fill="${p.shadow}"/>
+            <circle cx="11" cy="14" r="6" fill="${p.color}"/>
+            <circle cx="9.2" cy="12.2" r="2" fill="${p.highlight}"/>
+            <circle cx="11" cy="14" r="2.3" fill="#140e08"/>
+            <rect x="15" y="12.2" width="13" height="3.4" rx="0.6" fill="${p.color}"/>
+            <rect x="23" y="15" width="2.2" height="4" fill="${p.tooth}"/>
+            <rect x="26.2" y="15" width="2.2" height="3" fill="${p.tooth}"/>
+        </svg>`;
+    },
+};
+
+const LaserIcon = {
+    markup() {
+        return `<svg class="laser-icon" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+            <rect x="4" y="13" width="16" height="7" rx="2" fill="#1c2430"/>
+            <rect x="18" y="14.5" width="8" height="4" fill="#67e8ff"/>
+            <rect x="25" y="15.4" width="5" height="2.2" fill="#e8fbff"/>
+            <circle cx="9" cy="16.5" r="1.4" fill="#7ef0ff"/>
+        </svg>`;
+    },
+};

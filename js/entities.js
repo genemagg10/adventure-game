@@ -19,6 +19,8 @@ class Player {
         // Which of the Ingoizer siblings the player chose at the start screen.
         // Their house colour tints the hero's armour trim in the world.
         this.siblingId = null;
+        this.playerTag = "";
+        this.heldKeys = [];
         this._siblingTintCache = { id: null, tint: null };
 
         // Weapons
@@ -176,6 +178,21 @@ class Player {
         return false;
     }
 
+    holdKey(id) {
+        if (!id || this.heldKeys.includes(id)) return false;
+        this.heldKeys.push(id);
+        return true;
+    }
+
+    holdsKey(id) {
+        return Array.isArray(this.heldKeys) && this.heldKeys.includes(id);
+    }
+
+    holdsAllKeys() {
+        if (typeof STRANGE_KEYS === "undefined") return false;
+        return Object.keys(STRANGE_KEYS).every(id => this.holdsKey(id));
+    }
+
     getArmor() {
         const armor = ARMOR[this.currentArmor];
         let def = armor.defense;
@@ -220,6 +237,7 @@ class Player {
         const isFireArrow = this.activeElement === "fire" && this.elements.fire;
         const fireDamage = isFireArrow ? Math.floor(ELEMENTS.fire.damage * 0.5) : 0;
         const bowEnchant = this.enchantments[this.currentBow] || null;
+        const isLaser = bow.bolt === "laser";
 
         return {
             x: this.x + this.facing.x * 10,
@@ -230,7 +248,9 @@ class Player {
             range: bow.range,
             distTraveled: 0,
             isFireArrow: isFireArrow,
-            isZeusBolt: !!this.hasZeusBolts,
+            isLaser: isLaser,
+            isZeusBolt: !!this.hasZeusBolts && !isLaser,
+            hypercharged: isLaser && !!this.hasZeusBolts,
             bowEnchant: bowEnchant,
         };
     }
@@ -1678,6 +1698,461 @@ class Boss {
         ctx.beginPath();
         ctx.arc(sx, sy + bob, this.size + 10 + auraPhase * 5, 0, Math.PI * 2);
         ctx.stroke();
+    }
+}
+
+// A fighter who does not swing a sword. Bolts, a sweeping line, and a short blink.
+class LucaBoss extends Boss {
+    constructor(x, y) {
+        super(x, y);
+        const c = LUCA_BOSS;
+        this.name = c.name;
+        this.hp = c.hp;
+        this.maxHp = c.hp;
+        this.damage = c.damage;
+        this.baseSpeed = c.speed;
+        this.speed = c.speed;
+        this.size = c.size;
+        this.color = c.color;
+        this.phases = c.phases;
+        this.leashRadius = 640;
+        this.sweep = null;
+        this.windup = null;
+        this.swipe = null;
+        this.swipeReadyAt = 0;
+        this.chargeHit = false;
+        this.chargeWindupTotal = 0;
+        this.strafeSign = 1;
+        this.plant = 0;
+        this.plantAfterCharge = false;
+    }
+
+    shove(player, force) {
+        const norm = normalize(player.x - this.x, player.y - this.y);
+        const fx = norm.x || this.facing.x || 1;
+        const fy = norm.y || this.facing.y || 0;
+        player.knockbackVx = fx * force;
+        player.knockbackVy = fy * force;
+    }
+
+    boltPower(phase, player) {
+        const listed = phase && phase.bolt != null ? phase.bolt : LUCA_BOSS.boltDamage;
+        if (!phase || phase.hpThreshold > 0.45 || !player || !player.elements) return listed;
+        let unlocked = 0;
+        const order = player.elementUnlockOrder || [];
+        for (let i = 0; i < order.length; i++) {
+            if (player.elements[order[i]]) unlocked++;
+        }
+        return listed + unlocked * 4;
+    }
+
+    update(dt, player, world) {
+        if (!this.alive) {
+            if (this.deathTimer > 0) this.deathTimer -= dt;
+            return null;
+        }
+        if (!this.spawned) return null;
+        if (this.spawnAnimation > 0) {
+            this.spawnAnimation -= dt;
+            return null;
+        }
+
+        const phase = this.getCurrentPhase();
+        const distToPlayer = dist(this.x, this.y, player.x, player.y);
+        const now = Date.now();
+        const spd = this.speed * phase.speed;
+
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const p = this.projectiles[i];
+            p.x += p.vx * dt * 0.1;
+            p.y += p.vy * dt * 0.1;
+            p.life -= dt;
+            if (p.life <= 0) {
+                this.projectiles.splice(i, 1);
+                continue;
+            }
+            const radius = p.kind === "mine" ? 12 : 6;
+            if (circleOverlap(p.x, p.y, radius, player.x, player.y, player.size)) {
+                if (player.takeDamage(p.damage || LUCA_BOSS.boltDamage, p.x, p.y)) {
+                    this.projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        if (this.sweep) {
+            this.sweep.life -= dt;
+            if (this.sweep.life < this.sweep.activeFor && !this.sweep.hit) {
+                if (this.onSweep(player)) {
+                    this.sweep.hit = true;
+                    player.takeDamage(LUCA_BOSS.boltDamage, this.x, this.y);
+                }
+            }
+            if (this.sweep.life <= 0) this.sweep = null;
+        }
+
+        if (this.charging) {
+            this.chargeTimer -= dt;
+            this.tryMove(this.chargeDir.x * spd * 3.2, this.chargeDir.y * spd * 3.2, world);
+            const hitDist = dist(this.x, this.y, player.x, player.y);
+            if (!this.chargeHit && hitDist < this.size + player.size + 4) {
+                if (player.takeDamage(this.damage, this.x, this.y)) {
+                    this.chargeHit = true;
+                    this.shove(player, 11);
+                }
+            }
+            if (this.chargeTimer <= 0) {
+                this.charging = false;
+                this.chargeHit = false;
+                if (this.plantAfterCharge) {
+                    this.plant = LUCA_BOSS.plant;
+                    this.plantAfterCharge = false;
+                }
+            }
+            if (this.flashTimer > 0) this.flashTimer -= dt;
+            return null;
+        }
+
+        if (this.chargeWindup > 0) {
+            this.chargeWindup -= dt;
+            const aim = normalize(player.x - this.x, player.y - this.y);
+            if (aim.x || aim.y) {
+                this.chargeDir = aim;
+                this.facing = aim;
+            }
+            if (this.chargeWindup <= 0) {
+                this.charging = true;
+                this.chargeHit = false;
+                this.chargeTimer = LUCA_BOSS.chargeTime;
+            }
+            if (this.flashTimer > 0) this.flashTimer -= dt;
+            return null;
+        }
+
+        const pocket = this.size + player.size + LUCA_BOSS.standoff;
+        const swipeReach = this.size + player.size + LUCA_BOSS.swipeReach;
+        if (this.plant > 0) {
+            this.plant -= dt;
+            const aim = normalize(player.x - this.x, player.y - this.y);
+            if (aim.x || aim.y) this.facing = aim;
+        } else if (this.swipe) {
+            this.swipe.left -= dt;
+            const aim = normalize(player.x - this.x, player.y - this.y);
+            if (aim.x || aim.y) this.facing = aim;
+            if (this.swipe.left <= 0) {
+                this.swipe = null;
+                this.swipeReadyAt = now + LUCA_BOSS.swipeCooldown;
+                if (distToPlayer < swipeReach && player.takeDamage(this.damage, this.x, this.y)) {
+                    this.shove(player, 11);
+                    this.plant = LUCA_BOSS.plant;
+                }
+            }
+        } else if (distToPlayer < pocket && now >= this.swipeReadyAt && !this.windup) {
+            this.swipe = { left: LUCA_BOSS.swipeWindup, total: LUCA_BOSS.swipeWindup };
+        } else {
+            const away = normalize(this.x - player.x, this.y - player.y);
+            const toward = { x: -away.x, y: -away.y };
+            const bandNear = LUCA_BOSS.boltRange - 18;
+            const bandFar = LUCA_BOSS.boltRange + 36;
+            let mx = toward.x;
+            let my = toward.y;
+            if (distToPlayer < bandNear) {
+                mx = away.x;
+                my = away.y;
+            } else if (distToPlayer <= bandFar) {
+                mx = -away.y * this.strafeSign;
+                my = away.x * this.strafeSign;
+            }
+            this.tryMove(mx * spd, my * spd, world);
+            if (toward.x || toward.y) this.facing = toward;
+            this.walkTimer += dt;
+            if (this.walkTimer > 140) {
+                this.walkFrame = (this.walkFrame + 1) % 4;
+                this.walkTimer = 0;
+            }
+        }
+
+        if (!this.swipe && this.plant <= 0) {
+            if (this.windup) {
+                this.windup.left -= dt;
+                if (!this.windup.locked) {
+                    this.windup.angle = dirToAngle(player.x - this.x, player.y - this.y);
+                    if (this.windup.left <= LUCA_BOSS.aimLock) this.windup.locked = true;
+                }
+                if (this.windup.left <= 0) {
+                    const shot = this.windup;
+                    this.windup = null;
+                    this.releasePattern(shot, player, world);
+                }
+            } else if (now - this.lastAttackTime > phase.attackRate) {
+                this.lastAttackTime = now;
+                this.windup = {
+                    left: LUCA_BOSS.windup,
+                    total: LUCA_BOSS.windup,
+                    pattern: phase.pattern,
+                    bolt: this.boltPower(phase, player),
+                    angle: dirToAngle(player.x - this.x, player.y - this.y),
+                    locked: phase.pattern === "bolt",
+                };
+            }
+        }
+
+        if (this.flashTimer > 0) this.flashTimer -= dt;
+        return null;
+    }
+
+    releasePattern(shot, player, world) {
+        const bolt = shot.bolt;
+        if (shot.pattern === "bolt") {
+            this.fireBolt(shot.angle, 0, 4.2, bolt);
+            this.plant = LUCA_BOSS.plant;
+        } else if (shot.pattern === "fan") {
+            for (const off of [-0.45, -0.22, 0, 0.22, 0.45]) this.fireBolt(shot.angle, off, 4.6, bolt);
+            this.plant = LUCA_BOSS.plant;
+        } else if (shot.pattern === "sweep") {
+            this.startSweep(player);
+            this.fireBolt(shot.angle, 0.15, 5.4, bolt);
+            this.fireBolt(shot.angle, -0.15, 5.4, bolt);
+            this.plant = LUCA_BOSS.plant;
+        } else {
+            this.blinkToward(player, world);
+            this.fireBolt(shot.angle, 0, 5.6, bolt);
+            this.fireBolt(shot.angle, 0.4, 5.0, bolt);
+            this.fireBolt(shot.angle, -0.4, 5.0, bolt);
+            this.dropMine();
+            this.chargeWindup = LUCA_BOSS.chargeWindup;
+            this.chargeWindupTotal = LUCA_BOSS.chargeWindup;
+            this.chargeHit = false;
+            this.charging = false;
+            this.chargeDir = normalize(player.x - this.x, player.y - this.y);
+            this.plantAfterCharge = true;
+        }
+    }
+
+    fireBolt(angle, angleOffset, speed, damage) {
+        const aim = angle + angleOffset;
+        this.projectiles.push({
+            x: this.x + Math.cos(aim) * 18,
+            y: this.y + Math.sin(aim) * 18,
+            vx: Math.cos(aim) * speed,
+            vy: Math.sin(aim) * speed,
+            life: 1800,
+            damage: damage,
+            kind: "bolt",
+        });
+    }
+
+    dropMine() {
+        this.projectiles.push({
+            x: this.x,
+            y: this.y,
+            vx: 0,
+            vy: 0,
+            life: 2400,
+            damage: Math.round(LUCA_BOSS.boltDamage * 0.7),
+            kind: "mine",
+        });
+    }
+
+    startSweep(player) {
+        this.sweep = {
+            angle: dirToAngle(player.x - this.x, player.y - this.y),
+            life: 700,
+            activeFor: 280,
+            hit: false,
+        };
+    }
+
+    onSweep(player) {
+        if (!this.sweep) return false;
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const along = dx * Math.cos(this.sweep.angle) + dy * Math.sin(this.sweep.angle);
+        if (along < 10 || along > 220) return false;
+        const side = Math.abs(-dx * Math.sin(this.sweep.angle) + dy * Math.cos(this.sweep.angle));
+        return side < 22;
+    }
+
+    blinkToward(player, world) {
+        const step = 70;
+        const n = normalize(player.x - this.x, player.y - this.y);
+        const nx = this.x + n.x * step;
+        const ny = this.y + n.y * step;
+        const tile = worldToTile(nx, ny);
+        if (world && !world.isSolid(tile.x, tile.y)) {
+            this.x = nx;
+            this.y = ny;
+        }
+    }
+
+    render(ctx, camera, time) {
+        const sx = this.x - camera.x;
+        const sy = this.y - camera.y;
+        if (!this.spawned) return;
+        const bob = Math.sin(time * 0.008 + this.walkFrame) * 1.2;
+        const flash = this.flashTimer > 0;
+
+        ctx.save();
+        if (!this.alive) ctx.globalAlpha = Math.max(0, this.deathTimer / 3000);
+
+        if (this.windup) {
+            const p = 1 - this.windup.left / this.windup.total;
+            const ang = this.windup.angle;
+            const offsets = this.windup.pattern === "fan" ? [-0.45, -0.22, 0, 0.22, 0.45]
+                : this.windup.pattern === "sweep" ? [-0.15, 0.15]
+                : this.windup.pattern === "frenzy" ? [-0.4, 0, 0.4]
+                : [0];
+            ctx.fillStyle = `rgba(126, 240, 255, ${0.12 + p * 0.4})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 12 + p * 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = `rgba(160, 240, 255, ${0.35 + p * 0.6})`;
+            ctx.lineWidth = 2;
+            const reach = 70 + p * 150;
+            for (let i = 0; i < offsets.length; i++) {
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.lineTo(sx + Math.cos(ang + offsets[i]) * reach, sy + Math.sin(ang + offsets[i]) * reach);
+                ctx.stroke();
+            }
+        }
+
+        if (this.swipe) {
+            const p = 1 - this.swipe.left / this.swipe.total;
+            ctx.fillStyle = `rgba(255, 72, 36, ${0.22 + p * 0.55})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 14 + p * 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = `rgba(255, 186, 80, ${0.55 + p * 0.45})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(sx, sy, this.size + LUCA_BOSS.swipeReach, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        if (this.chargeWindup > 0) {
+            const total = this.chargeWindupTotal || LUCA_BOSS.chargeWindup;
+            const p = 1 - this.chargeWindup / total;
+            ctx.fillStyle = `rgba(255, 90, 40, ${0.18 + p * 0.6})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 16 + p * 24, 0, Math.PI * 2);
+            ctx.fill();
+            const ang = Math.atan2(this.chargeDir.y, this.chargeDir.x);
+            ctx.strokeStyle = `rgba(255, 150, 60, ${0.45 + p * 0.55})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx + Math.cos(ang) * (36 + p * 90), sy + Math.sin(ang) * (36 + p * 90));
+            ctx.stroke();
+        }
+
+        if (this.sweep) {
+            const warning = this.sweep.life > this.sweep.activeFor;
+            ctx.strokeStyle = warning ? "rgba(120, 230, 255, 0.35)" : "rgba(180, 250, 255, 0.95)";
+            ctx.lineWidth = warning ? 2 : 5;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx + Math.cos(this.sweep.angle) * 220, sy + Math.sin(this.sweep.angle) * 220);
+            ctx.stroke();
+        }
+
+        for (const p of this.projectiles) {
+            const px = p.x - camera.x;
+            const py = p.y - camera.y;
+            if (p.kind === "mine") {
+                ctx.fillStyle = "rgba(80, 220, 255, 0.35)";
+                ctx.beginPath();
+                ctx.arc(px, py, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#e8fbff";
+                ctx.fillRect(px - 1.5, py - 1.5, 3, 3);
+            } else {
+                const ang = Math.atan2(p.vy, p.vx);
+                ctx.save();
+                ctx.translate(Math.round(px), Math.round(py));
+                ctx.rotate(ang);
+                ctx.fillStyle = "rgba(126, 240, 255, 0.4)";
+                ctx.fillRect(-18, -6, 32, 12);
+                ctx.fillStyle = "#7ef0ff";
+                ctx.fillRect(-14, -3, 26, 6);
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(-8, -1, 18, 2);
+                ctx.fillStyle = "#f4fdff";
+                ctx.fillRect(8, -4, 7, 8);
+                ctx.restore();
+            }
+        }
+
+        const x = Math.round(sx);
+        const y = Math.round(sy + bob);
+        const recovering = this.plant > 0 && !flash;
+        const pulse = recovering ? 0.5 + 0.5 * Math.sin((time || 0) * 0.005) : 0;
+        const tone = (hex) => {
+            const n = parseInt(hex.slice(1), 16);
+            let r = (n >> 16) & 255;
+            let g = (n >> 8) & 255;
+            let b = n & 255;
+            const lift = 0.14 + pulse * 0.22;
+            const pale = pulse * 0.28;
+            r = r + (176 - r) * lift;
+            g = g + (184 - g) * lift;
+            b = b + (196 - b) * lift;
+            r = r + (244 - r) * pale;
+            g = g + (247 - g) * pale;
+            b = b + (251 - b) * pale;
+            const h = (v) => Math.round(v).toString(16).padStart(2, "0");
+            return "#" + h(r) + h(g) + h(b);
+        };
+        const coat = flash ? "#d8f6ff" : (recovering ? tone("#12161c") : "#12161c");
+        const plate = flash ? "#ffffff" : (recovering ? tone("#243040") : "#243040");
+        const steel = flash ? "#e8fbff" : (recovering ? tone("#1a222c") : "#1a222c");
+        const boot = flash ? "#f4fdff" : (recovering ? tone("#0c1016") : "#0c1016");
+        const sole = flash ? "#ffffff" : (recovering ? tone("#3a4558") : "#3a4558");
+        const glow = recovering ? tone("#d5dbe4") : "#7ef0ff";
+
+        // Helmet: a dome and visor, set above the shoulders.
+        ctx.fillStyle = glow;
+        ctx.fillRect(x - 1, y - 26, 2, 3);
+        ctx.fillStyle = plate;
+        ctx.fillRect(x - 5, y - 23, 10, 4);
+        ctx.fillStyle = coat;
+        ctx.fillRect(x - 8, y - 20, 16, 6);
+        ctx.fillStyle = glow;
+        ctx.fillRect(x - 6, y - 18, 12, 2);
+        ctx.fillStyle = steel;
+        ctx.fillRect(x - 7, y - 16, 14, 3);
+
+        // Coat, with a gap under the helmet so the head reads as its own shape.
+        ctx.fillStyle = coat;
+        ctx.fillRect(x - 9, y - 11, 18, 4);
+        ctx.fillRect(x - 7, y - 8, 14, 14);
+        ctx.fillStyle = plate;
+        ctx.fillRect(x - 4, y - 8, 8, 7);
+        ctx.fillStyle = glow;
+        ctx.fillRect(x - 3, y - 6, 6, 1);
+
+        // Boots, split from the coat and from each other.
+        ctx.fillStyle = boot;
+        ctx.fillRect(x - 8, y + 9, 6, 6);
+        ctx.fillRect(x + 2, y + 9, 6, 6);
+        ctx.fillStyle = sole;
+        ctx.fillRect(x - 8, y + 14, 6, 2);
+        ctx.fillRect(x + 2, y + 14, 6, 2);
+        ctx.fillStyle = glow;
+        ctx.fillRect(x - 6, y + 10, 2, 1);
+        ctx.fillRect(x + 4, y + 10, 2, 1);
+
+        // Rifle along the facing
+        const ang = dirToAngle(this.facing.x, this.facing.y);
+        ctx.save();
+        ctx.translate(x + Math.cos(ang) * 8, y - 2 + Math.sin(ang) * 8);
+        ctx.rotate(ang);
+        ctx.fillStyle = recovering ? tone("#1a222c") : "#1a222c";
+        ctx.fillRect(0, -2, 16, 4);
+        ctx.fillStyle = recovering ? tone("#c5ccd6") : "#9af6ff";
+        ctx.fillRect(14, -1, 5, 2);
+        ctx.restore();
+
+        ctx.restore();
     }
 }
 

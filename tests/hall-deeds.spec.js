@@ -106,13 +106,13 @@ test.describe("Hall of Champions", () => {
         }, { rows: championRows(t, hour) });
 
         expect(ranked.covered).toBe(ranked.allowed);
-        expect(ranked.total).toBe(68);
+        expect(ranked.total).toBe(78);
         expect(ranked.champs.map((c) => c.tag)).toEqual([
             "Ivo", "Nia", "Bram", "Cass", "Dee", "Finn", "Gio", "Eve", "Ada", "Ann", "Zoe",
         ]);
         expect(ranked.champs[0]).toMatchObject({
-            score: 21, count: 4, hardest: 8, hardestId: "beat-zeus",
-            deeds: ["beat-zeus", "planted-worldtree", "giant-turtle", "black-knight"],
+            score: 31, count: 5, hardest: 10, hardestId: "luca-defeated",
+            deeds: ["luca-defeated", "beat-zeus", "planted-worldtree", "giant-turtle", "black-knight"],
         });
         expect(ranked.champs[1]).toMatchObject({ score: 16, count: 3, hardest: 8 });
         expect(ranked.champs[2]).toMatchObject({ tag: "Bram", score: 6, count: 4, hardest: 3 });
@@ -183,14 +183,14 @@ test.describe("Hall of Champions", () => {
 
         expect(ranked.map((c) => c.tag)).toEqual(["Quin", "Vesper", "Pia", "Nim"]);
         expect(ranked[0]).toMatchObject({
-            score: 78, count: 20, diamond: true, bonus: 10, hardest: 8, hardestMark: 9,
+            score: 88, count: 21, diamond: true, bonus: 10, hardest: 10, hardestMark: 11,
             hardestTier: "Diamond", hardestLabel: "Full set",
         });
         expect(ranked[0].keys).toEqual(["strange-key-copper", "strange-key-jade", "strange-key-crystal"]);
-        expect(ranked[1]).toMatchObject({ score: 78, diamond: true, hardestMark: 9 });
+        expect(ranked[1]).toMatchObject({ score: 88, diamond: true, hardestMark: 11 });
         expect(ranked[0].reachedAt).toBeLessThan(ranked[1].reachedAt);
-        expect(ranked[2]).toMatchObject({ tag: "Pia", diamond: false, bonus: 0, score: 67, count: 19, hardestMark: 8 });
-        expect(ranked[3]).toMatchObject({ tag: "Nim", diamond: false, bonus: 0, score: 66, count: 19 });
+        expect(ranked[2]).toMatchObject({ tag: "Pia", diamond: false, bonus: 0, score: 77, count: 20, hardestMark: 10 });
+        expect(ranked[3]).toMatchObject({ tag: "Nim", diamond: false, bonus: 0, score: 76, count: 20 });
         expect(ranked[3].keys).not.toContain("strange-key-crystal");
 
         await page.evaluate(() => {
@@ -209,8 +209,8 @@ test.describe("Hall of Champions", () => {
         await page.click("#hallBtn");
         const row = page.locator(".champion-row");
         await expect(row).toHaveCount(1);
-        await expect(row.locator(".champ-score")).toHaveText("78");
-        await expect(row.locator(".champ-count")).toHaveText("20");
+        await expect(row.locator(".champ-score")).toHaveText("88");
+        await expect(row.locator(".champ-count")).toHaveText("21");
         await expect(row.locator(".champ-badge")).toHaveAttribute("data-tier", "Diamond");
         await expect(row).toHaveClass(/champion-row-diamond/);
         const badgeColor = await row.locator(".champ-badge").evaluate((el) => getComputedStyle(el).color);
@@ -220,13 +220,18 @@ test.describe("Hall of Champions", () => {
         expect(still).toBe("none");
         await row.click();
         await expect(page.locator(".champion-deed").first()).toHaveText("Diamond · Full set · +10 pts");
-        await expect(page.locator(".champion-deed").nth(1).locator(".deed-tier")).toHaveText("Ending · 8 pts");
+        await expect(page.locator(".champion-deed").nth(1).locator(".deed-tier")).toHaveText("Legend · 10 pts");
     });
 
-    test("the Luca fight and the laser stay off the champion board", async ({ page }) => {
+    test("beating Luca is worth ten and the laser stays off the board", async ({ page }) => {
         await openTitle(page);
         const result = await page.evaluate(() => {
             const luca = HallOfDeeds.record({
+                playerTag: "Mara",
+                siblingName: "Lyra",
+                milestoneId: "luca-defeated",
+            });
+            const again = HallOfDeeds.record({
                 playerTag: "Mara",
                 siblingName: "Lyra",
                 milestoneId: "luca-defeated",
@@ -236,27 +241,36 @@ test.describe("Hall of Champions", () => {
                 siblingName: "Lyra",
                 milestoneId: "laser-gun",
             });
-            const champs = HallOfDeeds.champions([
-                { tagKey: "mara", playerTag: "Mara", milestoneId: "luca-defeated", milestone: "Beat Luca", achievedAt: 1 },
-                { tagKey: "mara", playerTag: "Mara", milestoneId: "laser-gun", milestone: "Found the Laser Gun", achievedAt: 2 },
-                { tagKey: "mara", playerTag: "Mara", milestoneId: "clubhouse", milestone: "Found the Clubhouse", achievedAt: 3 },
-            ]);
-            const shown = champs.flatMap((c) => c.deeds.map((d) => d.milestone)).join("\n");
+            const champs = HallOfDeeds.champions(HallOfDeeds.readStore());
             return {
-                luca,
+                luca: luca && luca.milestone,
+                again: again && again.milestoneId,
                 laser,
-                stored: HallOfDeeds.readStore().length,
-                score: champs[0] ? champs[0].score : null,
-                deeds: champs[0] ? champs[0].deeds.map((d) => d.milestoneId) : [],
-                shown,
+                stored: HallOfDeeds.readStore().map((d) => d.milestoneId),
+                score: champs[0].score,
+                tier: champs[0].hardestTier,
+                hardest: champs[0].hardest,
+                weight: HALL_DEED_WEIGHT["luca-defeated"],
             };
         });
-        expect(result.luca).toBeNull();
+        expect(result.luca).toBe("Beat Luca");
+        expect(result.again).toBe("luca-defeated");
         expect(result.laser).toBeNull();
-        expect(result.stored).toBe(0);
-        expect(result.score).toBe(1);
-        expect(result.deeds).toEqual(["clubhouse"]);
-        expect(result.shown).not.toMatch(/Laser Gun|Luca/);
+        expect(result.stored).toEqual(["luca-defeated"]);
+        expect(result.score).toBe(10);
+        expect(result.tier).toBe("Legend");
+        expect(result.hardest).toBe(10);
+        expect(result.weight).toEqual({ weight: 10, tier: "Legend" });
+
+        await page.click("#hallBtn");
+        const row = page.locator(".champion-row");
+        await expect(row.locator(".champ-badge")).toHaveAttribute("data-tier", "Legend");
+        const color = await row.locator(".champ-badge").evaluate((el) => getComputedStyle(el).color);
+        expect(color).toBe("rgb(255, 79, 208)");
+        await row.click();
+        await expect(page.locator(".champion-deed").first().locator(".deed-name")).toHaveText("Beat Luca");
+        await expect(page.locator(".champion-deed").first().locator(".deed-tier")).toHaveText("Legend · 10 pts");
+        await expect(page.locator("#hall-overlay")).not.toContainText("Laser");
     });
 
     test("a champion opens from a click, the keyboard, and a gamepad button", async ({ page }) => {
@@ -273,18 +287,18 @@ test.describe("Hall of Champions", () => {
         await expect(rows.first()).toBeFocused();
         await expect(rows.first().locator(".champ-twist")).toHaveText("▸");
         await expect(rows.first().locator(".champ-tag")).toHaveText("Ivo");
-        await expect(rows.first().locator(".champ-score")).toHaveText("21");
+        await expect(rows.first().locator(".champ-score")).toHaveText("31");
         await expect(rows.nth(1).locator(".champ-tag")).toHaveText("Nia");
 
         await page.keyboard.press("Space");
         await expect(rows.first()).toHaveAttribute("aria-expanded", "true");
         const ivoDeeds = page.locator(".champion").first().locator(".champion-deed");
-        await expect(ivoDeeds).toHaveCount(4);
-        await expect(ivoDeeds.first().locator(".deed-name")).toHaveText("Beat Zeus");
+        await expect(ivoDeeds).toHaveCount(5);
+        await expect(ivoDeeds.first().locator(".deed-name")).toHaveText("Beat Luca");
         await expect(rows.first().locator(".champ-twist")).toHaveText("▾");
-        await expect(ivoDeeds.first().locator(".deed-tier")).toHaveText("Ending · 8 pts");
-        await expect(ivoDeeds.nth(1).locator(".deed-name")).toHaveText("Planted the Worldtree");
-        await expect(ivoDeeds.nth(1).locator(".deed-tier")).toHaveText("Late · 5 pts");
+        await expect(ivoDeeds.first().locator(".deed-tier")).toHaveText("Legend · 10 pts");
+        await expect(ivoDeeds.nth(1).locator(".deed-name")).toHaveText("Beat Zeus");
+        await expect(ivoDeeds.nth(1).locator(".deed-tier")).toHaveText("Ending · 8 pts");
 
         await page.keyboard.press("ArrowDown");
         await expect(rows.nth(1)).toBeFocused();
@@ -385,7 +399,8 @@ test.describe("Hall of Champions", () => {
         expect(info.winter).toBe("2026-01-15T12:30:00-08:00");
         expect(info.summerWords).toBe("Jul 15, 2026 · 12:30 PM PT");
         expect(info.winterWords).toBe("Jan 15, 2026 · 12:30 PM PT");
-        expect(info.labels).not.toMatch(/Laser Gun|Luca/);
+        expect(info.labels).not.toMatch(/Laser Gun/);
+        expect(HALL_LABEL(info, "luca-defeated")).toBe("Beat Luca");
         expect(HALL_LABEL(info, "lady-of-the-lake")).toBe("Helped the Lady of the Lake");
         expect(HALL_LABEL(info, "helped-merlin")).toBe("Helped Merlin");
         expect(info.ids.some(id => id.startsWith("strange-key-"))).toBe(true);
@@ -542,7 +557,7 @@ const HALL_MILESTONES_FOR_SEED = new Set([
     "climbed-cloudlands", "beat-zeus", "mended-worldtree", "blue-gem-1", "blue-gem-2",
     "blue-gem-3", "blue-gem-4", "blue-gem-5", "clubhouse", "charted-surface",
     "strange-key-copper", "strange-key-jade", "strange-key-crystal",
-    "lady-of-the-lake", "helped-merlin",
+    "lady-of-the-lake", "helped-merlin", "luca-defeated",
 ]);
 
 function championRows(t, hour) {

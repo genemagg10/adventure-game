@@ -1763,6 +1763,7 @@ class Game {
             this.player.equipBow("laser_gun");
             this.player.arrows += 24;
             if (fresh) this.ui.showNotification(`${BOWS.laser_gun.icon} ${BOWS.laser_gun.name}`);
+            this.recordDeed("luca-defeated");
             setTimeout(() => this.sound.sealVictory(), 400);
             setTimeout(() => this.sound.laserAcquire(), 1100);
             return;

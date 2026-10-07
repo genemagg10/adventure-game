@@ -140,6 +140,8 @@ test.describe("three keys and the door beside the Hollow", () => {
                     && BOWS.laser_gun.speed > BOWS.arrow_strength_bow.speed,
                 bolt: BOWS.laser_gun.bolt,
                 hallGrew: HallOfDeeds.readStore().length > before,
+                lucaDeeds: HallOfDeeds.readStore().filter(d => d.milestoneId === "luca-defeated").map(d => d.milestone),
+                laserDeed: HallOfDeeds.readStore().some(d => d.milestoneId === "laser-gun"),
                 defeated: g.lucaDefeated,
             };
         });
@@ -148,7 +150,9 @@ test.describe("three keys and the door beside the Hollow", () => {
         expect(reward.owns).toBe(true);
         expect(reward.stronger).toBe(true);
         expect(reward.bolt).toBe("laser");
+        expect(reward.lucaDeeds).toEqual(["Beat Luca"]);
         expect(reward.hallGrew).toBe(false);
+        expect(reward.laserDeed).toBe(false);
         expect(reward.defeated).toBe(true);
     });
 

@@ -34,6 +34,7 @@ Public milestone ids and the exact labels the insert policy must accept:
 | `climbed-cloudlands` | Climbed to the Cloudlands |
 | `beat-zeus` | Beat Zeus |
 | `mended-worldtree` | Mended the Worldtree |
+| `luca-defeated` | Beat Luca |
 | `blue-gem-1` | Collected 1 Blue Gem |
 | `blue-gem-2` | Collected 2 Blue Gems |
 | `blue-gem-3` | Collected 3 Blue Gems |
@@ -47,13 +48,13 @@ Public milestone ids and the exact labels the insert policy must accept:
 | `strange-key-jade` | Found a strange key |
 | `strange-key-crystal` | Found a strange key |
 
-Keep this list in step with `HALL_MILESTONES` in `js/hall.js`. Anything not on the list is dropped by the client and should be rejected by the database. The Luca fight and the laser deeds are not on this list, so they never appear on the board. The three strange keys share one public label, "Found a strange key", and stay three separate milestones.
+Keep this list in step with `HALL_MILESTONES` in `js/hall.js`. Anything not on the list is dropped by the client and should be rejected by the database. Beating Luca is on the list. The laser gun is not, so it never appears on the board. The three strange keys share one public label, "Found a strange key", and stay three separate milestones.
 
 ## How a champion is ranked
 
 The database is unchanged. The client reads `tag_key`, `player_tag`, `milestone_id`, `milestone`, and `achieved_at`, paging with `limit` and `offset`. It groups those rows by tag. The same tag and milestone keep the earliest timestamp. Each champion is one row.
 
-Score is the sum of the weights below. A champion who has every public deed also receives 10 points. That is the eighteen lines in the table, and the strange-key line counts only when the copper, jade, and crystal keys have all been found. The Best column then shows a diamond crown, and opening that champion starts with "Diamond · Full set · +10 pts". A higher score ranks first. Ties break by number of deeds, then by the hardest mark (a full set outranks any single deed), then by who reached that score first. The full-set bonus is reached when the last of those deeds lands. Opening a champion lists every deed, hardest first, with its tier and the Pacific time it happened.
+Score is the sum of the weights below. A champion who has every public deed also receives 10 points. That is the nineteen lines in the table, and the strange-key line counts only when the copper, jade, and crystal keys have all been found. The Best column then shows a diamond crown, and opening that champion starts with "Diamond · Full set · +10 pts". A higher score ranks first. Ties break by number of deeds, then by the hardest mark (a full set outranks any single deed), then by who reached that score first. The full-set bonus is reached when the last of those deeds lands. Opening a champion lists every deed, hardest first, with its tier and the Pacific time it happened.
 
 | `milestone_id` | Weight | Tier |
 |---|---:|---|
@@ -77,8 +78,9 @@ Score is the sum of the weights below. A champion who has every public deed also
 | `charted-surface` | 5 | Late |
 | `beat-zeus` | 8 | Ending |
 | `mended-worldtree` | 8 | Ending |
+| `luca-defeated` | 10 | Legend |
 
-A champion who has done all twenty scores 78, the weights plus the full-set bonus. These weights live in `HALL_DEED_WEIGHT` in `js/hall.js`. The bonus is not stored in Supabase.
+A champion who has done all twenty-one scores 88, the weights plus the full-set bonus. These weights live in `HALL_DEED_WEIGHT` in `js/hall.js`. The bonus is not stored in Supabase.
 
 ## Supabase
 
@@ -137,6 +139,7 @@ create policy hall_deeds_insert
             ('climbed-cloudlands', 'Climbed to the Cloudlands'),
             ('beat-zeus', 'Beat Zeus'),
             ('mended-worldtree', 'Mended the Worldtree'),
+            ('luca-defeated', 'Beat Luca'),
             ('blue-gem-1', 'Collected 1 Blue Gem'),
             ('blue-gem-2', 'Collected 2 Blue Gems'),
             ('blue-gem-3', 'Collected 3 Blue Gems'),

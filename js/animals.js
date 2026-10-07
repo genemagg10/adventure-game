@@ -28,6 +28,7 @@ class Animal {
 
         this.tamed = false;
         this.alive = true;
+        this.realm = "surface";
         this.deathTimer = 0;
         this.followIndex = 0;
 
@@ -578,6 +579,8 @@ class Animal {
             case "toad": this.renderToad(ctx, bx, by, faceRight, time); break;
             case "owl": this.renderOwl(ctx, bx, by, faceRight, time); break;
             case "turtle": this.renderTurtle(ctx, bx, by, faceRight, time); break;
+            case "bat": this.renderBat(ctx, bx, by, faceRight, time); break;
+            case "eagle": this.renderEagle(ctx, bx, by, faceRight, time); break;
         }
     }
 
@@ -864,5 +867,118 @@ class Animal {
             ctx.lineTo(sx + px, y);
             ctx.stroke();
         }
+    }
+
+    renderBat(ctx, sx, sy, faceRight, time) {
+        const float = Math.sin(time * 0.005 + this.hopPhase) * 2;
+        const flap = Math.sin(time * 0.01 + this.hopPhase) * 5;
+        const y = sy + float;
+
+        // Soft wing membranes, not a dive. They lift on the upstroke.
+        ctx.fillStyle = "#4a3568";
+        ctx.beginPath();
+        ctx.ellipse(sx - 11, y - 1 - flap * 0.35, 9, 4.2, -0.35 - flap * 0.04, 0, Math.PI * 2);
+        ctx.ellipse(sx + 11, y - 1 - flap * 0.35, 9, 4.2, 0.35 + flap * 0.04, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = this.accent;
+        ctx.beginPath();
+        ctx.ellipse(sx - 11, y - flap * 0.2, 5, 1.6, -0.3, 0, Math.PI * 2);
+        ctx.ellipse(sx + 11, y - flap * 0.2, 5, 1.6, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Round body
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.ellipse(sx, y + 1, 6.5, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Big ears
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.ellipse(sx - 4, y - 8, 2.4, 5, -0.3, 0, Math.PI * 2);
+        ctx.ellipse(sx + 4, y - 8, 2.4, 5, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#e7a8c4";
+        ctx.beginPath();
+        ctx.ellipse(sx - 4, y - 7, 1.1, 3, -0.3, 0, Math.PI * 2);
+        ctx.ellipse(sx + 4, y - 7, 1.1, 3, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Friendly eyes, looking the way it faces
+        const dir = faceRight ? 1 : -1;
+        for (const ex of [-2.4, 2.4]) {
+            ctx.fillStyle = "#fff6e8";
+            ctx.beginPath();
+            ctx.arc(sx + ex, y - 1, 2.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#3a2a18";
+            ctx.beginPath();
+            ctx.arc(sx + ex + dir * 0.5, y - 1, 1.1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Tiny smile
+        ctx.strokeStyle = "#3a2a48";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(sx, y + 2.2, 2.2, 0.2 * Math.PI, 0.8 * Math.PI);
+        ctx.stroke();
+    }
+
+    renderEagle(ctx, sx, sy, faceRight, time) {
+        const float = Math.sin(time * 0.004 + this.hopPhase) * 2.4;
+        const flap = Math.sin(time * 0.007 + this.hopPhase);
+        const dir = faceRight ? 1 : -1;
+        const y = sy + float;
+
+        // Broad wings
+        ctx.fillStyle = "#6e4528";
+        ctx.beginPath();
+        ctx.ellipse(sx - 13, y - flap * 2, 11, 4.5, -0.25, 0, Math.PI * 2);
+        ctx.ellipse(sx + 13, y - flap * 2, 11, 4.5, 0.25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = this.accent;
+        ctx.beginPath();
+        ctx.ellipse(sx - 14, y + 1 - flap, 6, 1.8, -0.2, 0, Math.PI * 2);
+        ctx.ellipse(sx + 14, y + 1 - flap, 6, 1.8, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.ellipse(sx, y + 1, 7, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pale head
+        ctx.fillStyle = this.accent;
+        ctx.beginPath();
+        ctx.arc(sx + dir * 2, y - 6, 5.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eye
+        ctx.fillStyle = "#fff8ee";
+        ctx.beginPath();
+        ctx.arc(sx + dir * 4, y - 7, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#2a2418";
+        ctx.beginPath();
+        ctx.arc(sx + dir * 4.6, y - 7, 0.9, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Beak
+        ctx.fillStyle = "#e0a33a";
+        ctx.beginPath();
+        ctx.moveTo(sx + dir * 6, y - 6);
+        ctx.lineTo(sx + dir * 11, y - 4.5);
+        ctx.lineTo(sx + dir * 6, y - 3);
+        ctx.fill();
+
+        // Tail fan
+        ctx.fillStyle = "#f2efe6";
+        ctx.beginPath();
+        ctx.moveTo(sx - 4, y + 8);
+        ctx.lineTo(sx, y + 14);
+        ctx.lineTo(sx + 4, y + 8);
+        ctx.fill();
     }
 }

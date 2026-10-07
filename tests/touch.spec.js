@@ -1,5 +1,5 @@
 const { test, expect } = require("@playwright/test");
-const { startNewGame, seedRun, waitForRunningGame, slotChoose } = require("./helpers");
+const { startNewGame, seedRun, waitForRunningGame, slotChoose, openTitle } = require("./helpers");
 
 // Runs under the phone project in playwright.config.js.
 //
@@ -68,4 +68,27 @@ test.describe.serial("saving from a phone", () => {
         expect(await page.evaluate(() => window.game.player.gold)).toBe(640);
         expect(await page.evaluate(() => window.game.paused)).toBe(false);
     });
+});
+
+test("tapping a champion name expands the deeds", async ({ page }) => {
+    await openTitle(page);
+    expect(await page.evaluate(() => document.body.classList.contains("touch-mode"))).toBe(true);
+    await page.evaluate(() => {
+        HallOfDeeds.writeStore([{
+            tagKey: "mara",
+            playerTag: "Mara",
+            siblingName: "Lyra",
+            milestoneId: "clubhouse",
+            milestone: "Found the Clubhouse",
+            achievedAt: Date.parse("2026-10-06T02:00:00Z"),
+            synced: true,
+        }]);
+    });
+    await page.tap("#hallBtn");
+    await expect(page.locator("#hall-overlay")).toBeVisible();
+    await expect(page.locator(".champion-deeds")).toBeHidden();
+    await page.locator(".champ-tag").tap();
+    await expect(page.locator(".champion-row")).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator(".champion-deeds")).toBeVisible();
+    await expect(page.locator(".deed-name")).toHaveText("Found the Clubhouse");
 });

@@ -8,7 +8,14 @@
 // the shared table. See docs/hall-of-deeds.md.
 
 const HALL_MILESTONES = {
-    "makers-hollow": "Found Maker's Hollow",
+    // The board shows this. The shared table still stores the older sentence;
+    // champions() always prints the words from this map.
+    "makers-hollow": "A secret space was discovered",
+    "hidden-base": "Another secret space was discovered",
+    "cave-sw": "Explored the SW Cave",
+    "cave-se": "Explored the SE Cave",
+    "cave-nw": "Explored the NW Cave",
+    "cave-ne": "Explored the NE Cave",
     "black-knight": "Beat the Black Knight",
     "green-knight": "Beat the Green Knight",
     "giant-turtle": "Beat the Giant Snapping Turtle",
@@ -36,6 +43,12 @@ const HALL_MILESTONES = {
 // the late trials are 5, the two endings are 8, and beating Luca is 10.
 const HALL_DEED_WEIGHT = {
     "makers-hollow": { weight: 1, tier: "Early" },
+    // The two maze caves are early wanders. The two boss caves take a gem to
+    // open and a fight at the end, so they sit one step up, on the road.
+    "cave-sw": { weight: 1, tier: "Early" },
+    "cave-se": { weight: 1, tier: "Early" },
+    "cave-nw": { weight: 2, tier: "Road" },
+    "cave-ne": { weight: 2, tier: "Road" },
     "clubhouse": { weight: 1, tier: "Early" },
     "blue-gem-1": { weight: 1, tier: "Early" },
     "blue-gem-2": { weight: 1, tier: "Early" },
@@ -50,6 +63,8 @@ const HALL_DEED_WEIGHT = {
     // troll stands in the Dark Forest, and Merlin's wand is at the castle gates.
     "lady-of-the-lake": { weight: 3, tier: "Mid" },
     "helped-merlin": { weight: 3, tier: "Mid" },
+    // Inside the castle, after an elemental gem opens a hidden ladder.
+    "hidden-base": { weight: 3, tier: "Mid" },
     "blue-gem-5": { weight: 5, tier: "Late" },
     "giant-turtle": { weight: 5, tier: "Late" },
     "planted-worldtree": { weight: 5, tier: "Late" },
@@ -60,9 +75,15 @@ const HALL_DEED_WEIGHT = {
     "luca-defeated": { weight: 10, tier: "Legend" },
 };
 
-// A champion who has every public deed, including Luca, both quests, and all
-// three strange keys, earns this on top of the weights. It is not a twenty-second deed.
-const HALL_DIAMOND_BONUS = 10;
+// A champion who has every public deed earns this on top of the weights.
+// It is not another deed. The Best column shows it as the jade crown.
+const HALL_FULL_SET_BONUS = 10;
+
+// The live hall_deeds check still requires this exact sentence for the hollow.
+// New rows send it. The board never displays it.
+const HALL_WIRE_MILESTONE = {
+    "makers-hollow": "Found Maker's Hollow",
+};
 
 const HallOfDeeds = {
     STORAGE_KEY: "ingoizersWorld.hall",
@@ -70,6 +91,12 @@ const HallOfDeeds = {
 
     label(milestoneId) {
         return HALL_MILESTONES[milestoneId] || null;
+    },
+
+    // What an insert sends. The hollow keeps the sentence the table already
+    // accepts. Everything else sends the words the board shows.
+    wireMilestone(milestoneId) {
+        return HALL_WIRE_MILESTONE[milestoneId] || this.label(milestoneId);
     },
 
     weightOf(milestoneId) {
@@ -124,7 +151,8 @@ const HallOfDeeds = {
                 if (deed.achievedAt > reachedAt) reachedAt = deed.achievedAt;
                 const entry = {
                     milestoneId: deed.milestoneId,
-                    milestone: deed.milestone,
+                    // The map wins over whatever text was stored with the row.
+                    milestone: this.label(deed.milestoneId) || deed.milestone,
                     weight,
                     tier,
                     achievedAt: deed.achievedAt,
@@ -138,22 +166,22 @@ const HallOfDeeds = {
                 if (b.weight !== a.weight) return b.weight - a.weight;
                 return a.achievedAt - b.achievedAt;
             });
-            const diamond = this.hasFullSet(deeds);
-            if (diamond) score += HALL_DIAMOND_BONUS;
+            const fullSet = this.hasFullSet(deeds);
+            if (fullSet) score += HALL_FULL_SET_BONUS;
             const deedWeight = hardest ? hardest.weight : 0;
             list.push({
                 tagKey: champ.tagKey,
                 playerTag: champ.playerTag,
                 score,
                 count: deeds.length,
-                diamond,
-                bonus: diamond ? HALL_DIAMOND_BONUS : 0,
+                fullSet,
+                bonus: fullSet ? HALL_FULL_SET_BONUS : 0,
                 hardest: deedWeight,
-                // A full set is the mark in the Best column, above any ending.
-                hardestMark: diamond ? deedWeight + 1 : deedWeight,
-                hardestId: diamond ? "" : (hardest ? hardest.milestoneId : ""),
-                hardestLabel: diamond ? "Full set" : (hardest ? hardest.milestone : ""),
-                hardestTier: diamond ? "Diamond" : (hardest ? hardest.tier : ""),
+                // A full set is the mark in the Best column, above Legend.
+                hardestMark: fullSet ? deedWeight + 1 : deedWeight,
+                hardestId: fullSet ? "" : (hardest ? hardest.milestoneId : ""),
+                hardestLabel: fullSet ? "Full set" : (hardest ? hardest.milestone : ""),
+                hardestTier: fullSet ? "Jade" : (hardest ? hardest.tier : ""),
                 reachedAt,
                 deeds,
             });
@@ -234,7 +262,7 @@ const HallOfDeeds = {
             playerTag: tag,
             siblingName: sibling,
             milestoneId,
-            milestone: label,
+            milestone: this.wireMilestone(milestoneId) || label,
             achievedAt: when,
             synced: false,
         };
@@ -343,7 +371,7 @@ const HallOfDeeds = {
                         player_tag: row.playerTag,
                         sibling_name: row.siblingName,
                         milestone_id: row.milestoneId,
-                        milestone: row.milestone,
+                        milestone: this.wireMilestone(row.milestoneId) || row.milestone,
                         achieved_at: new Date(row.achievedAt).toISOString(),
                     }),
                 }

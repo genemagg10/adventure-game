@@ -60,6 +60,7 @@ const SaveSystem = {
         "lucaDefeated",
         "hyperchargeTold",
         "ladyQuestState", "ladyQuestAsked", "merlinQuestState",
+        "gravestones",
         "monsterGemDrops", "currentZone",
     ],
 

@@ -337,7 +337,7 @@ class TouchControls {
         const overlayIds = ["shop-overlay", "inventory-overlay", "riddle-overlay",
                            "map-overlay", "title-screen", "character-screen", "controls-screen",
                            "game-over-screen", "lore-overlay", "enchant-overlay",
-                           "pause-overlay", "slots-overlay", "about-overlay"];
+                           "pause-overlay", "slots-overlay", "about-overlay", "hall-overlay"];
         for (const id of overlayIds) {
             const el = document.getElementById(id);
             if (el && !el.classList.contains("hidden") && el.contains(target)) {

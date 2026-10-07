@@ -460,6 +460,51 @@ const KeySprite = {
     },
 };
 
+// A small marker left where the player fell. Rounded stone and a daisy,
+// drawn the same way as the other world sprites. It never occupies a tile.
+const GravestoneSprite = {
+    draw(ctx, x, y, time) {
+        ctx.save();
+        ctx.translate(Math.round(x), Math.round(y));
+        const bob = Math.sin((time || 0) * 0.004) * 0.6;
+        ctx.fillStyle = "rgba(20, 16, 12, 0.28)";
+        ctx.beginPath();
+        ctx.ellipse(0, 7, 9, 3.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#6d7582";
+        ctx.beginPath();
+        ctx.moveTo(-8, 6);
+        ctx.lineTo(-8, -7);
+        ctx.quadraticCurveTo(-8, -17, 0, -17);
+        ctx.quadraticCurveTo(8, -17, 8, -7);
+        ctx.lineTo(8, 6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#aeb6c2";
+        ctx.beginPath();
+        ctx.moveTo(-5, 4);
+        ctx.lineTo(-5, -6);
+        ctx.quadraticCurveTo(-5, -13, 0, -13);
+        ctx.quadraticCurveTo(2, -13, 3, -9);
+        ctx.lineTo(-2, 4);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#2f8a45";
+        ctx.fillRect(-1, -1 + bob, 2, 7);
+        ctx.fillStyle = "#ffe56a";
+        ctx.beginPath();
+        ctx.arc(0, -3 + bob, 3.1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fff8d4";
+        ctx.beginPath();
+        ctx.arc(0, -3 + bob, 1.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    },
+};
+
 const LaserIcon = {
     markup() {
         return `<svg class="laser-icon" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">

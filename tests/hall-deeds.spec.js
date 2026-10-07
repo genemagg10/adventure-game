@@ -1,5 +1,5 @@
 const { test, expect } = require("@playwright/test");
-const { openTitle, chooseCharacterAndBegin, openPause, dismissDialogs } = require("./helpers");
+const { openTitle, chooseCharacterAndBegin, openPause, dismissDialogs, startNewGame } = require("./helpers");
 
 test.describe("Hall of Champions", () => {
     test("asks for a player tag after a sibling is chosen", async ({ page }) => {
@@ -60,7 +60,9 @@ test.describe("Hall of Champions", () => {
         await expect(row.locator(".champ-count")).toHaveText("1");
         await row.click();
         const deed = page.locator(".champion-deed");
-        await expect(deed).toContainText("Found Maker's Hollow");
+        await expect(deed).toContainText("A secret space was discovered");
+        await expect(row.locator(".champ-badge")).toHaveAttribute("title", "A secret space was discovered");
+        await expect(page.locator("#hall-overlay")).not.toContainText("Maker");
         await expect(deed).toContainText("Early · 1 pts");
         await expect(row.locator(".champ-twist")).toHaveText("▾");
         await expect(deed).toContainText("Oct 5, 2026 · 7:00 PM PT");
@@ -106,7 +108,7 @@ test.describe("Hall of Champions", () => {
         }, { rows: championRows(t, hour) });
 
         expect(ranked.covered).toBe(ranked.allowed);
-        expect(ranked.total).toBe(78);
+        expect(ranked.total).toBe(87);
         expect(ranked.champs.map((c) => c.tag)).toEqual([
             "Ivo", "Nia", "Bram", "Cass", "Dee", "Finn", "Gio", "Eve", "Ada", "Ann", "Zoe",
         ]);
@@ -141,11 +143,11 @@ test.describe("Hall of Champions", () => {
         expect(mara.playerTag).toBe("Mara");
         expect(mara.score).toBe(3);
         expect(mara.count).toBe(2);
-        expect(mara.deeds.map((d) => d.milestone)).toEqual(["Found a strange key", "Found Maker's Hollow"]);
+        expect(mara.deeds.map((d) => d.milestone)).toEqual(["Found a strange key", "A secret space was discovered"]);
         expect(mara.deeds[1].achievedAt).toBe(Date.parse("2026-10-06T02:00:00Z"));
     });
 
-    test("a full set of deeds is Diamond and worth ten more", async ({ page }) => {
+    test("a full set of deeds is the jade crown and worth ten more", async ({ page }) => {
         await openTitle(page);
         const ranked = await page.evaluate(() => {
             const t = Date.parse("2026-10-06T02:00:00Z");
@@ -170,7 +172,7 @@ test.describe("Hall of Champions", () => {
                 tag: c.playerTag,
                 score: c.score,
                 count: c.count,
-                diamond: c.diamond,
+                fullSet: c.fullSet,
                 bonus: c.bonus,
                 hardest: c.hardest,
                 hardestMark: c.hardestMark,
@@ -183,14 +185,14 @@ test.describe("Hall of Champions", () => {
 
         expect(ranked.map((c) => c.tag)).toEqual(["Quin", "Vesper", "Pia", "Nim"]);
         expect(ranked[0]).toMatchObject({
-            score: 88, count: 21, diamond: true, bonus: 10, hardest: 10, hardestMark: 11,
-            hardestTier: "Diamond", hardestLabel: "Full set",
+            score: 97, count: 26, fullSet: true, bonus: 10, hardest: 10, hardestMark: 11,
+            hardestTier: "Jade", hardestLabel: "Full set",
         });
         expect(ranked[0].keys).toEqual(["strange-key-copper", "strange-key-jade", "strange-key-crystal"]);
-        expect(ranked[1]).toMatchObject({ score: 88, diamond: true, hardestMark: 11 });
+        expect(ranked[1]).toMatchObject({ score: 97, fullSet: true, hardestMark: 11 });
         expect(ranked[0].reachedAt).toBeLessThan(ranked[1].reachedAt);
-        expect(ranked[2]).toMatchObject({ tag: "Pia", diamond: false, bonus: 0, score: 77, count: 20, hardestMark: 10 });
-        expect(ranked[3]).toMatchObject({ tag: "Nim", diamond: false, bonus: 0, score: 76, count: 20 });
+        expect(ranked[2]).toMatchObject({ tag: "Pia", fullSet: false, bonus: 0, score: 86, count: 25, hardestMark: 10 });
+        expect(ranked[3]).toMatchObject({ tag: "Nim", fullSet: false, bonus: 0, score: 85, count: 25 });
         expect(ranked[3].keys).not.toContain("strange-key-crystal");
 
         await page.evaluate(() => {
@@ -209,17 +211,17 @@ test.describe("Hall of Champions", () => {
         await page.click("#hallBtn");
         const row = page.locator(".champion-row");
         await expect(row).toHaveCount(1);
-        await expect(row.locator(".champ-score")).toHaveText("88");
-        await expect(row.locator(".champ-count")).toHaveText("21");
-        await expect(row.locator(".champ-badge")).toHaveAttribute("data-tier", "Diamond");
-        await expect(row).toHaveClass(/champion-row-diamond/);
+        await expect(row.locator(".champ-score")).toHaveText("97");
+        await expect(row.locator(".champ-count")).toHaveText("26");
+        await expect(row.locator(".champ-badge")).toHaveAttribute("data-tier", "Jade");
+        await expect(row).toHaveClass(/champion-row-jade/);
         const badgeColor = await row.locator(".champ-badge").evaluate((el) => getComputedStyle(el).color);
-        expect(badgeColor).toBe("rgb(46, 196, 230)");
+        expect(badgeColor).toBe("rgb(61, 206, 124)");
         await page.emulateMedia({ reducedMotion: "reduce" });
         const still = await row.locator(".champ-badge-icon").evaluate((el) => getComputedStyle(el).animationName);
         expect(still).toBe("none");
         await row.click();
-        await expect(page.locator(".champion-deed").first()).toHaveText("Diamond · Full set · +10 pts");
+        await expect(page.locator(".champion-deed").first()).toHaveText("Jade · Full set · +10 pts");
         await expect(page.locator(".champion-deed").nth(1).locator(".deed-tier")).toHaveText("Legend · 10 pts");
     });
 
@@ -266,7 +268,7 @@ test.describe("Hall of Champions", () => {
         const row = page.locator(".champion-row");
         await expect(row.locator(".champ-badge")).toHaveAttribute("data-tier", "Legend");
         const color = await row.locator(".champ-badge").evaluate((el) => getComputedStyle(el).color);
-        expect(color).toBe("rgb(255, 79, 208)");
+        expect(color).toBe("rgb(26, 143, 74)");
         await row.click();
         await expect(page.locator(".champion-deed").first().locator(".deed-name")).toHaveText("Beat Luca");
         await expect(page.locator(".champion-deed").first().locator(".deed-tier")).toHaveText("Legend · 10 pts");
@@ -448,7 +450,7 @@ test.describe("Hall of Champions", () => {
                     lady: mine.filter((d) => d.milestoneId === "lady-of-the-lake").length,
                     merlin: mine.filter((d) => d.milestoneId === "helped-merlin").length,
                 },
-                partialDiamond: withoutLady.length ? withoutLady[0].diamond : false,
+                partialFullSet: withoutLady.length ? withoutLady[0].fullSet : false,
             };
         });
         expect(result.ladyWeight).toEqual({ weight: 3, tier: "Mid" });
@@ -462,7 +464,125 @@ test.describe("Hall of Champions", () => {
         expect(result.wand).toBe(false);
         expect(result.counts).toEqual({ lady: 1, merlin: 1 });
         expect(result.labels).toEqual(["Helped Merlin", "Helped the Lady of the Lake"]);
-        expect(result.partialDiamond).toBe(false);
+        expect(result.partialFullSet).toBe(false);
+    });
+
+    test("the hollow keeps its old stored sentence and shows the vague label", async ({ page }) => {
+        await openTitle(page);
+        const sent = await page.evaluate(async () => {
+            let body = null;
+            window.fetch = async (_url, opts) => {
+                if (opts && opts.body) body = opts.body;
+                return { ok: true, status: 201, json: async () => [] };
+            };
+            HallOfDeeds.writeStore([]);
+            HallOfDeeds.record({
+                playerTag: "Mara",
+                siblingName: "Lyra",
+                milestoneId: "makers-hollow",
+            });
+            await HallOfDeeds.flush();
+            const row = HallOfDeeds.readStore()[0];
+            const champ = HallOfDeeds.champions(HallOfDeeds.readStore())[0];
+            return {
+                posted: body ? JSON.parse(body).milestone : null,
+                stored: row.milestone,
+                shown: champ.deeds[0].milestone,
+                best: champ.hardestLabel,
+            };
+        });
+        expect(sent.posted).toBe("Found Maker's Hollow");
+        expect(sent.stored).toBe("Found Maker's Hollow");
+        expect(sent.shown).toBe("A secret space was discovered");
+        expect(sent.best).toBe("A secret space was discovered");
+    });
+
+    test("each cave and the castle secret are one deed, and caves collapse", async ({ page }) => {
+        await startNewGame(page);
+        const recorded = await page.evaluate(() => {
+            const g = window.game;
+            const notes = [];
+            const orig = g.ui.showNotification.bind(g.ui);
+            g.ui.showNotification = (text) => {
+                notes.push(text);
+                orig(text);
+            };
+            g.enterMakersHollow();
+            g.ui.closeAbout();
+            for (const entrance of CAVE_ENTRANCES) {
+                g.enterCave(entrance);
+                g.exitCave(entrance);
+                g.enterCave(entrance);
+                g.exitCave(entrance);
+            }
+            g.world.revealHiddenLadder();
+            const hl = g.world.hiddenLadder;
+            g.player.x = hl.baseCenterX;
+            g.player.y = hl.baseCenterY;
+            g.checkHiddenBaseTreasure();
+            g.checkHiddenBaseTreasure();
+            const ids = HallOfDeeds.readStore().map((d) => d.milestoneId).sort();
+            return {
+                notes,
+                ids,
+                weights: {
+                    "cave-sw": HALL_DEED_WEIGHT["cave-sw"],
+                    "cave-se": HALL_DEED_WEIGHT["cave-se"],
+                    "cave-nw": HALL_DEED_WEIGHT["cave-nw"],
+                    "cave-ne": HALL_DEED_WEIGHT["cave-ne"],
+                    "hidden-base": HALL_DEED_WEIGHT["hidden-base"],
+                },
+            };
+        });
+        expect(recorded.notes.some((text) => text.includes("A secret space was discovered"))).toBe(true);
+        expect(recorded.notes.join(" ")).not.toContain("Maker");
+        expect(recorded.ids).toEqual([
+            "cave-ne", "cave-nw", "cave-se", "cave-sw", "hidden-base", "makers-hollow",
+        ]);
+        expect(recorded.weights["cave-sw"]).toEqual({ weight: 1, tier: "Early" });
+        expect(recorded.weights["cave-se"]).toEqual({ weight: 1, tier: "Early" });
+        expect(recorded.weights["cave-nw"]).toEqual({ weight: 2, tier: "Road" });
+        expect(recorded.weights["cave-ne"]).toEqual({ weight: 2, tier: "Road" });
+        expect(recorded.weights["hidden-base"]).toEqual({ weight: 3, tier: "Mid" });
+
+        await dismissDialogs(page);
+        await openPause(page);
+        await page.click("#pause-hall");
+        await page.locator(".champion-row").click();
+        await expect(page.locator(".cave-group-toggle")).toContainText("4 caves");
+        await expect(page.locator(".cave-group-list")).toBeHidden();
+        await page.locator(".cave-group-toggle").click();
+        const caves = page.locator(".cave-group-list .deed-name");
+        await expect(caves).toHaveText([
+            "Explored the NW Cave",
+            "Explored the NE Cave",
+            "Explored the SW Cave",
+            "Explored the SE Cave",
+        ]);
+        await expect(page.locator(".champion-deed .deed-name", { hasText: "Another secret space was discovered" })).toBeVisible();
+        await expect(page.locator("#hall-overlay")).not.toContainText("Black Knight");
+        await expect(page.locator("#hall-overlay")).not.toContainText("Maker");
+    });
+
+    test("the crown key shows the six metals in order", async ({ page }) => {
+        await openTitle(page);
+        await page.click("#hallBtn");
+        await expect(page.locator(".crown-key-item")).toHaveText([
+            "Bronze", "Silver", "Gold", "Crystal", "Diamond", "Jade",
+        ]);
+        const colors = await page.locator(".crown-key-item .champ-badge").evaluateAll((els) => (
+            els.map((el) => getComputedStyle(el).color)
+        ));
+        expect(colors).toEqual([
+            "rgb(193, 122, 58)",
+            "rgb(197, 204, 212)",
+            "rgb(230, 179, 37)",
+            "rgb(143, 212, 234)",
+            "rgb(245, 248, 255)",
+            "rgb(26, 143, 74)",
+        ]);
+        expect(new Set(colors).size).toBe(6);
+        await expect(page.locator(".crown-key-note")).toHaveText("A full set wears the jade crown with a star.");
     });
 });
 

@@ -680,10 +680,10 @@ const CAVE_H = 60;
 // obstacle: what blocks the entrance, element: what clears it
 // difficulty: 1=easiest(maze+coins), 2=maze+gem, 3=boss+gem, 4=hardest boss+gem
 const CAVE_ENTRANCES = [
-    { id: 0, x: 10,  y: 120, label: "SW Cave",  obstacle: "trees",        element: "fire",  difficulty: 1 },
-    { id: 1, x: 160, y: 140, label: "SE Cave",  obstacle: "eternal_flame", element: "water", difficulty: 2 },
-    { id: 2, x: 15,  y: 10,  label: "NW Cave",  obstacle: "water",        element: "ice",   difficulty: 3 },
-    { id: 3, x: 150, y: 10,  label: "NE Cave",  obstacle: "rocks",        element: "earth", difficulty: 4 },
+    { id: 0, x: 10,  y: 120, label: "SW Cave",  obstacle: "trees",        element: "fire",  difficulty: 1, deed: "cave-sw" },
+    { id: 1, x: 160, y: 140, label: "SE Cave",  obstacle: "eternal_flame", element: "water", difficulty: 2, deed: "cave-se" },
+    { id: 2, x: 15,  y: 10,  label: "NW Cave",  obstacle: "water",        element: "ice",   difficulty: 3, deed: "cave-nw" },
+    { id: 3, x: 150, y: 10,  label: "NE Cave",  obstacle: "rocks",        element: "earth", difficulty: 4, deed: "cave-ne" },
 ];
 
 // ============================================

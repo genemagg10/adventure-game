@@ -3,7 +3,7 @@
 The Hall of Champions is the board players open from the title screen and the pause menu. Underneath it is the same shared list of first-time public milestones. The game is a static GitHub Pages site, so the board has two layers:
 
 1. This browser, always. Deeds are written to `localStorage` under `ingoizersWorld.hall` as soon as they happen.
-2. A shared table. `js/hall-config.js` points at the Lafayette Pulse Supabase project (`https://kcrhxkebazpospwljpit.supabase.co`) with that project's publishable anon key. The schema is migration `016_hall_deeds` in [genemagg10/lafayette-pulse](https://github.com/genemagg10/lafayette-pulse). The table is `public.hall_deeds`. Anon may select and insert only. The insert check allows the 18 milestone id and label pairs below, and a tag of 1 to 16 characters using the characters the game allows, with `tag_key` equal to the normalized tag. CORS from `https://luca.maggio.xyz` is allowed.
+2. A shared table. `js/hall-config.js` points at the Lafayette Pulse Supabase project (`https://kcrhxkebazpospwljpit.supabase.co`) with that project's publishable anon key. The schema is migration `016_hall_deeds` in [genemagg10/lafayette-pulse](https://github.com/genemagg10/lafayette-pulse). The table is `public.hall_deeds`. Anon may select and insert only. The insert check allows the milestone id and label pairs below, and a tag of 1 to 16 characters using the characters the game allows, with `tag_key` equal to the normalized tag. `milestone_id` is text. This change does not alter that table. CORS from `https://luca.maggio.xyz` is allowed.
 
 Empty strings in the config still keep deeds on this browser only. Each new deed is queued locally (`synced: false`) until a send succeeds. A `409` (already there) counts as done. A `400`, `401`, or `403` — PostgREST's answer when a row violates RLS or a check, including `42501` — is logged once and dropped from the retry queue. The deed stays on this browser. Network errors and `5xx` responses stay queued.
 
@@ -34,6 +34,7 @@ Public milestone ids and the exact labels the insert policy must accept:
 | `climbed-cloudlands` | Climbed to the Cloudlands |
 | `beat-zeus` | Beat Zeus |
 | `mended-worldtree` | Mended the Worldtree |
+| `luca-defeated` | Beat Luca |
 | `blue-gem-1` | Collected 1 Blue Gem |
 | `blue-gem-2` | Collected 2 Blue Gems |
 | `blue-gem-3` | Collected 3 Blue Gems |
@@ -41,17 +42,19 @@ Public milestone ids and the exact labels the insert policy must accept:
 | `blue-gem-5` | Collected all Blue Gems |
 | `clubhouse` | Found the Clubhouse |
 | `charted-surface` | Charted the whole surface |
+| `lady-of-the-lake` | Helped the Lady of the Lake |
+| `helped-merlin` | Helped Merlin |
 | `strange-key-copper` | Found a strange key |
 | `strange-key-jade` | Found a strange key |
 | `strange-key-crystal` | Found a strange key |
 
-Keep this list in step with `HALL_MILESTONES` in `js/hall.js`. Anything not on the list is dropped by the client and should be rejected by the database. The Luca fight and the laser deeds are not on this list, so they never appear on the board. The three strange keys share one public label, "Found a strange key", and stay three separate milestones.
+Keep this list in step with `HALL_MILESTONES` in `js/hall.js`. Anything not on the list is dropped by the client and should be rejected by the database. Beating Luca is on the list. The laser gun is not, so it never appears on the board. The three strange keys share one public label, "Found a strange key", and stay three separate milestones.
 
 ## How a champion is ranked
 
 The database is unchanged. The client reads `tag_key`, `player_tag`, `milestone_id`, `milestone`, and `achieved_at`, paging with `limit` and `offset`. It groups those rows by tag. The same tag and milestone keep the earliest timestamp. Each champion is one row.
 
-Score is the sum of the weights below. A champion who has every public deed also receives 10 points. That is the sixteen lines in the table, and the strange-key line counts only when the copper, jade, and crystal keys have all been found. The Best column then shows a diamond crown, and opening that champion starts with "Diamond · Full set · +10 pts". A higher score ranks first. Ties break by number of deeds, then by the hardest mark (a full set outranks any single deed), then by who reached that score first. The full-set bonus is reached when the last of those deeds lands. Opening a champion lists every deed, hardest first, with its tier and the Pacific time it happened.
+Score is the sum of the weights below. A champion who has every public deed also receives 10 points. That is the nineteen lines in the table, and the strange-key line counts only when the copper, jade, and crystal keys have all been found. The Best column then shows a diamond crown, and opening that champion starts with "Diamond · Full set · +10 pts". A higher score ranks first. Ties break by number of deeds, then by the hardest mark (a full set outranks any single deed), then by who reached that score first. The full-set bonus is reached when the last of those deeds lands. Opening a champion lists every deed, hardest first, with its tier and the Pacific time it happened.
 
 | `milestone_id` | Weight | Tier |
 |---|---:|---|
@@ -66,6 +69,8 @@ Score is the sum of the weights below. A champion who has every public deed also
 | `blue-gem-4` | 3 | Mid |
 | `black-knight` | 3 | Mid |
 | `green-knight` | 3 | Mid |
+| `lady-of-the-lake` | 3 | Mid |
+| `helped-merlin` | 3 | Mid |
 | `blue-gem-5` | 5 | Late |
 | `giant-turtle` | 5 | Late |
 | `planted-worldtree` | 5 | Late |
@@ -73,8 +78,9 @@ Score is the sum of the weights below. A champion who has every public deed also
 | `charted-surface` | 5 | Late |
 | `beat-zeus` | 8 | Ending |
 | `mended-worldtree` | 8 | Ending |
+| `luca-defeated` | 10 | Legend |
 
-A champion who has done all eighteen scores 72, the weights plus the full-set bonus. These weights live in `HALL_DEED_WEIGHT` in `js/hall.js`. The bonus is not stored in Supabase.
+A champion who has done all twenty-one scores 88, the weights plus the full-set bonus. These weights live in `HALL_DEED_WEIGHT` in `js/hall.js`. The bonus is not stored in Supabase.
 
 ## Supabase
 
@@ -133,6 +139,7 @@ create policy hall_deeds_insert
             ('climbed-cloudlands', 'Climbed to the Cloudlands'),
             ('beat-zeus', 'Beat Zeus'),
             ('mended-worldtree', 'Mended the Worldtree'),
+            ('luca-defeated', 'Beat Luca'),
             ('blue-gem-1', 'Collected 1 Blue Gem'),
             ('blue-gem-2', 'Collected 2 Blue Gems'),
             ('blue-gem-3', 'Collected 3 Blue Gems'),
@@ -140,6 +147,8 @@ create policy hall_deeds_insert
             ('blue-gem-5', 'Collected all Blue Gems'),
             ('clubhouse', 'Found the Clubhouse'),
             ('charted-surface', 'Charted the whole surface'),
+            ('lady-of-the-lake', 'Helped the Lady of the Lake'),
+            ('helped-merlin', 'Helped Merlin'),
             ('strange-key-copper', 'Found a strange key'),
             ('strange-key-jade', 'Found a strange key'),
             ('strange-key-crystal', 'Found a strange key')

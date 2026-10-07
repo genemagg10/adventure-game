@@ -16,6 +16,7 @@ const HALL_MILESTONES = {
     "climbed-cloudlands": "Climbed to the Cloudlands",
     "beat-zeus": "Beat Zeus",
     "mended-worldtree": "Mended the Worldtree",
+    "luca-defeated": "Beat Luca",
     "blue-gem-1": "Collected 1 Blue Gem",
     "blue-gem-2": "Collected 2 Blue Gems",
     "blue-gem-3": "Collected 3 Blue Gems",
@@ -23,6 +24,8 @@ const HALL_MILESTONES = {
     "blue-gem-5": "Collected all Blue Gems",
     "clubhouse": "Found the Clubhouse",
     "charted-surface": "Charted the whole surface",
+    "lady-of-the-lake": "Helped the Lady of the Lake",
+    "helped-merlin": "Helped Merlin",
     "strange-key-copper": "Found a strange key",
     "strange-key-jade": "Found a strange key",
     "strange-key-crystal": "Found a strange key",
@@ -30,7 +33,7 @@ const HALL_MILESTONES = {
 
 // Difficulty of each public deed. The board ranks a champion by the sum.
 // Early finds are 1, the road out of the meadow is 2, the mid bosses are 3,
-// the late trials are 5, and the two endings are 8.
+// the late trials are 5, the two endings are 8, and beating Luca is 10.
 const HALL_DEED_WEIGHT = {
     "makers-hollow": { weight: 1, tier: "Early" },
     "clubhouse": { weight: 1, tier: "Early" },
@@ -43,6 +46,10 @@ const HALL_DEED_WEIGHT = {
     "blue-gem-4": { weight: 3, tier: "Mid" },
     "black-knight": { weight: 3, tier: "Mid" },
     "green-knight": { weight: 3, tier: "Mid" },
+    // Excalibur and the Enchanter's Mallet are mid-game rewards: the sheath
+    // troll stands in the Dark Forest, and Merlin's wand is at the castle gates.
+    "lady-of-the-lake": { weight: 3, tier: "Mid" },
+    "helped-merlin": { weight: 3, tier: "Mid" },
     "blue-gem-5": { weight: 5, tier: "Late" },
     "giant-turtle": { weight: 5, tier: "Late" },
     "planted-worldtree": { weight: 5, tier: "Late" },
@@ -50,10 +57,11 @@ const HALL_DEED_WEIGHT = {
     "charted-surface": { weight: 5, tier: "Late" },
     "beat-zeus": { weight: 8, tier: "Ending" },
     "mended-worldtree": { weight: 8, tier: "Ending" },
+    "luca-defeated": { weight: 10, tier: "Legend" },
 };
 
-// A champion who has every public deed, including all three strange keys,
-// earns this on top of the weights. It is not a nineteenth deed.
+// A champion who has every public deed, including Luca, both quests, and all
+// three strange keys, earns this on top of the weights. It is not a twenty-second deed.
 const HALL_DIAMOND_BONUS = 10;
 
 const HallOfDeeds = {

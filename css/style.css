@@ -4112,7 +4112,13 @@ body.touch-mode * {
 .champ-badge[data-tier="Mid"] { color: #8f99a4; }
 .champ-badge[data-tier="Late"] { color: #f0d48a; }
 .champ-badge[data-tier="Ending"] { color: #ffe56a; }
+.champ-badge[data-tier="Legend"] { color: #ff4fd0; }
 .champ-badge[data-tier="Diamond"] { color: #2ec4e6; }
+
+.champ-badge[data-tier="Legend"] .champ-badge-icon {
+    width: 22px;
+    height: 24px;
+}
 
 .champ-badge[data-tier="Diamond"] .champ-badge-icon {
     width: 22px;

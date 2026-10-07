@@ -740,6 +740,11 @@ class UIManager {
     championBadgeSvg(tier) {
         // One crown for every tier. Color, set on the badge, is the metal.
         const crown = '<path class="champ-crown" fill="currentColor" d="M1.4 11.4h13.2v2.2H1.4Zm.7-1.3 1.7-5.1 2.5 2.6L8 2.1l1.7 5.5 2.5-2.6 1.7 5.1Z"/>';
+        if (tier === "Legend") {
+            // A star over the same crown, so a weight of 10 sits above Ending gold.
+            const star = '<path fill="currentColor" d="M8-3.4 8.7-1.6 10.6-1.2 8.7-.8 8 .9 7.3-.8 5.4-1.2 7.3-1.6Z"/>';
+            return `<svg class="champ-badge-icon champ-badge-legend" viewBox="0 -4 16 20" aria-hidden="true">${star}${crown}</svg>`;
+        }
         if (tier !== "Diamond") {
             return `<svg class="champ-badge-icon" viewBox="0 0 16 16" aria-hidden="true">${crown}</svg>`;
         }

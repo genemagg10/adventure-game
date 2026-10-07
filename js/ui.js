@@ -599,6 +599,7 @@ class UIManager {
         else if (returnTo === "title") this.titleScreen.classList.add("hidden");
         const overlay = document.getElementById("hall-overlay");
         overlay.classList.remove("hidden");
+        this.renderCrownKey();
         const status = document.getElementById("hall-status");
         if (status) {
             status.textContent = HallOfDeeds.configured()
@@ -639,7 +640,7 @@ class UIManager {
 
             const btn = document.createElement("button");
             btn.type = "button";
-            btn.className = champ.diamond ? "champion-row champion-row-diamond" : "champion-row";
+            btn.className = champ.fullSet ? "champion-row champion-row-jade" : "champion-row";
             btn.setAttribute("aria-expanded", "false");
             const panelId = "champion-deeds-" + i;
             btn.setAttribute("aria-controls", panelId);
@@ -684,29 +685,28 @@ class UIManager {
             panel.className = "champion-deeds hidden";
             panel.setAttribute("role", "region");
             panel.setAttribute("aria-label", `${champ.playerTag} accomplishments`);
-            if (champ.diamond) {
+            if (champ.fullSet) {
                 const bonus = document.createElement("div");
-                bonus.className = "champion-deed champion-deed-diamond";
+                bonus.className = "champion-deed champion-deed-jade";
                 const bonusText = document.createElement("span");
                 bonusText.className = "deed-name";
-                bonusText.textContent = "Diamond · Full set · +10 pts";
+                bonusText.textContent = "Jade · Full set · +10 pts";
                 bonus.appendChild(bonusText);
                 panel.appendChild(bonus);
             }
+            const caves = champ.deeds.filter((deed) => this.isCaveDeed(deed));
+            let cavesShown = false;
             for (const deed of champ.deeds) {
-                const line = document.createElement("div");
-                line.className = "champion-deed";
-                const name = document.createElement("span");
-                name.className = "deed-name";
-                name.textContent = deed.milestone || "";
-                const tier = document.createElement("span");
-                tier.className = "deed-tier";
-                tier.textContent = `${deed.tier} · ${deed.weight} pts`;
-                const when = document.createElement("span");
-                when.className = "deed-when";
-                when.textContent = HallOfDeeds.formatWhen(deed.achievedAt);
-                line.append(name, tier, when);
-                panel.appendChild(line);
+                if (this.isCaveDeed(deed)) {
+                    if (!cavesShown && caves.length >= 2) {
+                        cavesShown = true;
+                        panel.appendChild(this.caveDeedGroup(caves));
+                    } else if (caves.length < 2) {
+                        panel.appendChild(this.deedLine(deed));
+                    }
+                    continue;
+                }
+                panel.appendChild(this.deedLine(deed));
             }
 
             btn.addEventListener("click", () => {
@@ -729,6 +729,7 @@ class UIManager {
             });
             board.style.setProperty("--champ-name", Math.ceil(nameWidth + 12) + "px");
         }
+        this.renderCrownKey();
         const first = rows.querySelector(".champion-row");
         if (first) first.focus();
         else {
@@ -737,22 +738,119 @@ class UIManager {
         }
     }
 
+    isCaveDeed(deed) {
+        return !!(deed && typeof deed.milestoneId === "string" && deed.milestoneId.indexOf("cave-") === 0);
+    }
+
+    deedLine(deed) {
+        const line = document.createElement("div");
+        line.className = "champion-deed";
+        const name = document.createElement("span");
+        name.className = "deed-name";
+        name.textContent = deed.milestone || "";
+        const tier = document.createElement("span");
+        tier.className = "deed-tier";
+        tier.dataset.tier = deed.tier || "";
+        tier.textContent = `${deed.tier} · ${deed.weight} pts`;
+        const when = document.createElement("span");
+        when.className = "deed-when";
+        when.textContent = HallOfDeeds.formatWhen(deed.achievedAt);
+        line.append(name, tier, when);
+        return line;
+    }
+
+    // Four cave visits would stack four near-identical lines. They stay one
+    // collapsed row until someone asks to see them.
+    caveDeedGroup(caves) {
+        const wrap = document.createElement("div");
+        wrap.className = "champion-deed cave-group";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "cave-group-toggle";
+        btn.setAttribute("aria-expanded", "false");
+        const twist = document.createElement("span");
+        twist.className = "champ-twist";
+        twist.setAttribute("aria-hidden", "true");
+        twist.textContent = "▸";
+        const name = document.createElement("span");
+        name.className = "deed-name";
+        name.textContent = "Caves";
+        const count = document.createElement("span");
+        count.className = "deed-tier";
+        count.textContent = `${caves.length} caves`;
+        btn.append(twist, name, count);
+        const list = document.createElement("div");
+        list.className = "cave-group-list hidden";
+        for (const deed of caves) list.appendChild(this.deedLine(deed));
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const open = btn.getAttribute("aria-expanded") === "true";
+            btn.setAttribute("aria-expanded", open ? "false" : "true");
+            twist.textContent = open ? "▸" : "▾";
+            list.classList.toggle("hidden", open);
+        });
+        wrap.append(btn, list);
+        return wrap;
+    }
+
+    renderCrownKey() {
+        const key = document.getElementById("crown-key");
+        if (!key || key.childElementCount) return;
+        const tiers = [
+            ["Early", "Bronze"],
+            ["Road", "Silver"],
+            ["Mid", "Gold"],
+            ["Late", "Crystal"],
+            ["Ending", "Diamond"],
+            ["Legend", "Jade"],
+        ];
+        for (const [tier, metal] of tiers) {
+            const item = document.createElement("span");
+            item.className = "crown-key-item";
+            item.dataset.tier = tier;
+            const icon = document.createElement("span");
+            icon.className = "champ-badge";
+            icon.dataset.tier = tier;
+            icon.innerHTML = this.championBadgeSvg(tier);
+            const label = document.createElement("span");
+            label.textContent = metal;
+            item.append(icon, label);
+            key.appendChild(item);
+        }
+        const note = document.createElement("span");
+        note.className = "crown-key-note";
+        note.textContent = "A full set wears the jade crown with a star.";
+        key.appendChild(note);
+    }
+
     championBadgeSvg(tier) {
         // One crown for every tier. Color, set on the badge, is the metal.
         const crown = '<path class="champ-crown" fill="currentColor" d="M1.4 11.4h13.2v2.2H1.4Zm.7-1.3 1.7-5.1 2.5 2.6L8 2.1l1.7 5.5 2.5-2.6 1.7 5.1Z"/>';
-        if (tier === "Legend") {
-            // A star over the same crown, so a weight of 10 sits above Ending gold.
-            const star = '<path fill="currentColor" d="M8-3.4 8.7-1.6 10.6-1.2 8.7-.8 8 .9 7.3-.8 5.4-1.2 7.3-1.6Z"/>';
-            return `<svg class="champ-badge-icon champ-badge-legend" viewBox="0 -4 16 20" aria-hidden="true">${star}${crown}</svg>`;
+        if (tier === "Late") {
+            // A pale facet so crystal reads as glass, not a flat blue crown.
+            const glass = '<path fill="#f4fbff" opacity="0.9" d="M6.1 7.4 8 2.6 9.5 7.4 8 9.2Z"/>';
+            return `<svg class="champ-badge-icon champ-badge-crystal" viewBox="0 0 16 16" aria-hidden="true">${crown}${glass}</svg>`;
         }
-        if (tier !== "Diamond") {
+        if (tier === "Ending") {
+            // Brilliant white, with a spark that twinkles. This is the diamond.
+            const glint = '<path fill="#ffffff" d="M8 3.1 8.7 4.8 10.5 5.4 8.7 6 8 7.7 7.3 6 5.5 5.4 7.3 4.8Z"/>';
+            const spark = '<path class="champ-spark" fill="#ffffff" d="M13.4 1.2 13.7 2.1 14.6 2.4 13.7 2.7 13.4 3.6 13.1 2.7 12.2 2.4 13.1 2.1Z"/>';
+            return `<svg class="champ-badge-icon champ-badge-diamond" viewBox="0 0 16 16" aria-hidden="true">${crown}${glint}${spark}</svg>`;
+        }
+        if (tier === "Legend") {
+            // Rich jade. A small stone on the crown, and no star: the star is the full set.
+            const stone = '<ellipse cx="8" cy="6.4" rx="1.7" ry="1.15" fill="#d8ffe8"/>';
+            return `<svg class="champ-badge-icon champ-badge-legend" viewBox="0 0 16 16" aria-hidden="true">${crown}${stone}</svg>`;
+        }
+        if (tier !== "Jade") {
             return `<svg class="champ-badge-icon" viewBox="0 0 16 16" aria-hidden="true">${crown}</svg>`;
         }
-        // A readable gem sits on the crown, with a spark that can shimmer.
-        const gem = '<path class="champ-gem" fill="#5adfff" d="M8-2.2 11.4 1.5 8 5.2 4.6 1.5Z"/>';
-        const facet = '<path class="champ-gem-facet" fill="#dff8ff" d="M8-.8 9.7 1.5 8 3.8 6.3 1.5Z"/>';
-        const spark = '<path class="champ-spark" fill="#ffffff" d="M13.2-1.6 13.55-.55 14.6-.2 13.55.15 13.2 1.2 12.85.15 11.8-.2 12.85-.55Z"/>';
-        return `<svg class="champ-badge-icon champ-badge-diamond" viewBox="0 -3.4 16 19.4" aria-hidden="true">${crown}${gem}${facet}${spark}</svg>`;
+        // The full set. Same jade crown, with a star and a gem so it sits above Legend.
+        const star = '<path fill="#eafff2" d="M8-3.2 8.8-1.2 10.9-.75 8.8-.3 8 1.6 7.2-.3 5.1-.75 7.2-1.2Z"/>';
+        const gem = '<path class="champ-gem" fill="#b6f3cf" d="M8-1.6 10.6 1.2 8 4 5.4 1.2Z"/>';
+        const facet = '<path fill="#f3fff7" d="M8-.4 9.4 1.2 8 2.8 6.6 1.2Z"/>';
+        const spark = '<path class="champ-spark" fill="#ffffff" d="M13.2-1.4 13.55-.4 14.6-.05 13.55.3 13.2 1.3 12.85.3 11.8-.05 12.85-.4Z"/>';
+        return `<svg class="champ-badge-icon champ-badge-jade" viewBox="0 -4 16 20" aria-hidden="true">${star}${crown}${gem}${facet}${spark}</svg>`;
     }
 
     bindHallKeys() {
@@ -1645,7 +1743,6 @@ class UIManager {
             this.inventoryItems.appendChild(heading);
             for (const id of group.items) this.inventoryItems.appendChild(this.inventoryCard(id, group.kind, player));
         }
-        this.appendHeldKeys(player);
     }
 
     supplyCard(icon, name, count, description, action, actionLabel = "Use") {
@@ -1687,24 +1784,6 @@ class UIManager {
         this.inventoryItems.appendChild(this.supplyCard(player.hasZeusBolts ? ZEUS_BOLT.icon : "➶", player.hasZeusBolts ? "Zeus's Bolts" : "Arrows", player.arrows, "Ammunition for your equipped bow"));
         this.inventoryItems.appendChild(this.supplyCard(APPLE_ITEM.icon, "Apples", player.apples, "Feed one to a wild animal to tame it"));
         this.inventoryItems.appendChild(this.supplyCard("🛡️", "Shield Rune", player.shieldHits, player.shieldActive ? "Ready to block the next hit" : "No shield rune is active"));
-        this.appendHeldKeys(player);
-    }
-
-    appendHeldKeys(player) {
-        const keys = player.heldKeys || [];
-        if (!keys.length || typeof STRANGE_KEYS === "undefined") return;
-        const row = document.createElement("div");
-        row.className = "held-keys";
-        for (const id of keys) {
-            const key = STRANGE_KEYS[id];
-            if (!key) continue;
-            const card = document.createElement("article");
-            card.className = "supply-card";
-            const icon = (typeof KeySprite !== "undefined") ? KeySprite.icon(id) : "🗝️";
-            card.innerHTML = `<span class="inventory-card-icon">${icon}</span><div><strong>${key.name}</strong></div>`;
-            row.appendChild(card);
-        }
-        if (row.childElementCount) this.inventoryItems.appendChild(row);
     }
 
     renderPets(player) {
@@ -1743,6 +1822,13 @@ class UIManager {
 
     collectedRelics(player) {
         const relics = [];
+        const keyTone = { copper: "copper", jade: "jade", crystal: "crystal" };
+        for (const id of player.heldKeys || []) {
+            const key = (typeof STRANGE_KEYS !== "undefined") ? STRANGE_KEYS[id] : null;
+            if (!key) continue;
+            const icon = (typeof KeySprite !== "undefined") ? KeySprite.icon(id) : "🗝️";
+            relics.push({ icon, name: key.name, detail: "Strange key", tone: keyTone[id] || "gold" });
+        }
         if (player.hasMerlinWand) relics.push({ icon: "🪄", name: "Merlin's Wand", detail: "Quest item · Return it to Merlin", tone: "violet" });
         if (player.hasMallet) relics.push({ icon: "🔨", name: "Enchanter's Mallet", detail: "Enchant a weapon and armor", tone: "violet", action: true });
         if (player.hasSheath) relics.push({ icon: "🗡️", name: "Jewel-encrusted Sheath", detail: `+${SHEATH_DAMAGE_BONUS} damage to weapons and bows`, tone: "gold" });

@@ -152,6 +152,7 @@ class Game {
 
         // Animal companions
         this.wildAnimals = [];      // untamed critters roaming the surface
+        this.gravestones = [];      // markers left where the player fell
         this.companions = [];       // tamed animals following the player
         this.animalSpawnTimer = 0;
         this.nearAnimal = null;
@@ -408,6 +409,8 @@ class Game {
 
         // Wild animals roaming the biomes
         this.wildAnimals = [];
+        this.gravestones = [];
+        this.hiddenBaseVisited = false;
         this.companions = [];
         this.animalSpawnTimer = 0;
         this.nearAnimal = null;
@@ -1766,8 +1769,37 @@ class Game {
         this.ui.updateHud(this.player);
     }
 
+    // A stone at the spot of the fall. It is a picture, not a wall, so a
+    // corridor stays walkable. Only the latest twenty are kept.
+    leaveGravestone() {
+        if (!this.player) return;
+        const realm = this.animalRealm();
+        const stone = {
+            realm,
+            caveId: realm === "cave" ? this.activeCaveId : null,
+            x: this.player.x,
+            y: this.player.y,
+        };
+        if (!Array.isArray(this.gravestones)) this.gravestones = [];
+        this.gravestones.push(stone);
+        if (this.gravestones.length > 20) {
+            this.gravestones.splice(0, this.gravestones.length - 20);
+        }
+    }
+
+    gravestonesHere() {
+        const realm = this.animalRealm();
+        const list = Array.isArray(this.gravestones) ? this.gravestones : [];
+        return list.filter((s) => s
+            && s.realm === realm
+            && typeof s.x === "number"
+            && typeof s.y === "number"
+            && (realm !== "cave" || s.caveId === this.activeCaveId));
+    }
+
     respawnPlayer() {
         this.sound.playerDeath();
+        this.leaveGravestone();
 
         // Gold penalty: lose 100, or everything if under 100
         const goldLost = Math.min(100, this.player.gold);
@@ -2822,6 +2854,7 @@ class Game {
         this.currentZone = "cave";
         this.zoneDisplayTimer = 3000;
         this.sound.menuSelect();
+        if (ce && ce.deed) this.recordDeed(ce.deed);
         this.ui.showNotification(`Entered ${ce.label}...`);
         if (ce.difficulty <= 2) {
             this.ui.showDialog("You descend into a dark maze. Find the treasure at the center!");
@@ -2957,7 +2990,7 @@ class Game {
             this.world.invalidateMapCache();
             GameAnalytics.track("makers-hollow-found");
             this.recordDeed("makers-hollow");
-            this.ui.showNotification("\u2728 You found the Maker's Hollow!");
+            this.ui.showNotification("\u2728 A secret space was discovered");
         }
         this.sound.secretDiscovery();
         this.ui.openAbout();
@@ -3878,8 +3911,13 @@ class Game {
     checkHiddenBaseTreasure() {
         if (!this.onSurface) return;
         const hl = this.world.hiddenLadder;
-        if (!hl || !hl.revealed || hl.looted) return;
+        if (!hl || !hl.revealed) return;
         if (dist(this.player.x, this.player.y, hl.baseCenterX, hl.baseCenterY) > 70) return;
+        if (!this.hiddenBaseVisited) {
+            this.hiddenBaseVisited = true;
+            this.recordDeed("hidden-base");
+        }
+        if (hl.looted) return;
 
         hl.looted = true;
         this.sound.gemCollect();
@@ -4132,6 +4170,15 @@ class Game {
 
         // Player
         renderables.push({ y: this.player.y, render: () => this.player.render(ctx, this.camera, this.time) });
+
+        if (typeof GravestoneSprite !== "undefined") {
+            for (const s of this.gravestonesHere()) {
+                renderables.push({
+                    y: s.y,
+                    render: () => GravestoneSprite.draw(ctx, s.x - this.camera.x, s.y - this.camera.y, this.time),
+                });
+            }
+        }
 
         // Wild animals of this realm, and companions in every realm
         const animalRealm = this.animalRealm();

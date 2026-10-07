@@ -2460,6 +2460,9 @@ button.relic-card:hover { filter: brightness(1.18); }
 .relic-card.gold { border-color: #8b6a2a; }
 .relic-card.red { border-color: #7b3c38; }
 .relic-card.rainbow { border-color: #a87ac8; box-shadow: inset 3px 0 #e45b5b, inset -3px 0 #5bcde4; }
+.relic-card.copper { border-color: #c4783a; }
+.relic-card.jade { border-color: #2f9a62; }
+.relic-card.crystal { border-color: #9eb6dc; }
 
 .relic-shelf {
     position: relative;
@@ -3528,6 +3531,7 @@ body.touch-mode #minimap-container {
 }
 
 .catalog-list,
+.hall-scroll,
 .inventory-grid,
 .paper-doll-panel,
 .relic-row,
@@ -4061,25 +4065,25 @@ body.touch-mode * {
     }
 }
 
-.champion .champion-row-diamond,
-.champion .champion-row-diamond:focus-visible,
-.champion .champion-row-diamond[aria-expanded="true"] {
-    background: rgba(46, 196, 230, 0.12);
-    box-shadow: inset 3px 0 0 #3ec8ea, 0 0 12px rgba(46, 196, 230, 0.28);
+.champion .champion-row-jade,
+.champion .champion-row-jade:focus-visible,
+.champion .champion-row-jade[aria-expanded="true"] {
+    background: rgba(40, 170, 90, 0.16);
+    box-shadow: inset 3px 0 0 #3dce7c, 0 0 16px rgba(40, 200, 110, 0.55);
 }
 
-.champion .champion-row-diamond:focus-visible {
-    outline: 2px solid #3ec8ea;
+.champion .champion-row-jade:focus-visible {
+    outline: 2px solid #3dce7c;
     outline-offset: -2px;
 }
 
-.champion .champion-row-diamond:active {
-    background: rgba(46, 196, 230, 0.22);
+.champion .champion-row-jade:active {
+    background: rgba(40, 170, 90, 0.28);
 }
 
 @media (hover: hover) {
-    .champion .champion-row-diamond:hover {
-        background: rgba(46, 196, 230, 0.18);
+    .champion .champion-row-jade:hover {
+        background: rgba(40, 170, 90, 0.22);
     }
 }
 
@@ -4108,31 +4112,30 @@ body.touch-mode * {
 }
 
 .champ-badge[data-tier="Early"] { color: #c17a3a; }
-.champ-badge[data-tier="Road"] { color: #e0a15c; }
-.champ-badge[data-tier="Mid"] { color: #8f99a4; }
-.champ-badge[data-tier="Late"] { color: #f0d48a; }
-.champ-badge[data-tier="Ending"] { color: #ffe56a; }
-.champ-badge[data-tier="Legend"] { color: #ff4fd0; }
-.champ-badge[data-tier="Diamond"] { color: #2ec4e6; }
+.champ-badge[data-tier="Road"] { color: #c5ccd4; }
+.champ-badge[data-tier="Mid"] { color: #e6b325; }
+.champ-badge[data-tier="Late"] { color: #8fd4ea; }
+.champ-badge[data-tier="Ending"] { color: #f5f8ff; }
+.champ-badge[data-tier="Legend"] { color: #1a8f4a; }
+.champ-badge[data-tier="Jade"] { color: #3dce7c; }
 
-.champ-badge[data-tier="Legend"] .champ-badge-icon {
-    width: 22px;
-    height: 24px;
+.champ-badge[data-tier="Ending"] .champ-badge-icon .champ-spark {
+    animation: champ-spark 2.2s ease-in-out infinite;
 }
 
-.champ-badge[data-tier="Diamond"] .champ-badge-icon {
+.champ-badge[data-tier="Jade"] .champ-badge-icon {
     width: 22px;
     height: 26px;
-    animation: champ-diamond-shimmer 2.6s ease-in-out infinite;
+    animation: champ-jade-shimmer 2.6s ease-in-out infinite;
 }
 
 .champ-spark {
     animation: champ-spark 2.6s ease-in-out infinite;
 }
 
-@keyframes champ-diamond-shimmer {
-    0%, 100% { filter: drop-shadow(0 0 0.5px rgba(46, 196, 230, 0.35)); }
-    50% { filter: drop-shadow(0 0 3px rgba(90, 220, 255, 0.95)); }
+@keyframes champ-jade-shimmer {
+    0%, 100% { filter: drop-shadow(0 0 0.5px rgba(61, 206, 124, 0.35)); }
+    50% { filter: drop-shadow(0 0 3px rgba(180, 255, 210, 0.95)); }
 }
 
 @keyframes champ-spark {
@@ -4141,7 +4144,8 @@ body.touch-mode * {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .champ-badge[data-tier="Diamond"] .champ-badge-icon,
+    .champ-badge[data-tier="Jade"] .champ-badge-icon,
+    .champ-badge[data-tier="Ending"] .champ-badge-icon .champ-spark,
     .champ-spark {
         animation: none;
     }
@@ -4149,9 +4153,77 @@ body.touch-mode * {
     .champ-spark { opacity: 0.85; }
 }
 
-.champion-deed-diamond .deed-name {
-    color: #7fd8ee;
+.champion-deed-jade .deed-name {
+    color: #8ef0b0;
     white-space: normal;
+}
+
+.crown-key {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 6px 12px;
+    margin: 8px 0 0;
+    color: #d7c7a2;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+}
+
+.crown-key-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.crown-key .champ-badge-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.crown-key .champ-badge[data-tier="Jade"] .champ-badge-icon,
+.crown-key .champ-badge[data-tier="Legend"] .champ-badge-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.crown-key-note {
+    flex: 1 0 100%;
+    text-align: center;
+    color: #8ef0b0;
+    font-size: 11px;
+}
+
+.deed-tier[data-tier="Early"] { color: #c17a3a; }
+.deed-tier[data-tier="Road"] { color: #c5ccd4; }
+.deed-tier[data-tier="Mid"] { color: #e6b325; }
+.deed-tier[data-tier="Late"] { color: #8fd4ea; }
+.deed-tier[data-tier="Ending"] { color: #f5f8ff; }
+.deed-tier[data-tier="Legend"] { color: #1a8f4a; }
+
+.cave-group {
+    display: block;
+}
+
+.cave-group-toggle {
+    display: grid;
+    grid-template-columns: 1rem minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: baseline;
+    width: 100%;
+    margin: 0;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.cave-group-list .champion-deed {
+    padding-left: 1.2rem;
 }
 
 .champion-deeds {
@@ -4255,6 +4327,8 @@ body.touch-mode * {
     .tag-panel h2 { font-size: 18px; }
     .tag-copy { margin-bottom: 8px; font-size: 13px; }
     .hall-panel { width: min(720px, 98%); padding: 8px 10px; }
+    .crown-key { margin: 2px 0 0; gap: 2px 8px; font-size: 10px; }
+    .crown-key-note { display: none; }
     .hall-panel h2 { font-size: 16px; letter-spacing: 1px; }
     .hall-scroll {
         max-height: none;

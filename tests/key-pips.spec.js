@@ -55,3 +55,24 @@ test("a save with one strange key shows the pip on load", async ({ page }) => {
     expect(loaded.hidden).toBe(false);
     expect(loaded.pips).toEqual({ copper: false, jade: true, crystal: false });
 });
+
+test("strange keys are relics, not armor or supplies", async ({ page }) => {
+    await startNewGame(page);
+    await page.evaluate(() => {
+        const player = window.game.player;
+        player.holdKey("copper");
+        player.holdKey("jade");
+        player.holdKey("crystal");
+        window.game.ui.openInventory(player, "gear");
+    });
+    await expect(page.locator("#inventory-items")).not.toContainText("Copper Key");
+    await expect(page.locator("#inventory-items")).not.toContainText("Jade Key");
+    await expect(page.locator("#inventory-items")).not.toContainText("Crystal Key");
+    await page.evaluate(() => window.game.ui.openInventory(window.game.player, "supplies"));
+    await expect(page.locator("#inventory-items")).not.toContainText("Copper Key");
+    await page.evaluate(() => window.game.ui.openInventory(window.game.player, "relics"));
+    await expect(page.locator(".relic-card.copper")).toContainText("Copper Key");
+    await expect(page.locator(".relic-card.jade")).toContainText("Jade Key");
+    await expect(page.locator(".relic-card.crystal")).toContainText("Crystal Key");
+    await expect(page.locator(".special-relic-summary")).toContainText("3 found");
+});

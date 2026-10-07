@@ -22,11 +22,16 @@ Each row is one player tag plus one milestone. The same tag and milestone keep t
 | `milestone` | The words shown on the board. Must match the id. |
 | `achieved_at` | When it first happened, UTC. The board prints it in Pacific Time. |
 
-Public milestone ids and the exact labels the insert policy must accept:
+Public milestone ids and the labels the board shows. The board always prints the label from `HALL_MILESTONES`, never the sentence stored on the row.
 
-| `milestone_id` | `milestone` |
+| `milestone_id` | Shown on the board |
 |---|---|
-| `makers-hollow` | Found Maker's Hollow |
+| `makers-hollow` | A secret space was discovered |
+| `hidden-base` | Another secret space was discovered |
+| `cave-sw` | Explored the SW Cave |
+| `cave-se` | Explored the SE Cave |
+| `cave-nw` | Explored the NW Cave |
+| `cave-ne` | Explored the NE Cave |
 | `black-knight` | Beat the Black Knight |
 | `green-knight` | Beat the Green Knight |
 | `giant-turtle` | Beat the Giant Snapping Turtle |
@@ -50,18 +55,28 @@ Public milestone ids and the exact labels the insert policy must accept:
 
 Keep this list in step with `HALL_MILESTONES` in `js/hall.js`. Anything not on the list is dropped by the client and should be rejected by the database. Beating Luca is on the list. The laser gun is not, so it never appears on the board. The three strange keys share one public label, "Found a strange key", and stay three separate milestones.
 
+`makers-hollow` is the one id whose stored sentence is not the words on the board. Existing rows, and every new insert, keep `Found Maker's Hollow` in the `milestone` column so the current check still accepts them. The board, the opened deed list, the Best column, and the discovery toast all say "A secret space was discovered".
+
+The four caves use the names the game already shows when you walk in (`SW Cave`, and the same for SE, NW, and NE). On an opened champion they sit under one collapsed "Caves" row. The southwest and southeast mazes are Early. The northwest and northeast caves, which end in a boss, are Road. The room above the castle is `hidden-base`, Mid, and its label does not name the room or the castle.
+
 ## How a champion is ranked
 
 The database is unchanged. The client reads `tag_key`, `player_tag`, `milestone_id`, `milestone`, and `achieved_at`, paging with `limit` and `offset`. It groups those rows by tag. The same tag and milestone keep the earliest timestamp. Each champion is one row.
 
-Score is the sum of the weights below. A champion who has every public deed also receives 10 points. That is the nineteen lines in the table, and the strange-key line counts only when the copper, jade, and crystal keys have all been found. The Best column then shows a diamond crown, and opening that champion starts with "Diamond · Full set · +10 pts". A higher score ranks first. Ties break by number of deeds, then by the hardest mark (a full set outranks any single deed), then by who reached that score first. The full-set bonus is reached when the last of those deeds lands. Opening a champion lists every deed, hardest first, with its tier and the Pacific time it happened.
+Score is the sum of the weights below. A champion who has every public deed also receives 10 points. That is every id in the table, and the strange-key line counts only when the copper, jade, and crystal keys have all been found. The Best column then shows the jade crown with a star, and opening that champion starts with "Jade · Full set · +10 pts". A higher score ranks first. Ties break by number of deeds, then by the hardest mark (a full set outranks any single deed), then by who reached that score first. The full-set bonus is reached when the last of those deeds lands. Opening a champion lists every deed, hardest first, with its tier and the Pacific time it happened. Cave deeds are grouped under one row so the list stays short.
+
+The crown metals, lowest to highest, are bronze, silver, gold, crystal, diamond, and jade. Early is bronze, Road is silver, Mid is gold, Late is crystal (ice-blue glass), Ending is diamond (a white sparkle), and Legend is jade. A full set wears that same jade crown with a star, a gem, and a green glow on the row, so it still reads as the top, above a single Legend deed. A key of the six crowns sits under the hall title.
 
 | `milestone_id` | Weight | Tier |
 |---|---:|---|
 | `makers-hollow` | 1 | Early |
+| `cave-sw` | 1 | Early |
+| `cave-se` | 1 | Early |
 | `clubhouse` | 1 | Early |
 | `blue-gem-1` | 1 | Early |
 | `blue-gem-2` | 1 | Early |
+| `cave-nw` | 2 | Road |
+| `cave-ne` | 2 | Road |
 | `blue-gem-3` | 2 | Road |
 | `strange-key-copper` | 2 | Road |
 | `strange-key-jade` | 2 | Road |
@@ -71,6 +86,7 @@ Score is the sum of the weights below. A champion who has every public deed also
 | `green-knight` | 3 | Mid |
 | `lady-of-the-lake` | 3 | Mid |
 | `helped-merlin` | 3 | Mid |
+| `hidden-base` | 3 | Mid |
 | `blue-gem-5` | 5 | Late |
 | `giant-turtle` | 5 | Late |
 | `planted-worldtree` | 5 | Late |
@@ -80,7 +96,7 @@ Score is the sum of the weights below. A champion who has every public deed also
 | `mended-worldtree` | 8 | Ending |
 | `luca-defeated` | 10 | Legend |
 
-A champion who has done all twenty-one scores 88, the weights plus the full-set bonus. These weights live in `HALL_DEED_WEIGHT` in `js/hall.js`. The bonus is not stored in Supabase.
+A champion who has done all twenty-six scores 97, the weights (87) plus the full-set bonus. These weights live in `HALL_DEED_WEIGHT` in `js/hall.js`. The bonus is not stored in Supabase.
 
 ## Supabase
 
@@ -132,6 +148,11 @@ create policy hall_deeds_insert
         and tag_key = lower(regexp_replace(btrim(player_tag), '\s+', ' ', 'g'))
         and (milestone_id, milestone) in (
             ('makers-hollow', 'Found Maker''s Hollow'),
+            ('hidden-base', 'Another secret space was discovered'),
+            ('cave-sw', 'Explored the SW Cave'),
+            ('cave-se', 'Explored the SE Cave'),
+            ('cave-nw', 'Explored the NW Cave'),
+            ('cave-ne', 'Explored the NE Cave'),
             ('black-knight', 'Beat the Black Knight'),
             ('green-knight', 'Beat the Green Knight'),
             ('giant-turtle', 'Beat the Giant Snapping Turtle'),
@@ -160,4 +181,4 @@ Confirm in the table editor that RLS is on and that the `anon` role cannot updat
 
 ## Checking it
 
-Start a new game, enter a player tag, and do something the board records (finding Maker's Hollow is enough). Open Hall of Champions from the title screen. The champion is on this browser immediately, and the same deed is inserted into `hall_deeds`. A second browser with the same tag does not add a duplicate.
+Start a new game, enter a player tag, and do something the board records (the unmarked ladder in the southwest is enough). Open Hall of Champions from the title screen. The champion is on this browser immediately. For `makers-hollow` the inserted `milestone` is still `Found Maker's Hollow`; the board shows "A secret space was discovered". A second browser with the same tag does not add a duplicate. The four cave deeds and `hidden-base` are recorded by the client the first time those places are entered. The live check does not know those five ids until the pairs above are allowed, so until then those five stay on this browser and the refused insert is logged once.

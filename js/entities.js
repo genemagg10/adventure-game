@@ -957,25 +957,30 @@ class Monster {
         return false;
     }
 
-    getDrops() {
+    getDrops(night) {
+        const goldRoll = randInt(this.goldDrop[0], this.goldDrop[1]);
         const drops = {
-            gold: randInt(this.goldDrop[0], this.goldDrop[1]),
+            gold: night ? Math.round(goldRoll * NIGHT_POWER.gold) : goldRoll,
             weapon: null,
             armor: null,
             gem: false,
         };
 
-        const weaponChance = this.weaponDropChance || 0.3;
+        const weaponBase = this.weaponDropChance || 0.3;
+        const weaponChance = night ? Math.min(NIGHT_POWER.chanceCap, weaponBase * NIGHT_POWER.dropChance) : weaponBase;
         if (this.weaponDrop && Math.random() < weaponChance) {
             drops.weapon = this.weaponDrop;
         }
 
-        const armorChance = this.armorDropChance || 0.3;
+        const armorBase = this.armorDropChance || 0.3;
+        const armorChance = night ? Math.min(NIGHT_POWER.chanceCap, armorBase * NIGHT_POWER.dropChance) : armorBase;
         if (this.armorDrop && Math.random() < armorChance) {
             drops.armor = this.armorDrop;
         }
 
-        if (this.gemDrop && Math.random() < this.gemChance) {
+        const gemBase = this.gemChance || 0;
+        const gemChance = night ? Math.min(NIGHT_POWER.gemCap, gemBase * NIGHT_POWER.dropChance) : gemBase;
+        if (this.gemDrop && Math.random() < gemChance) {
             drops.gem = true;
         }
 

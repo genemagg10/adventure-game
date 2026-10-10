@@ -762,6 +762,53 @@ class World {
         return cleared;
     }
 
+    // Fire, water, ice and earth each already open one cave by clearing the
+    // obstacle in front of it. The same gesture clears that kind of ground
+    // anywhere the player is standing: trees, lava, water, mountains. A few
+    // places are the story itself and stay put — the lake, the fountain, the
+    // Worldtree, the Waiting Ground, the Hollow, and the rim of the map.
+    clearTerrain(element, playerX, playerY) {
+        const spec = ELEMENT_TERRAIN[element];
+        if (!spec) return 0;
+        const ptx = Math.floor(playerX / TILE_SIZE);
+        const pty = Math.floor(playerY / TILE_SIZE);
+        const radius = TERRAIN_CLEAR_RADIUS;
+        let cleared = 0;
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                const tx = ptx + dx;
+                const ty = pty + dy;
+                if (tx < 0 || ty < 0 || tx >= WORLD_W || ty >= WORLD_H) continue;
+                if (this.tiles[ty][tx] !== spec.tile) continue;
+                if (this.terrainProtected(tx, ty)) continue;
+                this.tiles[ty][tx] = TILE.STONE;
+                cleared++;
+            }
+        }
+        return cleared;
+    }
+
+    terrainProtected(tx, ty) {
+        if (tx < 2 || ty < 2 || tx >= WORLD_W - 2 || ty >= WORLD_H - 2) return true;
+        const tile = this.tiles[ty][tx];
+        if (tile === TILE.BRIDGE || tile === TILE.LADDER || tile === TILE.SKY_TREE
+            || tile === TILE.SKY_TREE_BURNING || tile === TILE.SKY_LADDER
+            || tile === TILE.BARE_EARTH || tile === TILE.CASTLE_WALL
+            || tile === TILE.CLUB_WALL || tile === TILE.WALL) return true;
+        if (getZoneAt(tx, ty) === "lake") return true;
+        const fountain = this.fountainOfYouth;
+        if (fountain && Math.abs(tx - fountain.tileX) <= 2 && Math.abs(ty - fountain.tileY) <= 2) return true;
+        const hollow = this.makersHollow;
+        if (hollow && Math.abs(tx - hollow.tileX) <= 4 && Math.abs(ty - hollow.tileY) <= 4) return true;
+        const door = this.sealedDoor;
+        if (door && Math.abs(tx - door.tileX) <= 2 && Math.abs(ty - door.tileY) <= 2) return true;
+        const plot = this.worldtreePlot;
+        if (plot && Math.abs(tx - plot.tileX) <= 8 && Math.abs(ty - plot.tileY) <= 8) return true;
+        const canopy = this.skyTree;
+        if (canopy && Math.abs(tx - canopy.tileX) <= 6 && Math.abs(ty - canopy.tileY) <= 6) return true;
+        return false;
+    }
+
     // ============================================
     // The Maker's Hollow (bottom-left corner)
     // ============================================

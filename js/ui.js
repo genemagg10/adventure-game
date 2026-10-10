@@ -264,6 +264,25 @@ class UIManager {
         this.hud.classList.add("hidden");
     }
 
+    paintDayClock(state) {
+        const el = document.getElementById("day-clock");
+        if (!el) return;
+        const name = state || "day";
+        el.dataset.state = name;
+        el.classList.toggle("night", name === "night");
+        el.classList.toggle("dusk", name === "dusk" || name === "dawn");
+        const icon = document.getElementById("day-clock-icon");
+        const glyph = name === "night" ? "🌙" : (name === "day" ? "☀" : "🌅");
+        if (icon && icon.textContent !== glyph) icon.textContent = glyph;
+        const titles = {
+            day: "Day",
+            dusk: "Dusk",
+            night: "Night — monsters are stronger",
+            dawn: "Dawn",
+        };
+        el.title = titles[name] || "Time of day";
+    }
+
     updateHud(player) {
         const following = this.game.aliveCompanionCount ? this.game.aliveCompanionCount() : 0;
         const weapon = player.getWeapon();
@@ -285,9 +304,11 @@ class UIManager {
             this.game.ladyQuestState, this.game.touchControls && this.game.touchControls.active,
             (player.heldKeys || []).join(","),
             elementState,
+            this.game.dayClockState ? this.game.dayClockState() : "day",
         ].join("|");
         if (signature === this._hudSignature) return false;
         this._hudSignature = signature;
+        this.paintDayClock(this.game.dayClockState ? this.game.dayClockState() : "day");
 
         // Health
         const hpPercent = (player.hp / player.maxHp) * 100;

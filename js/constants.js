@@ -764,6 +764,42 @@ const CAVE_OBSTACLE_TILES = {
     rocks: TILE.MOUNTAIN,
 };
 
+// One full day is six real minutes. A new game starts at phase 0, which is
+// full day, so night is something the player meets rather than something they
+// load into. Dusk and dawn are short ramps; the dark stretch in the middle is
+// a couple of minutes, long enough to matter and short enough to end.
+const DAY_CYCLE = {
+    length: 6 * 60 * 1000,
+    duskStart: 0.35,
+    nightStart: 0.42,
+    nightEnd: 0.78,
+    dawnEnd: 0.85,
+};
+
+// Full night only. Hostile monsters hit harder and drop better; bosses,
+// companions, the sheath guardian and the sealed room are left alone.
+const NIGHT_POWER = {
+    hp: 1.5,
+    damage: 1.5,
+    speed: 1.15,
+    gold: 1.5,
+    dropChance: 1.5,
+    chanceCap: 0.75,
+    gemCap: 1,
+    arrows: [2, 4],
+    dayArrows: [1, 3],
+};
+
+// The same tile each element already clears at its cave, anywhere nearby.
+// Lightning has no cave obstacle and does not move the ground.
+const ELEMENT_TERRAIN = {
+    fire:  { tile: TILE.TREE,     note: "Fire burns the trees away" },
+    water: { tile: TILE.LAVA,     note: "Water quenches the flame" },
+    ice:   { tile: TILE.WATER,    note: "Ice freezes the water solid" },
+    earth: { tile: TILE.MOUNTAIN, note: "Earth levels the mountain" },
+};
+const TERRAIN_CLEAR_RADIUS = 3;
+
 // Eternal flame damage when touched
 const ETERNAL_FLAME_DAMAGE = 20;
 const ETERNAL_FLAME_KNOCKBACK = 8;

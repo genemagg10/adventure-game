@@ -46,6 +46,8 @@ class Game {
         this.lastTime = 0;
         this.time = 0;
         this.engagedPlayTime = 0;
+        this.worldTime = 0;
+        this.wasNight = false;
         this.lastMinimapRender = 0;
         this.minimapDirty = true;
         this.minimapStateSignature = "";
@@ -393,6 +395,8 @@ class Game {
         this.lastMinimapRender = 0;
         this.minimapStateSignature = "";
         this.engagedPlayTime = 0;
+        this.worldTime = 0;
+        this.wasNight = false;
         this.sound.init();
         this.resizeViewport();
         this.world = new World(gemSeed);
@@ -597,6 +601,10 @@ class Game {
         // A fresh game on the save's own seed, then the save laid over the top.
         this.resetState(data.world && data.world.gemSeed);
         SaveSystem.restore(this, data);
+        // A save from before the clock has no worldTime, so the overlay leaves
+        // the fresh daytime default. Don't announce a night the player just loaded.
+        this.wasNight = this.isNight();
+        this.applyNightPower();
 
         // The pack follows the player rather than standing where they were
         // when the game was last written.
@@ -1290,6 +1298,8 @@ class Game {
         }
 
         this.engagedPlayTime += dt;
+        this.worldTime += dt;
+        this.syncNightClock();
         if (this.engagedPlayTime >= 5 * 60 * 1000) {
             GameAnalytics.track("engaged-5-minutes");
         }
@@ -1375,7 +1385,9 @@ class Game {
                         this.onEntityKilled(r.target, r.isBoss);
                     }
                 }
-                // Check if element clears cave obstacle tiles near player
+                // The cave mouth still announces itself when you are standing at
+                // it. The same element also clears that kind of ground anywhere
+                // else on the surface — ice on wild water, earth on a mountain.
                 if (this.onSurface) {
                     for (const entrance of this.world.caveEntrances) {
                         if (dist(this.player.x, this.player.y, entrance.worldX, entrance.worldY) < 150) {
@@ -1384,6 +1396,12 @@ class Game {
                                 this.clearCaveObstacle(entrance.id);
                             }
                         }
+                    }
+                    const cleared = this.world.clearTerrain(elemUsed, this.player.x, this.player.y);
+                    if (cleared > 0) {
+                        this.world.invalidateMapCache();
+                        const spec = ELEMENT_TERRAIN[elemUsed];
+                        if (spec) this.ui.showNotification(spec.note);
                     }
                 }
 
@@ -2065,10 +2083,12 @@ class Game {
             });
         }
 
-        const drops = entity.getDrops();
+        const nightLoot = this.nightLootFor(entity);
+        const drops = entity.getDrops(nightLoot);
 
-        // Arrow drops (1-3 arrows per kill)
-        const arrowDrop = randInt(1, 3);
+        // Arrow drops. Night adds one to each end of the usual 1–3.
+        const arrowBounds = nightLoot ? NIGHT_POWER.arrows : NIGHT_POWER.dayArrows;
+        const arrowDrop = randInt(arrowBounds[0], arrowBounds[1]);
         this.player.arrows += arrowDrop;
 
         // Gold
@@ -3258,6 +3278,154 @@ class Game {
         }
     }
 
+    // Phase 0 is morning. The clock only moves while the game is actually
+    // updating, so a pause or a menu holds the sun where it is.
+    dayPhase() {
+        const length = DAY_CYCLE.length;
+        const t = ((this.worldTime || 0) % length + length) % length;
+        return t / length;
+    }
+
+    nightFactor() {
+        const phase = this.dayPhase();
+        const cycle = DAY_CYCLE;
+        if (phase < cycle.duskStart || phase >= cycle.dawnEnd) return 0;
+        if (phase < cycle.nightStart) {
+            return (phase - cycle.duskStart) / (cycle.nightStart - cycle.duskStart);
+        }
+        if (phase < cycle.nightEnd) return 1;
+        return 1 - (phase - cycle.nightEnd) / (cycle.dawnEnd - cycle.nightEnd);
+    }
+
+    isNight() {
+        return this.nightFactor() >= 1;
+    }
+
+    dayClockState() {
+        const factor = this.nightFactor();
+        if (factor >= 1) return "night";
+        if (factor <= 0) return "day";
+        return this.dayPhase() < DAY_CYCLE.nightStart ? "dusk" : "dawn";
+    }
+
+    // DevTools and tests. phase is 0..1 around the day.
+    setTimeOfDay(phase) {
+        const clamped = Math.max(0, Math.min(0.999, Number(phase) || 0));
+        this.worldTime = clamped * DAY_CYCLE.length;
+        this.syncNightClock();
+    }
+
+    jumpToNight() {
+        const cycle = DAY_CYCLE;
+        this.setTimeOfDay((cycle.nightStart + cycle.nightEnd) / 2);
+    }
+
+    jumpToDay() {
+        this.setTimeOfDay(0);
+    }
+
+    arrowDropBounds(nightLoot) {
+        return nightLoot ? NIGHT_POWER.arrows : NIGHT_POWER.dayArrows;
+    }
+
+    nightLootFor(entity) {
+        if (!this.isNight() || this.inSeal) return false;
+        if (!entity || entity.isSheathGuardian) return false;
+        return typeof entity.getDrops === "function";
+    }
+
+    syncNightClock() {
+        const night = this.isNight();
+        this.applyNightPower();
+        if (this.ui) this.ui.paintDayClock(this.dayClockState());
+        if (night && !this.wasNight) {
+            this.wasNight = true;
+            if (this.ui) this.ui.showNotification("Night falls - monsters grow stronger");
+        } else if (!night && this.wasNight && this.nightFactor() === 0) {
+            this.wasNight = false;
+            if (this.ui) this.ui.showNotification("Dawn breaks");
+        }
+    }
+
+    // Regular hostile monsters only. The boost is stored against the stats
+    // they spawned with, so a second night frame cannot stack it, and dawn
+    // puts the original numbers back. A full health bar stays full.
+    applyNightPower() {
+        const night = this.isNight() && !this.inSeal;
+        const lists = [this.monsters, this.caveMonsters, this.skyMonsters];
+        for (const list of lists) {
+            if (!list) continue;
+            for (const monster of list) this.scaleMonsterForNight(monster, night);
+        }
+    }
+
+    scaleMonsterForNight(monster, night) {
+        if (!monster || !monster.alive || monster.isSheathGuardian) return;
+        if (monster.baseMaxHp == null) {
+            monster.baseMaxHp = monster.maxHp;
+            monster.baseDamage = monster.damage;
+            monster.baseSpeed = monster.speed;
+        }
+        if (!!monster.nightBoosted === !!night) return;
+        const ratio = monster.maxHp > 0 ? monster.hp / monster.maxHp : 1;
+        if (night) {
+            monster.maxHp = Math.round(monster.baseMaxHp * NIGHT_POWER.hp);
+            monster.hp = Math.max(1, Math.min(monster.maxHp, Math.round(monster.maxHp * ratio)));
+            monster.damage = Math.round(monster.baseDamage * NIGHT_POWER.damage);
+            monster.speed = Math.round(monster.baseSpeed * NIGHT_POWER.speed * 100) / 100;
+            monster.nightBoosted = true;
+        } else {
+            monster.maxHp = monster.baseMaxHp;
+            monster.hp = Math.max(1, Math.min(monster.maxHp, Math.round(monster.maxHp * ratio)));
+            monster.damage = monster.baseDamage;
+            monster.speed = monster.baseSpeed;
+            monster.nightBoosted = false;
+        }
+    }
+
+    renderNightSky() {
+        if (this.inCave || this.inSeal) return;
+        const factor = this.nightFactor();
+        if (factor <= 0) return;
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.fillStyle = `rgba(8, 12, 40, ${0.46 * factor})`;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.globalAlpha = factor;
+        if (!this.starField) this.starField = this.makeStarField();
+        for (const star of this.starField) {
+            const twinkle = 0.45 + Math.sin(this.time * 0.002 + star.phase) * 0.55;
+            ctx.fillStyle = `rgba(255, 252, 230, ${twinkle})`;
+            ctx.fillRect(star.x * CANVAS_W, star.y * CANVAS_H, star.size, star.size);
+        }
+        const mx = CANVAS_W * 0.8;
+        const my = 58;
+        ctx.fillStyle = "#f4f0d2";
+        ctx.beginPath();
+        ctx.arc(mx, my, 12, 0.55, Math.PI * 2 - 0.15);
+        ctx.arc(mx + 5, my - 1, 10, Math.PI * 2 - 0.15, 0.55, true);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    makeStarField() {
+        const stars = [];
+        let seed = 42;
+        const roll = () => {
+            seed = (seed * 16807) % 2147483647;
+            return seed / 2147483647;
+        };
+        for (let i = 0; i < 42; i++) {
+            stars.push({
+                x: roll(),
+                y: roll() * 0.7,
+                phase: roll() * Math.PI * 2,
+                size: roll() > 0.82 ? 2 : 1,
+            });
+        }
+        return stars;
+    }
+
     clearCaveObstacle(entranceId) {
         const cleared = this.world.clearCaveObstacle(entranceId, this.player.x, this.player.y);
         if (cleared > 0) {
@@ -4244,6 +4412,10 @@ class Game {
         if (this.onSurface) {
             this.world.renderClubhouseOverhead(ctx, this.camera, this.time);
         }
+
+        // Night darkens the surface and the Cloudlands. Caves are already
+        // underground, and the sealed room keeps its own light.
+        this.renderNightSky();
 
         // Zone display
         if (this.zoneDisplayTimer > 0) {

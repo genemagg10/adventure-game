@@ -46,6 +46,7 @@ const SaveSystem = {
     // re-triggered by walking back in - the same thing respawnPlayer() does.
     GAME_FIELDS: [
         "engagedPlayTime",
+        "worldTime",
         "bossDefeated",
         "greenKnightDefeated", "greenlandsUnlocked",
         "giantTurtleDefeated",

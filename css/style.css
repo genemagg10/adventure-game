@@ -783,6 +783,32 @@ body {
     text-shadow: 1px 1px 2px #000;
 }
 
+#day-clock {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 214, 120, 0.85);
+    box-shadow: 0 0 8px rgba(255, 196, 70, 0.35);
+    font-size: 16px;
+    line-height: 1;
+}
+
+#day-clock.night {
+    border-color: rgba(186, 206, 255, 0.9);
+    box-shadow: 0 0 8px rgba(150, 176, 255, 0.5);
+    background: rgba(8, 14, 36, 0.72);
+}
+
+#day-clock.dusk {
+    border-color: rgba(255, 150, 90, 0.85);
+    box-shadow: 0 0 8px rgba(255, 120, 60, 0.35);
+}
+
 #gem-counter, #gold-counter, #arrow-counter, #green-gem-counter, #potion-counter, #sky-counter,
 #apple-counter, #companion-counter {
     color: #fff;
@@ -2983,6 +3009,12 @@ button.relic-card:hover { filter: brightness(1.18); }
         font-size: 9px;
     }
 
+    #day-clock {
+        width: 22px;
+        height: 22px;
+        font-size: 13px;
+    }
+
     #gem-counter, #gold-counter, #arrow-counter, #green-gem-counter, #potion-counter, #sky-counter,
     #apple-counter, #companion-counter {
         font-size: 12px;
@@ -3462,6 +3494,12 @@ button.relic-card:hover { filter: brightness(1.18); }
     #hud-top {
         padding: 2px 6px;
         gap: 6px;
+    }
+
+    #day-clock {
+        width: 18px;
+        height: 18px;
+        font-size: 11px;
     }
 
     #health-bar {

@@ -1253,11 +1253,19 @@ class UIManager {
         return row;
     }
 
+    // The name the Hall of Champions keeps. A blank or unusable tag is the
+    // same fallback a deed already uses, so the confirmation and the board agree.
+    hallName() {
+        const raw = this.game.player && this.game.player.playerTag;
+        const tag = (typeof HallOfDeeds !== "undefined") ? HallOfDeeds.normalizeTag(raw) : null;
+        return tag || "Wayfarer";
+    }
+
     saveToSlot(slot) {
         const ok = this.game.saveToSlot(slot);
         this.slotsPending = null;
         this.slotsMessage = ok
-            ? `Saved to slot ${slot}.`
+            ? `Game saved for ${this.hallName()}. Slot ${slot}.`
             : "Could not save - this browser is not storing data.";
         this.renderSlots();
     }

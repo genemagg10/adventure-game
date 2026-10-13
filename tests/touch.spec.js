@@ -44,7 +44,7 @@ test.describe.serial("saving from a phone", () => {
         // A media rule hides .menu-note on short screens to buy room on the
         // title screen; this line is the only word that a save happened.
         await expect(page.locator("#slots-subtitle")).toBeVisible();
-        await expect(page.locator("#slots-subtitle")).toContainText("Saved to slot 1");
+        await expect(page.locator("#slots-subtitle")).toHaveText("Game saved for Wayfarer. Slot 1.");
     });
 
     test("the slot panel fits the screen without clipping", async () => {

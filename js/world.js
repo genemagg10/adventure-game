@@ -64,6 +64,8 @@ class World {
 
         // Place Lady of the Lake
         this.placeLadyOfLake();
+        // Ice can sheet the whole lake without changing its tiles.
+        this.crystalLake = { frozen: false, frozenUntil: 0 };
 
         // Place Merlin and his hut
         this.placeMerlin();
@@ -753,7 +755,10 @@ class World {
                 const ty = pty + dy;
                 if (tx >= 0 && tx < WORLD_W && ty >= 0 && ty < WORLD_H) {
                     if (this.tiles[ty][tx] === obstacleTile) {
-                        this.tiles[ty][tx] = TILE.STONE;
+                        // Fire opens its cave by burning the trees, the same way a
+                        // fire arrow does. The other mouths still leave stone.
+                        if (ce.element === "fire") this.igniteTree(tx, ty);
+                        else this.tiles[ty][tx] = TILE.STONE;
                         cleared++;
                     }
                 }
@@ -767,6 +772,8 @@ class World {
     // anywhere the player is standing: trees, lava, water, mountains. A few
     // places are the story itself and stay put — the lake, the fountain, the
     // Worldtree, the Waiting Ground, the Hollow, and the rim of the map.
+    // Ice does reach the lake and the fountain, but only as a sheet of ice
+    // laid over the water. The tiles underneath never become stone.
     clearTerrain(element, playerX, playerY) {
         const spec = ELEMENT_TERRAIN[element];
         if (!spec) return 0;
@@ -781,7 +788,10 @@ class World {
                 if (tx < 0 || ty < 0 || tx >= WORLD_W || ty >= WORLD_H) continue;
                 if (this.tiles[ty][tx] !== spec.tile) continue;
                 if (this.terrainProtected(tx, ty)) continue;
-                this.tiles[ty][tx] = TILE.STONE;
+                // Fire leaves the same burning tree a fire arrow does. It burns
+                // down to brown ash on its own; the other elements still leave stone.
+                if (element === "fire") this.igniteTree(tx, ty);
+                else this.tiles[ty][tx] = TILE.STONE;
                 cleared++;
             }
         }
@@ -795,6 +805,8 @@ class World {
             || tile === TILE.SKY_TREE_BURNING || tile === TILE.SKY_LADDER
             || tile === TILE.BARE_EARTH || tile === TILE.CASTLE_WALL
             || tile === TILE.CLUB_WALL || tile === TILE.WALL) return true;
+        // Crystal Lake and the fountain stay water for every element, ice
+        // included. Ice sheets them in freezeCrystalLake / freezeFountain.
         if (getZoneAt(tx, ty) === "lake") return true;
         const fountain = this.fountainOfYouth;
         if (fountain && Math.abs(tx - fountain.tileX) <= 2 && Math.abs(ty - fountain.tileY) <= 2) return true;
@@ -807,6 +819,17 @@ class World {
         const canopy = this.skyTree;
         if (canopy && Math.abs(tx - canopy.tileX) <= 6 && Math.abs(ty - canopy.tileY) <= 6) return true;
         return false;
+    }
+
+    // Same catch a fire arrow uses: the tree burns, then updateBurningTrees
+    // lets it go out as brown ash (a path tile). The timer is what a save keeps.
+    igniteTree(tx, ty) {
+        if (ty < 0 || tx < 0 || ty >= WORLD_H || tx >= WORLD_W) return false;
+        if (this.tiles[ty][tx] !== TILE.TREE) return false;
+        this.tiles[ty][tx] = TILE.BURNING_TREE;
+        if (!this.burningTrees) this.burningTrees = {};
+        this.burningTrees[`${tx},${ty}`] = { timer: 8000 };
+        return true;
     }
 
     // ============================================
@@ -1364,7 +1387,97 @@ class World {
             tileY: fy,
             x: fx * TILE_SIZE + TILE_SIZE / 2,
             y: fy * TILE_SIZE + TILE_SIZE / 2,
+            frozen: false,
+            frozenUntil: 0,
         };
+    }
+
+    // A landmark pool tile: the fountain's ring of water, not its bridge.
+    isFountainWater(tx, ty) {
+        const f = this.fountainOfYouth;
+        if (!f) return false;
+        if (Math.abs(tx - f.tileX) > 1 || Math.abs(ty - f.tileY) > 1) return false;
+        return this.tiles[ty][tx] === TILE.WATER;
+    }
+
+    isLakeWater(tx, ty) {
+        if (tx < 0 || ty < 0 || tx >= WORLD_W || ty >= WORLD_H) return false;
+        return this.tiles[ty][tx] === TILE.WATER && getZoneAt(tx, ty) === "lake";
+    }
+
+    // True when a terrain-clear sized reach touches a tile the predicate names.
+    landmarkReach(playerX, playerY, hit) {
+        const ptx = Math.floor(playerX / TILE_SIZE);
+        const pty = Math.floor(playerY / TILE_SIZE);
+        const radius = LANDMARK_ICE.radius;
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                if (hit(ptx + dx, pty + dy)) return true;
+            }
+        }
+        return false;
+    }
+
+    freezeFountain(playerX, playerY, worldTime) {
+        const f = this.fountainOfYouth;
+        if (!f || f.frozen) return false;
+        if (!this.landmarkReach(playerX, playerY, (tx, ty) => this.isFountainWater(tx, ty))) return false;
+        f.frozen = true;
+        f.frozenUntil = (worldTime || 0) + LANDMARK_ICE.duration;
+        return true;
+    }
+
+    meltFountain() {
+        const f = this.fountainOfYouth;
+        if (!f || !f.frozen) return false;
+        f.frozen = false;
+        f.frozenUntil = 0;
+        return true;
+    }
+
+    meltFountainNear(playerX, playerY) {
+        const f = this.fountainOfYouth;
+        if (!f || !f.frozen) return false;
+        if (!this.landmarkReach(playerX, playerY, (tx, ty) => this.isFountainWater(tx, ty))) return false;
+        return this.meltFountain();
+    }
+
+    freezeCrystalLake(playerX, playerY, worldTime) {
+        const lake = this.crystalLake;
+        if (!lake || lake.frozen) return false;
+        if (!this.landmarkReach(playerX, playerY, (tx, ty) => this.isLakeWater(tx, ty))) return false;
+        lake.frozen = true;
+        lake.frozenUntil = (worldTime || 0) + LANDMARK_ICE.duration;
+        return true;
+    }
+
+    meltCrystalLake() {
+        const lake = this.crystalLake;
+        if (!lake || !lake.frozen) return false;
+        lake.frozen = false;
+        lake.frozenUntil = 0;
+        return true;
+    }
+
+    meltCrystalLakeNear(playerX, playerY) {
+        const lake = this.crystalLake;
+        if (!lake || !lake.frozen) return false;
+        if (!this.landmarkReach(playerX, playerY, (tx, ty) => this.isLakeWater(tx, ty))) return false;
+        return this.meltCrystalLake();
+    }
+
+    fountainSheeted(tx, ty) {
+        const f = this.fountainOfYouth;
+        return !!(f && f.frozen && this.isFountainWater(tx, ty));
+    }
+
+    lakeSheeted(tx, ty) {
+        const lake = this.crystalLake;
+        return !!(lake && lake.frozen && this.isLakeWater(tx, ty));
+    }
+
+    waterSheeted(tx, ty) {
+        return this.fountainSheeted(tx, ty) || this.lakeSheeted(tx, ty);
     }
 
     generateDecorations(rng) {
@@ -1452,6 +1565,8 @@ class World {
                 this.renderTileDetail(ctx, tile, sx, sy, tx, ty, time);
             }
         }
+
+        this.renderFrozenWaters(ctx, camera, time);
 
         // Render decorations in view
         for (const dec of this.decorations) {
@@ -2036,6 +2151,85 @@ class World {
         }
     }
 
+    // Pale sheet, a frost rim where the ice meets anything that isn't ice,
+    // and a speck that stays put so the freeze reads even in a still picture.
+    drawIceSheet(ctx, sx, sy, tx, ty) {
+        ctx.fillStyle = "rgba(214, 238, 255, 0.88)";
+        ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+        ctx.strokeStyle = "rgba(90, 150, 190, 0.75)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const n = (tx * 17 + ty * 11) % 6;
+        ctx.moveTo(sx + 3 + n, sy + 5);
+        ctx.lineTo(sx + 14, sy + 16);
+        ctx.lineTo(sx + 27, sy + 8 + n);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const sides = [
+            [0, -1, sx, sy, sx + TILE_SIZE, sy],
+            [0, 1, sx, sy + TILE_SIZE - 1, sx + TILE_SIZE, sy + TILE_SIZE - 1],
+            [-1, 0, sx, sy, sx, sy + TILE_SIZE],
+            [1, 0, sx + TILE_SIZE - 1, sy, sx + TILE_SIZE - 1, sy + TILE_SIZE],
+        ];
+        for (const [dx, dy, x1, y1, x2, y2] of sides) {
+            const nx = tx + dx;
+            const ny = ty + dy;
+            if (ny < 0 || nx < 0 || ny >= WORLD_H || nx >= WORLD_W || !this.waterSheeted(nx, ny)) {
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+            }
+        }
+        ctx.stroke();
+        ctx.fillStyle = "#ffffff";
+        const px = sx + 6 + ((tx * 13 + ty) % 18);
+        const py = sy + 7 + ((ty * 9 + tx) % 16);
+        ctx.fillRect(px, py, 2, 2);
+        ctx.fillRect(px + 3, py - 1, 1, 1);
+    }
+
+    renderFrozenWaters(ctx, camera, time) {
+        const fountain = this.fountainOfYouth;
+        if (fountain && fountain.frozen) {
+            this.drawSparkleRing(ctx, fountain.x - camera.x, fountain.y - camera.y, time, 26);
+        }
+        const lake = this.crystalLake;
+        if (!lake || !lake.frozen) return;
+        const startTX = Math.floor(camera.x / TILE_SIZE);
+        const startTY = Math.floor(camera.y / TILE_SIZE);
+        const endTX = startTX + TILES_X + 2;
+        const endTY = startTY + TILES_Y + 2;
+        for (let ty = startTY; ty <= endTY; ty++) {
+            for (let tx = startTX; tx <= endTX; tx++) {
+                if ((tx * 3 + ty * 5) % 7 !== 0) continue;
+                if (!this.lakeSheeted(tx, ty)) continue;
+                const twinkle = 0.4 + Math.sin(time * 0.007 + tx * 0.7 + ty) * 0.45;
+                if (twinkle < 0.25) continue;
+                const sx = tx * TILE_SIZE - camera.x + 8 + ((tx * 13) % 14);
+                const sy = ty * TILE_SIZE - camera.y + 6 + ((ty * 9) % 14);
+                ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
+                ctx.fillRect(sx, sy, 2, 2);
+            }
+        }
+    }
+
+    drawSparkleRing(ctx, x, y, time, radius) {
+        if (x < -40 || y < -40 || x > CANVAS_W + 40 || y > CANVAS_H + 40) return;
+        ctx.save();
+        for (let i = 0; i < 8; i++) {
+            const pulse = (Math.sin(time * 0.006 + i * 1.4) + 1) / 2;
+            if (pulse < 0.35) continue;
+            const angle = (i / 8) * Math.PI * 2 + time * 0.001;
+            const px = x + Math.cos(angle) * radius;
+            const py = y + Math.sin(angle) * radius * 0.72;
+            ctx.globalAlpha = 0.35 + pulse * 0.65;
+            ctx.fillStyle = i % 2 === 0 ? "#ffffff" : "#d8f6ff";
+            ctx.fillRect(px, py, 2, 2);
+        }
+        ctx.restore();
+    }
+
     renderTileDetail(ctx, tile, sx, sy, tx, ty, time) {
         switch (tile) {
             case TILE.TREE:
@@ -2054,6 +2248,10 @@ class World {
                 break;
 
             case TILE.WATER: {
+                if (this.waterSheeted(tx, ty)) {
+                    this.drawIceSheet(ctx, sx, sy, tx, ty);
+                    break;
+                }
                 // Wave animation
                 const wave = Math.sin(time * 0.002 + tx * 0.5 + ty * 0.3) * 10;
                 ctx.fillStyle = `rgba(100, ${170 + wave}, 255, 0.3)`;
@@ -2069,6 +2267,15 @@ class World {
                     ctx.moveTo(sx + i, sy);
                     ctx.lineTo(sx + i, sy + TILE_SIZE);
                     ctx.stroke();
+                }
+                // The fountain's standing-stone keeps its planks, under frost.
+                if (this.fountainOfYouth && this.fountainOfYouth.frozen
+                    && tx === this.fountainOfYouth.tileX && ty === this.fountainOfYouth.tileY) {
+                    ctx.fillStyle = "rgba(232, 246, 255, 0.55)";
+                    ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(sx + 2, sy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
                 }
                 break;
 
@@ -2939,7 +3146,8 @@ class World {
         }
 
         if (this.ladyOfLake && !this.ladyOfLake.excaliburGiven) {
-            marks.push({ x: this.ladyOfLake.x, y: this.ladyOfLake.y, shape: "ring", colour: "#88ccff", label: "Lady of the Lake", size: 5, rumour: true, priority: 3 });
+            const iced = this.crystalLake && this.crystalLake.frozen;
+            marks.push({ x: this.ladyOfLake.x, y: this.ladyOfLake.y, shape: "ring", colour: iced ? "#e7f7ff" : "#88ccff", label: "Lady of the Lake", size: 5, rumour: true, priority: 3 });
         }
         if (this.merlin) {
             marks.push({ x: this.merlin.x, y: this.merlin.y, shape: "ring", colour: "#aa66ff", label: "Merlin", size: 5, rumour: true, priority: 3 });
@@ -2948,7 +3156,8 @@ class World {
             marks.push({ x: this.merlinHut.x, y: this.merlinHut.y, shape: "square", colour: "#aa66ff", label: "Merlin's Hut", size: 4, priority: 1 });
         }
         if (this.fountainOfYouth) {
-            marks.push({ x: this.fountainOfYouth.x, y: this.fountainOfYouth.y, shape: "ring", colour: "#64c8ff", label: "Fountain of Youth", size: 4, priority: 1 });
+            const iced = !!this.fountainOfYouth.frozen;
+            marks.push({ x: this.fountainOfYouth.x, y: this.fountainOfYouth.y, shape: "ring", colour: iced ? "#e7f7ff" : "#64c8ff", label: "Fountain of Youth", size: 4, priority: 1 });
         }
 
         // The Worldtree stays off the chart until it has been seen. Once it has

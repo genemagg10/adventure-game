@@ -375,12 +375,23 @@ class Game {
             minimap.addEventListener("click", () => {
                 if (this.state !== "playing") return;
                 this.keyJustPressed.map = true;
+                // A click focuses this control. Leave it focused and the next
+                // Space — the sword — is aimed at a button.
+                minimap.blur();
             });
             minimap.addEventListener("keydown", (e) => {
-                if (e.key !== "Enter" && e.key !== " ") return;
+                // Space is the sword. This control used to treat Space like
+                // Enter, so once the minimap had focus the next swing opened
+                // the map. Swallow that key here and let it stay an attack.
+                if (e.key === " " || e.code === "Space") {
+                    e.preventDefault();
+                    return;
+                }
+                if (e.key !== "Enter") return;
                 e.preventDefault();
                 if (this.state !== "playing") return;
                 this.keyJustPressed.map = true;
+                minimap.blur();
             });
         }
     }
@@ -1403,6 +1414,8 @@ class Game {
                         const spec = ELEMENT_TERRAIN[elemUsed];
                         if (spec) this.ui.showNotification(spec.note);
                     }
+                    const landmarkNote = this.landmarkIceNote(elemUsed);
+                    if (landmarkNote) this.ui.showNotification(landmarkNote);
                 }
 
                 // Ice Gem reveals the hidden ladder in the castle's NW corner
@@ -3334,16 +3347,62 @@ class Game {
         return typeof entity.getDrops === "function";
     }
 
+    // Ice lays a sheet over the fountain or Crystal Lake. Fire beside that
+    // water melts it. Neither gesture changes the tiles, the ward, or a quest.
+    landmarkIceNote(elemUsed) {
+        if (!this.onSurface || !this.world) return "";
+        if (elemUsed === "ice") {
+            const fountain = this.world.freezeFountain(this.player.x, this.player.y, this.worldTime);
+            const lake = this.world.freezeCrystalLake(this.player.x, this.player.y, this.worldTime);
+            if (fountain && lake) return "The waters freeze over";
+            if (fountain) return "The Fountain of Youth freezes over";
+            if (lake) return "Crystal Lake freezes over";
+        } else if (elemUsed === "fire") {
+            const fountain = this.world.meltFountainNear(this.player.x, this.player.y);
+            const lake = this.world.meltCrystalLakeNear(this.player.x, this.player.y);
+            if (fountain && lake) return "Fire melts the frozen waters";
+            if (fountain) return "Fire melts the fountain";
+            if (lake) return "Fire melts the lake";
+        }
+        return "";
+    }
+
+    // Dawn melts every sheet. A sheet cast in the daytime also thaws when its
+    // own timer runs out, so a morning freeze does not wait through the night.
+    thawFrozenWaters(reason) {
+        const world = this.world;
+        if (!world) return "";
+        const now = this.worldTime || 0;
+        const due = (spot) => spot && spot.frozen && (reason === "dawn" || now >= (spot.frozenUntil || 0));
+        const fountain = due(world.fountainOfYouth) ? world.meltFountain() : false;
+        const lake = due(world.crystalLake) ? world.meltCrystalLake() : false;
+        if (!fountain && !lake) return "";
+        if (reason === "dawn") {
+            if (fountain && lake) return "Dawn breaks, and the frozen waters thaw";
+            if (fountain) return "Dawn breaks, and the Fountain of Youth thaws";
+            return "Dawn breaks, and Crystal Lake thaws";
+        }
+        if (fountain && lake) return "The frozen waters thaw";
+        if (fountain) return "The Fountain of Youth thaws";
+        return "Crystal Lake thaws";
+    }
+
     syncNightClock() {
         const night = this.isNight();
         this.applyNightPower();
         if (this.ui) this.ui.paintDayClock(this.dayClockState());
+        const dawn = !night && this.wasNight && this.nightFactor() === 0;
         if (night && !this.wasNight) {
             this.wasNight = true;
             if (this.ui) this.ui.showNotification("Night falls - monsters grow stronger");
-        } else if (!night && this.wasNight && this.nightFactor() === 0) {
+        } else if (dawn) {
             this.wasNight = false;
-            if (this.ui) this.ui.showNotification("Dawn breaks");
+            const thawed = this.thawFrozenWaters("dawn");
+            if (this.ui) this.ui.showNotification(thawed || "Dawn breaks");
+        }
+        if (!dawn) {
+            const thawed = this.thawFrozenWaters("timer");
+            if (thawed && this.ui) this.ui.showNotification(thawed);
         }
     }
 
@@ -4466,8 +4525,11 @@ class Game {
             const fy = f.y - this.camera.y;
             if (fx > -30 && fx < CANVAS_W + 30 && fy > -30 && fy < CANVAS_H + 30) {
                 const glow = Math.sin(this.time * 0.003) * 0.2 + 0.5;
+                const frozen = !!f.frozen;
                 ctx.save();
-                ctx.fillStyle = `rgba(100, 200, 255, ${glow})`;
+                ctx.fillStyle = frozen
+                    ? `rgba(236, 248, 255, ${Math.min(1, glow + 0.3)})`
+                    : `rgba(100, 200, 255, ${glow})`;
                 ctx.beginPath();
                 ctx.arc(fx, fy, 18, 0, Math.PI * 2);
                 ctx.fill();

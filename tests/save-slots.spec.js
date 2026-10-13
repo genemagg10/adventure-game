@@ -76,7 +76,7 @@ test.describe.serial("save slots", () => {
     });
 
     test("the panel says what it just did", async () => {
-        await expect(page.locator("#slots-subtitle")).toContainText("Saved to slot 2");
+        await expect(page.locator("#slots-subtitle")).toHaveText("Game saved for Wayfarer. Slot 2.");
     });
 
     test("deleting asks first", async () => {

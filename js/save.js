@@ -358,6 +358,14 @@ const SaveSystem = {
                 treasureIds: (world.hiddenLadder.treasures || []).map(t => t.id),
             } : null,
             ladyOfLake: world.ladyOfLake ? { excaliburGiven: world.ladyOfLake.excaliburGiven } : null,
+            fountainOfYouth: world.fountainOfYouth ? {
+                frozen: !!world.fountainOfYouth.frozen,
+                frozenUntil: world.fountainOfYouth.frozenUntil || 0,
+            } : null,
+            crystalLake: world.crystalLake ? {
+                frozen: !!world.crystalLake.frozen,
+                frozenUntil: world.crystalLake.frozenUntil || 0,
+            } : null,
             merlinHut: world.merlinHut ? {
                 showWand: world.merlinHut.showWand,
                 wandCollected: world.merlinHut.wandCollected,
@@ -407,6 +415,7 @@ const SaveSystem = {
         this.overlay(game, data.game, this.GAME_FIELDS);
         this.restoreCompanions(game, data.companions);
         this.restoreWorld(game.world, data.world);
+        this.settleLandmarkIce(game);
         this.restoreCaves(game.caveWorlds, data.caves);
         this.restoreSky(game.skyWorld, data.sky);
         this.syncHeldPickups(game);
@@ -461,6 +470,8 @@ const SaveSystem = {
         this.overlay(world.skyTree, saved.skyTree, ["state", "burnTimer", "discovered", "regrown"]);
         this.overlay(world.hiddenLadder, saved.hiddenLadder, ["revealed", "looted"]);
         this.overlay(world.ladyOfLake, saved.ladyOfLake, ["excaliburGiven"]);
+        this.restoreFreeze(world.fountainOfYouth, saved.fountainOfYouth);
+        this.restoreFreeze(world.crystalLake, saved.crystalLake);
         this.overlay(world.merlinHut, saved.merlinHut, ["showWand", "wandCollected"]);
         this.overlay(world.castleTapestry, saved.castleTapestry, ["uncovered"]);
         this.overlay(world.makersHollow, saved.makersHollow, ["discovered"]);
@@ -475,6 +486,30 @@ const SaveSystem = {
             && saved.hiddenLadder && Array.isArray(saved.hiddenLadder.treasureIds)) {
             const remaining = saved.hiddenLadder.treasureIds;
             world.hiddenLadder.treasures = world.hiddenLadder.treasures.filter(t => remaining.includes(t.id));
+        }
+    },
+
+    restoreFreeze(target, saved) {
+        if (!target || !saved) return;
+        target.frozen = !!saved.frozen;
+        target.frozenUntil = typeof saved.frozenUntil === "number" ? saved.frozenUntil : 0;
+    },
+
+    // A sheet whose timer already ran out while the save was closed comes back
+    // thawed. An older save simply has no sheet to restore.
+    settleLandmarkIce(game) {
+        const now = (game && game.worldTime) || 0;
+        const world = game && game.world;
+        if (!world) return;
+        this.expireFreeze(world.fountainOfYouth, now);
+        this.expireFreeze(world.crystalLake, now);
+    },
+
+    expireFreeze(target, now) {
+        if (!target || !target.frozen) return;
+        if (now >= (target.frozenUntil || 0)) {
+            target.frozen = false;
+            target.frozenUntil = 0;
         }
     },
 

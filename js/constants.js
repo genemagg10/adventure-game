@@ -904,6 +904,15 @@ const FOUNTAIN_OF_YOUTH = {
     wrongAnswerCooldown: 180000, // 3 minutes in ms
 };
 
+// Ice sheets the Fountain of Youth and Crystal Lake instead of turning them
+// into stone. The sheet lasts until the next dawn, or this long if dawn is
+// further off, and a Fire blast beside the water melts it at once. Riddles,
+// healing, and the Lady's quest all keep working underneath the ice.
+const LANDMARK_ICE = {
+    duration: 90 * 1000,
+    radius: TERRAIN_CLEAR_RADIUS,
+};
+
 // Fountain riddle pool (many riddles, 3 chosen randomly each visit)
 const FOUNTAIN_RIDDLES = [
     { question: "I have cities, but no houses live there. I have mountains, but no trees grow there. I have water, but no fish swim there. What am I?", choices: ["A map", "A painting", "A dream", "A desert"], answer: 0 },

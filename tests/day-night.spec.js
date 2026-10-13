@@ -150,7 +150,22 @@ test("element powers clear matching ground and leave landmarks standing", async 
             g.zoneDisplayTimer = 0;
         }
 
-        const water = find((x, y) => w.tiles[y][x] === TILE.WATER && getZoneAt(x, y) === "swamp");
+        const water = find((x, y) => {
+            if (w.tiles[y][x] !== TILE.WATER || getZoneAt(x, y) !== "swamp") return false;
+            // The lake's western shore touches this swamp. A cast there would
+            // sheet Crystal Lake as well as stone the puddle, and the lake's
+            // own note would replace this one. Ordinary water is farther east.
+            const reach = LANDMARK_ICE.radius + 1;
+            for (let dy = -reach; dy <= reach; dy++) {
+                for (let dx = -reach; dx <= reach; dx++) {
+                    const tx = x + dx;
+                    const ty = y + dy;
+                    if (ty < 0 || tx < 0 || ty >= WORLD_H || tx >= WORLD_W) continue;
+                    if (w.tiles[ty][tx] === TILE.WATER && getZoneAt(tx, ty) === "lake") return false;
+                }
+            }
+            return true;
+        });
         const mountain = find((x, y) => w.tiles[y][x] === TILE.MOUNTAIN && getZoneAt(x, y) === "mountains");
         const lake = find((x, y) => w.tiles[y][x] === TILE.WATER && getZoneAt(x, y) === "lake");
         const iceCave = CAVE_ENTRANCES.find(e => e.element === "ice");

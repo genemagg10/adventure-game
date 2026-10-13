@@ -380,8 +380,9 @@ class Game {
                 minimap.blur();
             });
             minimap.addEventListener("keydown", (e) => {
-                // Space is melee, even when the map control is focused. The
-                // browser would otherwise treat it as a click on role="button".
+                // Space is the sword. This control used to treat Space like
+                // Enter, so once the minimap had focus the next swing opened
+                // the map. Swallow that key here and let it stay an attack.
                 if (e.key === " " || e.code === "Space") {
                     e.preventDefault();
                     return;

@@ -771,9 +771,12 @@ class World {
     // obstacle in front of it. The same gesture clears that kind of ground
     // anywhere the player is standing: trees, lava, water, mountains. A few
     // places are the story itself and stay put — the lake, the fountain, the
-    // Worldtree, the Waiting Ground, the Hollow, and the rim of the map.
+    // Worldtree, the Waiting Ground, and the Hollow.
     // Ice does reach the lake and the fountain, but only as a sheet of ice
     // laid over the water. The tiles underneath never become stone.
+    // The outer two tiles used to be on that list too. Fire, ice, and earth
+    // may clear them: the player is clamped inside the map, and a step past
+    // the edge still reads as solid, so a walkable rim is not a way out.
     clearTerrain(element, playerX, playerY) {
         const spec = ELEMENT_TERRAIN[element];
         if (!spec) return 0;
@@ -787,7 +790,7 @@ class World {
                 const ty = pty + dy;
                 if (tx < 0 || ty < 0 || tx >= WORLD_W || ty >= WORLD_H) continue;
                 if (this.tiles[ty][tx] !== spec.tile) continue;
-                if (this.terrainProtected(tx, ty)) continue;
+                if (this.terrainProtected(tx, ty, element)) continue;
                 // Fire leaves the same burning tree a fire arrow does. It burns
                 // down to brown ash on its own; the other elements still leave stone.
                 if (element === "fire") this.igniteTree(tx, ty);
@@ -798,8 +801,11 @@ class World {
         return cleared;
     }
 
-    terrainProtected(tx, ty) {
-        if (tx < 2 || ty < 2 || tx >= WORLD_W - 2 || ty >= WORLD_H - 2) return true;
+    terrainProtected(tx, ty, element) {
+        // Water still will not quench lava on the rim. Fire, ice, and earth
+        // can, because nothing past the last tile can be walked onto.
+        const onRim = tx < 2 || ty < 2 || tx >= WORLD_W - 2 || ty >= WORLD_H - 2;
+        if (onRim && element !== "fire" && element !== "ice" && element !== "earth") return true;
         const tile = this.tiles[ty][tx];
         if (tile === TILE.BRIDGE || tile === TILE.LADDER || tile === TILE.SKY_TREE
             || tile === TILE.SKY_TREE_BURNING || tile === TILE.SKY_LADDER

@@ -162,6 +162,6 @@ test("fire burns trees down to ash and leaves other clears as stone", async ({ p
     expect(result.caveTree).toBe(result.burningTile);
     expect(result.caveRock).toBe(result.stone);
     expect(result.caveWater).toBe(result.stone);
-    expect(result.edge).toBe(result.tree);
+    expect(result.edge).toBe(result.burningTile);
     expect(result.canopy).toBe(result.sky);
 });

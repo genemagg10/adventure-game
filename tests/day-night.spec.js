@@ -250,6 +250,7 @@ test("element powers clear matching ground and leave landmarks standing", async 
             stone: TILE.STONE,
             waterTile: TILE.WATER,
             tree: TILE.TREE,
+            burning: TILE.BURNING_TREE,
             bare: TILE.BARE_EARTH,
             ladderTile: TILE.LADDER,
         };
@@ -262,7 +263,7 @@ test("element powers clear matching ground and leave landmarks standing", async 
     expect(result.caveRock).toBe(result.stone);
     expect(result.lake).toBe(result.waterTile);
     expect(result.fountain).toBe(result.waterTile);
-    expect(result.edge).toBe(result.tree);
+    expect(result.edge).toBe(result.burning);
     expect(result.canopy).toBe(result.canopyBefore);
     expect(result.plot).toBe(result.plotBefore);
     expect(result.plot).toBe(result.bare);

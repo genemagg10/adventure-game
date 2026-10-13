@@ -375,12 +375,22 @@ class Game {
             minimap.addEventListener("click", () => {
                 if (this.state !== "playing") return;
                 this.keyJustPressed.map = true;
+                // A click focuses this control. Leave it focused and the next
+                // Space — the sword — is aimed at a button.
+                minimap.blur();
             });
             minimap.addEventListener("keydown", (e) => {
-                if (e.key !== "Enter" && e.key !== " ") return;
+                // Space is melee, even when the map control is focused. The
+                // browser would otherwise treat it as a click on role="button".
+                if (e.key === " " || e.code === "Space") {
+                    e.preventDefault();
+                    return;
+                }
+                if (e.key !== "Enter") return;
                 e.preventDefault();
                 if (this.state !== "playing") return;
                 this.keyJustPressed.map = true;
+                minimap.blur();
             });
         }
     }

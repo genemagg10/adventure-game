@@ -1,4 +1,7 @@
 const { test, expect } = require("@playwright/test");
+const { spawnSync } = require("child_process");
+const path = require("path");
+const { pathToFileURL } = require("url");
 const { openTitle, startNewGame, openPause } = require("./helpers");
 
 async function stubShare(page) {
@@ -141,6 +144,34 @@ test("pause prefills the Hall tag, and a kept note still says thank you", async 
     await page.click("#share-done");
     await expect(page.locator("#share-overlay")).toBeHidden();
     await expect(page.locator("#pause-overlay")).toBeVisible();
+});
+
+test("the share preflight is a 204 with a null body", () => {
+    const fn = pathToFileURL(path.join(__dirname, "../supabase/functions/share-with-luca/index.ts")).href;
+    const script = `
+        globalThis.Deno = {
+            env: { get() { return ""; } },
+            serve(handler) { globalThis.__shareHandler = handler; },
+        };
+        await import(${JSON.stringify(fn)});
+        const res = await globalThis.__shareHandler(new Request("https://fn.local/", {
+            method: "OPTIONS",
+            headers: { origin: "https://luca.maggio.xyz" },
+        }));
+        console.log(JSON.stringify({
+            status: res.status,
+            bodyNull: res.body === null,
+            text: await res.text(),
+        }));
+    `;
+    const result = spawnSync(process.execPath, ["--experimental-strip-types", "--input-type=module", "-e", script], {
+        encoding: "utf8",
+    });
+    expect(result.status, result.stderr).toBe(0);
+    const reported = JSON.parse(result.stdout.trim());
+    expect(reported.status).toBe(204);
+    expect(reported.bodyNull).toBe(true);
+    expect(reported.text).toBe("");
 });
 
 test("too many notes ask the player to wait", async ({ page }) => {

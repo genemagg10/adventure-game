@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Ingoizer's World</title>
-    <link rel="stylesheet" href="css/style.css?v=20261014-share">
+    <link rel="stylesheet" href="css/style.css?v=20261014-news">
     <script data-goatcounter="https://genemaggio.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
 </head>
@@ -47,6 +47,7 @@
                     <button id="controlsBtn" class="menu-btn">Controls</button>
                     <button id="hallBtn" class="menu-btn">Hall of Champions</button>
                     <button id="shareBtn" class="menu-btn">Share with Luca</button>
+                    <button id="newsBtn" class="menu-btn">What's New</button>
                 </div>
                 <p id="continue-note" class="menu-note hidden"></p>
                 <p id="start-note" class="menu-note">Your journey begins in Green Meadow</p>
@@ -338,6 +339,7 @@
                     <button id="pause-controls" class="menu-btn">Controls</button>
                     <button id="pause-hall" class="menu-btn">Hall of Champions</button>
                     <button id="pause-share" class="menu-btn">Share with Luca</button>
+                    <button id="pause-news" class="menu-btn">What's New</button>
                     <button id="pause-quit" class="menu-btn">Quit to Title</button>
                 </div>
             </div>
@@ -408,6 +410,16 @@
                 </div>
             </form>
         </div>
+        <div id="news-overlay" class="hidden" role="dialog" aria-labelledby="news-title" aria-modal="true">
+            <div class="news-panel">
+                <h2 id="news-title">What's New</h2>
+                <p class="news-copy">The chronicle of the realm, newest first.</p>
+                <div id="news-scroll" class="news-scroll" tabindex="0"></div>
+                <div class="news-actions">
+                    <button type="button" id="news-close" class="menu-btn">Back</button>
+                </div>
+            </div>
+        </div>
         <div id="game-over-screen" class="hidden">
             <h1 id="game-over-title">Game Over</h1>
             <p id="game-over-text"></p>
@@ -425,6 +437,7 @@
     <script src="js/hall-config.js"></script>
     <script src="js/hall.js"></script>
     <script src="js/share.js"></script>
+    <script src="js/news.js"></script>
     <script src="js/sprites.js"></script>
     <script src="js/characters.js"></script>
     <script src="js/monster-sprites.js"></script>

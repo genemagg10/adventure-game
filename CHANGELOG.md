@@ -2,7 +2,7 @@
 
 A history of Ingoizer's World, newest first. Luca created the game, and the dates below are Pacific time. The version labels are only a way to read the story. The game itself does not show these numbers.
 
-Every pull request from [#1](https://github.com/genemagg10/adventure-game/pull/1) through [#79](https://github.com/genemagg10/adventure-game/pull/79) was merged. None were closed without merging. Three changes were committed straight to main, and those are marked as direct commits.
+Every merged pull request has a line in the chronicle below. None in that run were closed without merging. Three changes were committed straight to main, and those are marked as a maker's note.
 
 ## Highlights
 
@@ -20,6 +20,11 @@ Every pull request from [#1](https://github.com/genemagg10/adventure-game/pull/1
 - **October 5–7, 2026** — The Hall of Champions, gravestones, and a secret in the world where you can meet Luca.
 - **October 10–13, 2026** — Day and night. Ice freezes the fountain and Crystal Lake. Fire can burn trees even at the edge of the map.
 - **October 13, 2026** — Share with Luca: send a note from the title screen or the pause menu.
+- **October 13, 2026** — What's New, so this chronicle can be read inside the game.
+
+## v0.13 — What's New
+
+- **October 13, 2026** — [#80](https://github.com/genemagg10/adventure-game/pull/80) — What's New opens from the title screen and the pause menu and reads this chronicle, newest first. Share with Luca and What's New sit side by side under the other title buttons.
 
 ## v0.12 — Share with Luca
 

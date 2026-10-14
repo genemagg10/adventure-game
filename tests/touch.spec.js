@@ -124,3 +124,47 @@ test("sharing a note fits a phone and typing does not swing the sword", async ({
     expect(typed.shoot).toBeFalsy();
     expect(typed.text).toBe("Hello r");
 });
+
+test("what's new fits a phone and does not swing the sword", async ({ page }) => {
+    await startNewGame(page);
+    await openPause(page);
+    const pauseFits = await page.evaluate(() => {
+        const quit = document.getElementById("pause-quit").getBoundingClientRect();
+        return quit.bottom <= window.innerHeight + 1;
+    });
+    expect(pauseFits, "Quit stays on screen with What's New in the menu").toBe(true);
+
+    await page.tap("#pause-news");
+    await expect(page.locator("#news-overlay")).toBeVisible();
+    await expect(page.locator(".news-text").first()).toContainText("chronicle");
+
+    const fits = await page.evaluate(() => {
+        const panel = document.querySelector(".news-panel").getBoundingClientRect();
+        const back = document.getElementById("news-close").getBoundingClientRect();
+        const scroll = document.getElementById("news-scroll");
+        const before = scroll.scrollTop;
+        scroll.scrollTop = 200;
+        return {
+            withinWidth: panel.left >= -1 && panel.right <= window.innerWidth + 1,
+            backReachable: back.top >= 0 && back.bottom <= window.innerHeight + 1,
+            scrolled: scroll.scrollTop > before,
+        };
+    });
+    expect(fits.withinWidth, "the chronicle fits across the screen").toBe(true);
+    expect(fits.backReachable, "Back is on screen").toBe(true);
+    expect(fits.scrolled, "the chronicle scrolls").toBe(true);
+
+    await page.locator(".news-scroll").tap();
+    await page.keyboard.press("Space");
+    await page.keyboard.press("KeyR");
+    const typed = await page.evaluate(() => ({
+        attack: window.game.keys.attack,
+        shoot: window.game.keys.shoot,
+    }));
+    expect(typed.attack).toBeFalsy();
+    expect(typed.shoot).toBeFalsy();
+
+    await page.tap("#news-close");
+    await expect(page.locator("#pause-overlay")).toBeVisible();
+    await expect(page.locator("#news-overlay")).toBeHidden();
+});

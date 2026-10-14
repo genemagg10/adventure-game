@@ -273,8 +273,8 @@ body {
 }
 
 /* One action leads. Continue, or Begin Adventure when there is nothing to
-   continue, spans the row. Everything else sits in a two-column grid under it,
-   and Share with Luca closes the menu on its own line. */
+   continue, spans the row. Everything else sits in a two-column grid under it.
+   Share with Luca and What's New close the menu side by side. */
 .title-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -289,8 +289,7 @@ body {
 }
 
 #continueBtn,
-#startBtn,
-#shareBtn {
+#startBtn {
     grid-column: 1 / -1;
 }
 
@@ -4145,6 +4144,200 @@ body.touch-mode * {
     #share-status { min-height: 0; margin-top: 4px; }
     .share-actions { margin-top: 4px; }
     .share-actions .menu-btn { padding: 6px 10px; font-size: 13px; }
+}
+
+/* ============================================
+   What's New — the in-game chronicle
+   ============================================ */
+
+#news-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 12px;
+    background:
+        linear-gradient(180deg, rgba(5, 11, 23, 0.88), rgba(5, 11, 23, 0.94)),
+        url("../assets/images/title-screen-background.png") center / cover;
+}
+
+.news-panel {
+    display: flex;
+    flex-direction: column;
+    width: min(640px, 100%);
+    height: min(720px, 100%);
+    max-height: 100%;
+    padding: 18px 20px 14px;
+    border: 2px solid #cb8b25;
+    background: linear-gradient(180deg, rgba(38, 26, 14, 0.98), rgba(20, 13, 8, 0.98));
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+}
+
+.news-panel h2 {
+    margin: 0;
+    color: #f0c641;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 22px;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+.news-copy {
+    margin: 2px 0 10px;
+    color: #c7b393;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 14px;
+    font-style: italic;
+    text-align: center;
+}
+
+.news-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 2px 8px 8px 2px;
+}
+
+.news-scroll:focus {
+    outline: none;
+}
+
+.news-prose {
+    margin: 0 0 10px;
+    color: #c7b393;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 14px;
+    font-style: italic;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.news-prose a,
+.news-text a {
+    color: #f0c641;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(240, 198, 65, 0.45);
+}
+
+.news-banner,
+.news-version {
+    margin: 14px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(203, 139, 37, 0.45);
+    color: #f0c641;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 18px;
+    font-weight: normal;
+    letter-spacing: 0.6px;
+    text-align: center;
+}
+
+.news-version-mark {
+    display: block;
+    margin-bottom: 2px;
+    color: #e7b854;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.news-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.news-entry {
+    padding: 8px 10px;
+    border: 1px solid rgba(203, 139, 37, 0.35);
+    background: rgba(0, 0, 0, 0.28);
+}
+
+.news-entry-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 2px 12px;
+}
+
+.news-date {
+    color: #e7b854;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 13px;
+    font-style: italic;
+}
+
+.news-link {
+    color: #f0c641;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 12px;
+    letter-spacing: 0.6px;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(240, 198, 65, 0.55);
+}
+
+.news-text {
+    margin: 4px 0 0;
+    color: #f5eddc;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+.news-plain {
+    margin: 0 0 8px;
+    padding-left: 18px;
+    color: #f5eddc;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+.news-status {
+    margin: 12px 0;
+    color: #f0c641;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 14px;
+    font-style: italic;
+    text-align: center;
+}
+
+.news-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.news-actions .menu-btn {
+    min-width: 140px;
+    margin: 0;
+}
+
+@media (max-height: 500px) {
+    #news-overlay { padding: 8px; }
+    .news-panel { padding: 10px 12px 8px; }
+    .news-panel h2 { font-size: 18px; }
+    .news-copy { margin-bottom: 6px; font-size: 12px; }
+    .news-version,
+    .news-banner { margin-top: 10px; font-size: 16px; }
+    .news-text { font-size: 14px; }
+}
+
+@media (max-height: 420px) {
+    #news-overlay { padding: 4px; }
+    .news-panel { padding: 8px 10px 6px; }
+    .news-copy { display: none; }
+    .news-prose { display: none; }
+    .news-version,
+    .news-banner { margin: 8px 0 4px; font-size: 15px; }
+    .news-entry { padding: 6px 8px; }
+    .news-text { font-size: 13px; }
+    .news-actions { margin-top: 6px; }
+    .news-actions .menu-btn { padding: 6px 10px; font-size: 13px; }
 }
 
 #tag-screen {

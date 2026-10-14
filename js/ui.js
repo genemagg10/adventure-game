@@ -159,6 +159,12 @@ class UIManager {
         if (shareBtn) shareBtn.addEventListener("click", () => this.openShare("title"));
         const pauseShare = document.getElementById("pause-share");
         if (pauseShare) pauseShare.addEventListener("click", () => this.openShare("pause"));
+        const newsBtn = document.getElementById("newsBtn");
+        if (newsBtn) newsBtn.addEventListener("click", () => this.openNews("title"));
+        const pauseNews = document.getElementById("pause-news");
+        if (pauseNews) pauseNews.addEventListener("click", () => this.openNews("pause"));
+        const newsClose = document.getElementById("news-close");
+        if (newsClose) newsClose.addEventListener("click", () => this.closeNews());
         const shareForm = document.getElementById("share-form");
         if (shareForm) {
             shareForm.addEventListener("submit", (e) => {
@@ -1039,6 +1045,70 @@ class UIManager {
         return !!(overlay && !overlay.classList.contains("hidden"));
     }
 
+    openNews(returnTo) {
+        this.game.sound.menuSelect();
+        this.newsReturnTo = returnTo;
+        this.game.keys = {
+            up: false, down: false, left: false, right: false,
+            attack: false, interact: false, map: false, sprint: false,
+        };
+        this.game.keyJustPressed = {};
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        if (returnTo === "pause") this.pauseOverlay.classList.add("hidden");
+        else if (returnTo === "title") this.titleScreen.classList.add("hidden");
+
+        const scroll = document.getElementById("news-scroll");
+        if (scroll) {
+            scroll.replaceChildren();
+            const waiting = document.createElement("p");
+            waiting.className = "news-status";
+            waiting.textContent = "Opening the chronicle…";
+            scroll.appendChild(waiting);
+        }
+        const overlay = document.getElementById("news-overlay");
+        overlay.classList.remove("hidden");
+        this.loadNews();
+    }
+
+    async loadNews() {
+        const scroll = document.getElementById("news-scroll");
+        if (!scroll) return;
+        try {
+            const res = await fetch("CHANGELOG.md", { cache: "no-store" });
+            if (!res.ok) throw new Error("missing");
+            const text = await res.text();
+            if (!this.isNewsOpen()) return;
+            scroll.replaceChildren();
+            Chronicle.render(scroll, text);
+            scroll.scrollTop = 0;
+            scroll.focus();
+        } catch (e) {
+            if (!this.isNewsOpen()) return;
+            scroll.replaceChildren();
+            const err = document.createElement("p");
+            err.className = "news-status";
+            err.textContent = "The chronicle could not be opened. Try again in a moment.";
+            scroll.appendChild(err);
+        }
+    }
+
+    closeNews() {
+        this.game.sound.menuSelect();
+        const overlay = document.getElementById("news-overlay");
+        if (overlay) overlay.classList.add("hidden");
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        if (this.newsReturnTo === "pause") this.pauseOverlay.classList.remove("hidden");
+        else if (this.newsReturnTo === "title") {
+            this.titleScreen.classList.remove("hidden");
+            this.refreshContinue();
+        }
+    }
+
+    isNewsOpen() {
+        const overlay = document.getElementById("news-overlay");
+        return !!(overlay && !overlay.classList.contains("hidden"));
+    }
+
     shareCategory() {
         const picked = document.querySelector("input[name='share-category']:checked");
         return picked ? picked.value : "";
@@ -1203,6 +1273,8 @@ class UIManager {
         if (hall) hall.classList.add("hidden");
         const share = document.getElementById("share-overlay");
         if (share) share.classList.add("hidden");
+        const news = document.getElementById("news-overlay");
+        if (news) news.classList.add("hidden");
         this.stopChampionPad();
         const tag = document.getElementById("tag-screen");
         if (tag) tag.classList.add("hidden");

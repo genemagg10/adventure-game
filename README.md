@@ -6,6 +6,8 @@ Ingoizer's World is a pixel-art adventure game that runs in a web browser. Luca 
 
 Play the current build: [genemagg10.github.io/adventure-game](https://genemagg10.github.io/adventure-game/)
 
+What has changed, from the first day to the latest note you can send Luca, is in the [changelog](CHANGELOG.md).
+
 ## Current game
 
 The player wakes up as Ingoizer in Green Meadow with a rusty sword and bow. Ingoizer is a family name, and the house that carries it cannot agree whether the name is a curse or a promise. The main quest is to find five Blue Gems with elemental powers. Ingoizer can then face the Black Knight at Ing Castle — and once the Black Knight falls, a tapestry in the great hall shows whose family the man in the black armour belonged to. The adventure also opens the Green Knight's Domain, four caves, the Worldtree, Cloudlands, the Twelve Olympians, and Zeus.
@@ -69,6 +71,7 @@ Then open `http://localhost:8000`.
 
 | Path | Purpose |
 |---|---|
+| `CHANGELOG.md` | Dated history of the game, newest first |
 | `index.html` | Main drawing area, screens, pop-up layers, controls, and code loading |
 | `css/style.css` | How the game and menus look on computers and mobile devices |
 | `js/constants.js` | Names and numbers for worlds, items, enemies, bosses, lore, and riddles |

@@ -338,7 +338,7 @@ class TouchControls {
                            "map-overlay", "title-screen", "character-screen", "controls-screen",
                            "game-over-screen", "lore-overlay", "enchant-overlay",
                            "pause-overlay", "slots-overlay", "about-overlay", "hall-overlay",
-                           "share-overlay", "tag-screen"];
+                           "share-overlay", "news-overlay", "tag-screen"];
         for (const id of overlayIds) {
             const el = document.getElementById(id);
             if (el && !el.classList.contains("hidden") && el.contains(target)) {

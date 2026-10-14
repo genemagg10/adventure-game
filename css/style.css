@@ -272,11 +272,35 @@ body {
     text-shadow: 0 2px 3px #000;
 }
 
+/* One action leads. Continue, or Begin Adventure when there is nothing to
+   continue, spans the row. Everything else sits in a two-column grid under it,
+   and Share with Luca closes the menu on its own line. */
 .title-actions {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+    width: 100%;
+}
+
+.title-actions .menu-btn {
+    min-width: 0;
+    width: 100%;
+    margin: 0;
+}
+
+#continueBtn,
+#startBtn,
+#shareBtn {
+    grid-column: 1 / -1;
+}
+
+#continueBtn:not(.hidden) ~ #startBtn {
+    grid-column: auto;
+}
+
+.title-actions .menu-btn:not(.menu-btn-primary) {
+    padding: 9px 12px;
+    font-size: 15px;
 }
 
 .menu-btn {
@@ -3917,6 +3941,210 @@ body.touch-mode * {
     .pause-panel { padding: 12px 18px; }
     .pause-panel h2 { margin-bottom: 8px; font-size: 18px; }
     .pause-panel .menu-btn { min-width: 150px; margin: 3px; padding: 7px 14px; font-size: 13px; }
+}
+
+@media (max-height: 420px) {
+    .pause-panel { padding: 8px 14px; }
+    .pause-panel h2 { margin-bottom: 4px; font-size: 16px; }
+    .pause-panel .menu-btn { margin: 2px; padding: 5px 12px; font-size: 12px; }
+}
+
+@media (max-height: 520px) {
+    #title-screen { gap: 8px; padding: 16px 20px 28px; }
+    .title-logo-image { max-height: 78px; }
+    .title-menu { padding: 14px 16px 12px; }
+    .menu-kicker { margin-bottom: 6px; }
+    .title-actions { gap: 6px 8px; }
+    .title-actions .menu-btn { padding: 7px 8px; font-size: 13px; }
+}
+
+/* ============================================
+   Share with Luca
+   ============================================ */
+
+#share-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 16px 12px;
+    background:
+        linear-gradient(180deg, rgba(5, 11, 23, 0.88), rgba(5, 11, 23, 0.94)),
+        url("../assets/images/title-screen-background.png") center / cover;
+}
+
+.share-panel {
+    width: min(520px, 100%);
+    margin: auto;
+    padding: 20px 22px 16px;
+    border: 2px solid #cb8b25;
+    background: linear-gradient(180deg, rgba(38, 26, 14, 0.98), rgba(20, 13, 8, 0.98));
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+}
+
+.share-panel h2 {
+    margin: 0 0 4px;
+    color: #f0c641;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 22px;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+.share-copy {
+    margin: 0 0 12px;
+    color: #c7b393;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 14px;
+    font-style: italic;
+    text-align: center;
+}
+
+.share-categories {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin: 0 0 12px;
+    padding: 0;
+    border: 0;
+}
+
+.share-categories legend {
+    grid-column: 1 / -1;
+    margin-bottom: 2px;
+    color: #e7b854;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 13px;
+}
+
+.share-categories label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 6px 8px;
+    border: 1px solid rgba(203, 139, 37, 0.45);
+    background: rgba(0, 0, 0, 0.28);
+    color: #f2d6b8;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 13px;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+.share-categories input {
+    flex: none;
+}
+
+.share-label {
+    display: block;
+    margin: 8px 0 4px;
+    color: #e7b854;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 13px;
+}
+
+.share-label span {
+    color: #8493ad;
+    font-style: italic;
+}
+
+.share-panel textarea,
+.share-panel input[type="text"],
+.share-panel input:not([type="radio"]) {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border: 1px solid rgba(203, 139, 37, 0.55);
+    background: rgba(8, 6, 4, 0.85);
+    color: #f5eddc;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 16px;
+}
+
+.share-panel textarea {
+    min-height: 88px;
+    resize: vertical;
+}
+
+.share-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.share-actions .menu-btn {
+    min-width: 140px;
+    margin: 0;
+}
+
+#share-thanks {
+    text-align: center;
+}
+
+#share-thanks-text {
+    margin: 12px 0 16px;
+    color: #f5eddc;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 18px;
+    line-height: 1.4;
+}
+
+/* Off the page, not display:none, so a person never lands on it and a bot
+   that fills every field still gives itself away. */
+.share-honey {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+#share-status {
+    min-height: 16px;
+    margin: 8px 0 0;
+    color: #f0c641;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 13px;
+    font-style: italic;
+    text-align: center;
+}
+
+@media (max-height: 500px) {
+    #share-overlay { padding: 8px; }
+    .share-panel { padding: 12px 14px 10px; }
+    .share-panel h2 { font-size: 18px; }
+    .share-copy { margin-bottom: 6px; font-size: 12px; }
+    .share-panel textarea { min-height: 64px; }
+    .share-categories label { min-height: 32px; padding: 4px 6px; font-size: 12px; }
+}
+
+.share-row {
+    display: block;
+}
+
+@media (max-height: 420px) {
+    #share-overlay { padding: 4px; }
+    .share-panel { padding: 8px 10px; }
+    .share-panel h2 { margin-bottom: 2px; font-size: 16px; }
+    .share-copy { display: none; }
+    .share-categories { grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-bottom: 4px; }
+    .share-categories label { min-height: 26px; font-size: 11px; padding: 2px 4px; }
+    .share-panel textarea { height: 44px; min-height: 0; }
+    .share-label { margin: 2px 0; }
+    .share-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 10px;
+    }
+    #share-status { min-height: 0; margin-top: 4px; }
+    .share-actions { margin-top: 4px; }
+    .share-actions .menu-btn { padding: 6px 10px; font-size: 13px; }
 }
 
 #tag-screen {

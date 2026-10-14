@@ -155,6 +155,21 @@ class UIManager {
         if (hallBtn) hallBtn.addEventListener("click", () => this.openHall("title"));
         const pauseHall = document.getElementById("pause-hall");
         if (pauseHall) pauseHall.addEventListener("click", () => this.openHall("pause"));
+        const shareBtn = document.getElementById("shareBtn");
+        if (shareBtn) shareBtn.addEventListener("click", () => this.openShare("title"));
+        const pauseShare = document.getElementById("pause-share");
+        if (pauseShare) pauseShare.addEventListener("click", () => this.openShare("pause"));
+        const shareForm = document.getElementById("share-form");
+        if (shareForm) {
+            shareForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                this.submitShare();
+            });
+        }
+        const shareClose = document.getElementById("share-close");
+        if (shareClose) shareClose.addEventListener("click", () => this.closeShare());
+        const shareDone = document.getElementById("share-done");
+        if (shareDone) shareDone.addEventListener("click", () => this.closeShare());
         const hallClose = document.getElementById("hall-close");
         if (hallClose) hallClose.addEventListener("click", () => this.closeHall());
         this.bindHallKeys();
@@ -970,6 +985,106 @@ class UIManager {
         return !!(overlay && !overlay.classList.contains("hidden"));
     }
 
+    // A note for Luca. The same panel opens from the title and from pause.
+    // The Hall tag, when there is one, is a starting point for the name and
+    // can be cleared. Game keys stay out of the fields.
+    openShare(returnTo) {
+        this.game.sound.menuSelect();
+        this.shareReturnTo = returnTo;
+        this.game.keys = {
+            up: false, down: false, left: false, right: false,
+            attack: false, interact: false, map: false, sprint: false,
+        };
+        this.game.keyJustPressed = {};
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        if (returnTo === "pause") this.pauseOverlay.classList.add("hidden");
+        else if (returnTo === "title") this.titleScreen.classList.add("hidden");
+
+        const form = document.getElementById("share-form");
+        if (form) form.reset();
+        const name = document.getElementById("share-name");
+        const tag = this.game.player && typeof HallOfDeeds !== "undefined"
+            ? HallOfDeeds.normalizeTag(this.game.player.playerTag)
+            : "";
+        if (name && tag) name.value = tag;
+        const status = document.getElementById("share-status");
+        if (status) status.textContent = "";
+        const fields = document.getElementById("share-fields");
+        const thanks = document.getElementById("share-thanks");
+        if (fields) fields.classList.remove("hidden");
+        if (thanks) thanks.classList.add("hidden");
+        const send = document.getElementById("share-send");
+        if (send) send.disabled = false;
+
+        const overlay = document.getElementById("share-overlay");
+        overlay.classList.remove("hidden");
+        const message = document.getElementById("share-message");
+        if (message) message.focus();
+    }
+
+    closeShare() {
+        this.game.sound.menuSelect();
+        const overlay = document.getElementById("share-overlay");
+        if (overlay) overlay.classList.add("hidden");
+        this.pauseOverlay = this.pauseOverlay || document.getElementById("pause-overlay");
+        if (this.shareReturnTo === "pause") this.pauseOverlay.classList.remove("hidden");
+        else if (this.shareReturnTo === "title") {
+            this.titleScreen.classList.remove("hidden");
+            this.refreshContinue();
+        }
+    }
+
+    isShareOpen() {
+        const overlay = document.getElementById("share-overlay");
+        return !!(overlay && !overlay.classList.contains("hidden"));
+    }
+
+    shareCategory() {
+        const picked = document.querySelector("input[name='share-category']:checked");
+        return picked ? picked.value : "";
+    }
+
+    async submitShare() {
+        const status = document.getElementById("share-status");
+        const send = document.getElementById("share-send");
+        const prepared = ShareWithLuca.prepare({
+            category: this.shareCategory(),
+            message: document.getElementById("share-message").value,
+            name: document.getElementById("share-name").value,
+            contact: document.getElementById("share-contact").value,
+            company: document.getElementById("share-company").value,
+        });
+        if (prepared.error) {
+            if (status) status.textContent = prepared.error;
+            return;
+        }
+        if (send) send.disabled = true;
+        if (status) status.textContent = "Sending…";
+        const result = await ShareWithLuca.send(prepared.payload);
+        if (!this.isShareOpen()) return;
+        if (send) send.disabled = false;
+        if (!result.ok) {
+            if (status) {
+                status.textContent = result.reason === "rate"
+                    ? "That's enough for now. Try again in a little while."
+                    : "The note could not be sent. Try again in a moment.";
+            }
+            return;
+        }
+        const thanks = document.getElementById("share-thanks");
+        const thanksText = document.getElementById("share-thanks-text");
+        const fields = document.getElementById("share-fields");
+        if (thanksText) {
+            thanksText.textContent = result.delivered
+                ? "Thank you. Your note is on its way."
+                : "Thank you. Your note is kept.";
+        }
+        if (fields) fields.classList.add("hidden");
+        if (thanks) thanks.classList.remove("hidden");
+        const done = document.getElementById("share-done");
+        if (done) done.focus();
+    }
+
     openCharacterSelect() {
         this.game.sound.menuSelect();
         if (typeof SiblingPortrait !== "undefined") SiblingPortrait.preload();
@@ -1086,6 +1201,8 @@ class UIManager {
         this.controlsScreen.classList.add("hidden");
         const hall = document.getElementById("hall-overlay");
         if (hall) hall.classList.add("hidden");
+        const share = document.getElementById("share-overlay");
+        if (share) share.classList.add("hidden");
         this.stopChampionPad();
         const tag = document.getElementById("tag-screen");
         if (tag) tag.classList.add("hidden");

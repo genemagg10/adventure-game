@@ -1,5 +1,5 @@
 const { test, expect } = require("@playwright/test");
-const { startNewGame, seedRun, waitForRunningGame, slotChoose, openTitle } = require("./helpers");
+const { startNewGame, seedRun, waitForRunningGame, slotChoose, openTitle, openPause } = require("./helpers");
 
 // Runs under the phone project in playwright.config.js.
 //
@@ -91,4 +91,36 @@ test("tapping a champion name expands the deeds", async ({ page }) => {
     await expect(page.locator(".champion-row")).toHaveAttribute("aria-expanded", "true");
     await expect(page.locator(".champion-deeds")).toBeVisible();
     await expect(page.locator(".deed-name")).toHaveText("Found the Clubhouse");
+});
+
+test("sharing a note fits a phone and typing does not swing the sword", async ({ page }) => {
+    await startNewGame(page);
+    await openPause(page);
+    await page.tap("#pause-share");
+    await expect(page.locator("#share-overlay")).toBeVisible();
+    await expect(page.locator("#share-name")).toHaveValue("Wayfarer");
+
+    const fits = await page.evaluate(() => {
+        const panel = document.querySelector(".share-panel").getBoundingClientRect();
+        const send = document.getElementById("share-send").getBoundingClientRect();
+        return {
+            withinWidth: panel.left >= -1 && panel.right <= window.innerWidth + 1,
+            sendReachable: send.top >= 0 && send.bottom <= window.innerHeight + 1,
+        };
+    });
+    expect(fits.withinWidth, "the note fits across the screen").toBe(true);
+    expect(fits.sendReachable, "Send is on screen").toBe(true);
+
+    await page.locator("#share-message").tap();
+    await page.keyboard.type("Hello");
+    await page.keyboard.press("Space");
+    await page.keyboard.press("KeyR");
+    const typed = await page.evaluate(() => ({
+        attack: window.game.keys.attack,
+        shoot: window.game.keys.shoot,
+        text: document.getElementById("share-message").value,
+    }));
+    expect(typed.attack).toBeFalsy();
+    expect(typed.shoot).toBeFalsy();
+    expect(typed.text).toBe("Hello r");
 });

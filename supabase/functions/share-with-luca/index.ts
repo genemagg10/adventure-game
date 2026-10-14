@@ -64,7 +64,18 @@ function plain(value: string) {
 
 Deno.serve(async (req: Request) => {
     const origin = allowOrigin(req);
-    if (req.method === "OPTIONS") return json(204, {}, origin);
+    if (req.method === "OPTIONS") {
+        return new Response(null, {
+            status: 204,
+            headers: {
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Max-Age": "86400",
+                "Vary": "Origin",
+            },
+        });
+    }
     if (req.method !== "POST") return json(405, { ok: false, reason: "method" }, origin);
 
     const presented = req.headers.get("apikey") || "";

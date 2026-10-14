@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Ingoizer's World</title>
-    <link rel="stylesheet" href="css/style.css?v=20261010-daynight">
+    <link rel="stylesheet" href="css/style.css?v=20261014-share">
     <script data-goatcounter="https://genemaggio.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
 </head>
@@ -46,6 +46,7 @@
                     <button id="loadBtn" class="menu-btn hidden">Load Game</button>
                     <button id="controlsBtn" class="menu-btn">Controls</button>
                     <button id="hallBtn" class="menu-btn">Hall of Champions</button>
+                    <button id="shareBtn" class="menu-btn">Share with Luca</button>
                 </div>
                 <p id="continue-note" class="menu-note hidden"></p>
                 <p id="start-note" class="menu-note">Your journey begins in Green Meadow</p>
@@ -336,6 +337,7 @@
                     <button id="pause-load" class="menu-btn">Load Game</button>
                     <button id="pause-controls" class="menu-btn">Controls</button>
                     <button id="pause-hall" class="menu-btn">Hall of Champions</button>
+                    <button id="pause-share" class="menu-btn">Share with Luca</button>
                     <button id="pause-quit" class="menu-btn">Quit to Title</button>
                 </div>
             </div>
@@ -364,6 +366,48 @@
                 <button id="hall-close" class="menu-btn">Back</button>
             </div>
         </div>
+        <div id="share-overlay" class="hidden" role="dialog" aria-labelledby="share-title" aria-modal="true">
+            <form id="share-form" class="share-panel" autocomplete="off">
+                <h2 id="share-title">Share with Luca</h2>
+                <p class="share-copy">Ideas, frustrations, epic stories, and what you found.</p>
+                <div id="share-fields">
+                    <fieldset class="share-categories">
+                        <legend>What kind of note is this?</legend>
+                        <label><input type="radio" name="share-category" value="idea"> An idea</label>
+                        <label><input type="radio" name="share-category" value="request"> A feature request</label>
+                        <label><input type="radio" name="share-category" value="frustration"> A frustration</label>
+                        <label><input type="radio" name="share-category" value="story"> An epic story</label>
+                        <label><input type="radio" name="share-category" value="accomplishment"> A major accomplishment</label>
+                        <label><input type="radio" name="share-category" value="discovery"> A discovery</label>
+                    </fieldset>
+                    <label class="share-label" for="share-message">Your note</label>
+                    <textarea id="share-message" maxlength="2000" rows="4" spellcheck="true"></textarea>
+                    <div class="share-row">
+                        <div>
+                            <label class="share-label" for="share-name">Name <span>optional</span></label>
+                            <input id="share-name" maxlength="40" autocomplete="nickname" spellcheck="false">
+                        </div>
+                        <div>
+                            <label class="share-label" for="share-contact">Contact <span>optional</span></label>
+                            <input id="share-contact" maxlength="120" autocomplete="email" placeholder="A way to write back, if you want" spellcheck="false">
+                        </div>
+                    </div>
+                    <div class="share-honey" aria-hidden="true">
+                        <label for="share-company">Company</label>
+                        <input id="share-company" tabindex="-1" autocomplete="off">
+                    </div>
+                    <p id="share-status" aria-live="polite"></p>
+                    <div class="share-actions">
+                        <button type="submit" id="share-send" class="menu-btn menu-btn-primary">Send</button>
+                        <button type="button" id="share-close" class="menu-btn">Back</button>
+                    </div>
+                </div>
+                <div id="share-thanks" class="hidden">
+                    <p id="share-thanks-text"></p>
+                    <button type="button" id="share-done" class="menu-btn menu-btn-primary">Back</button>
+                </div>
+            </form>
+        </div>
         <div id="game-over-screen" class="hidden">
             <h1 id="game-over-title">Game Over</h1>
             <p id="game-over-text"></p>
@@ -380,6 +424,7 @@
     <script src="js/analytics.js?v=20260818-launch"></script>
     <script src="js/hall-config.js"></script>
     <script src="js/hall.js"></script>
+    <script src="js/share.js"></script>
     <script src="js/sprites.js"></script>
     <script src="js/characters.js"></script>
     <script src="js/monster-sprites.js"></script>

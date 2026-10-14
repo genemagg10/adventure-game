@@ -348,7 +348,16 @@ class Game {
         };
 
         window.addEventListener("keydown", (e) => {
-            if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+            if (this.ui && this.ui.isShareOpen()) {
+                if (e.key === "Escape") {
+                    e.preventDefault();
+                    this.ui.closeShare();
+                }
+                return;
+            }
+            const typing = e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA"
+                || e.target.tagName === "SELECT" || e.target.isContentEditable);
+            if (typing) return;
             const action = keyMap[e.code];
             if (action) {
                 e.preventDefault();
@@ -360,7 +369,10 @@ class Game {
         });
 
         window.addEventListener("keyup", (e) => {
-            if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+            if (this.ui && this.ui.isShareOpen()) return;
+            const typing = e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA"
+                || e.target.tagName === "SELECT" || e.target.isContentEditable);
+            if (typing) return;
             const action = keyMap[e.code];
             if (action) {
                 e.preventDefault();
@@ -1229,7 +1241,8 @@ class Game {
         // Closing the pause menu has to be handled out here: update() is what
         // reads the key, and update() is exactly what pausing stops.
         if (this.state === "playing" && this.paused && this.keyJustPressed.pause) {
-            if (this.ui.isHallOpen()) this.ui.closeHall();
+            if (this.ui.isShareOpen()) this.ui.closeShare();
+            else if (this.ui.isHallOpen()) this.ui.closeHall();
             else if (this.ui.isSlotsOpen()) this.ui.closeSlots();
             else if (this.ui.isControlsOpen()) this.ui.closeControls();
             else if (this.ui.isPauseOpen()) this.ui.closePause();

@@ -21,12 +21,10 @@ test("What's New sits beside Share and reads the chronicle", async ({ page }) =>
     await page.click("#newsBtn");
     await expect(page.locator("#news-overlay")).toBeVisible();
     await expect(page.locator("#title-screen")).toBeHidden();
-    await expect(page.locator(".news-version").first()).toContainText("What's New");
-    await expect(page.locator(".news-version-mark").first()).toHaveText("v0.13");
-    const record = page.locator(".news-link").first();
-    await expect(record).toHaveText("Record 80");
-    await expect(record).toHaveAttribute("target", "_blank");
-    await expect(record).toHaveAttribute("href", /\/pull\/80$/);
+    const version = page.locator(".news-version-badge").first();
+    await expect(version).toHaveText("v80");
+    await expect(version.locator("a")).toHaveAttribute("target", "_blank");
+    await expect(version.locator("a")).toHaveAttribute("href", /\/pull\/80$/);
     await expect(page.locator(".news-text").first()).toContainText("reads this chronicle");
 
     await page.focus("#news-scroll");
@@ -49,9 +47,8 @@ test("the chronicle refuses raw HTML and hostile links", async ({ page }) => {
     const rendered = await page.evaluate(() => {
         const root = document.createElement("div");
         Chronicle.render(root, [
-            "## v0.1 — Trial",
-            "- **October 13, 2026** — [#1](https://example.com/pull/1) — A <script>alert(1)</script> note **kept**.",
-            "- **October 13, 2026** — [direct commit](javascript:alert(1)) — Should not run.",
+            "- **v1** — **October 13, 2026** — [#1](https://example.com/pull/1) — A <script>alert(1)</script> note **kept**.",
+            "- **v1.1** — **October 13, 2026** — [direct commit](javascript:alert(1)) — Should not run.",
             "See [docs](javascript:alert(2)) and [site](https://luca.maggio.xyz/).",
         ].join("\n"));
         const links = [...root.querySelectorAll("a")].map((a) => ({

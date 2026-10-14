@@ -101,32 +101,43 @@ const Chronicle = {
     },
 
     entryFrom(item) {
-        const matched = item.match(/^\*\*([^*]+)\*\*\s+—\s+(?:\[([^\]]+)\]\(([^)\s]+)\)\s+—\s+)?([\s\S]+)$/);
-        if (!matched) return null;
+        const versioned = item.match(/^\*\*(v[\d.]+|Direct)\*\*\s+—\s+\*\*([^*]+)\*\*\s+—\s+(?:\[([^\]]+)\]\(([^)\s]+)\)\s+—\s+)?([\s\S]+)$/);
+        if (versioned) {
+            return this.entryRow(versioned[1], versioned[2], versioned[4], versioned[5]);
+        }
+        const plain = item.match(/^\*\*([^*]+)\*\*\s+—\s+(?:\[([^\]]+)\]\(([^)\s]+)\)\s+—\s+)?([\s\S]+)$/);
+        if (!plain) return null;
+        return this.entryRow(null, plain[1], plain[3], plain[4]);
+    },
+
+    entryRow(version, date, href, rest) {
         const row = document.createElement("article");
         row.className = "news-entry";
+        if (version) {
+            const badge = document.createElement("div");
+            badge.className = "news-version-badge";
+            if (href && this.safeUrl(href)) {
+                badge.appendChild(this.link(version, href, "news-version-link"));
+            } else {
+                badge.textContent = version;
+            }
+            row.appendChild(badge);
+        }
+        const body = document.createElement("div");
+        body.className = "news-entry-body";
         const head = document.createElement("div");
         head.className = "news-entry-head";
         const when = document.createElement("span");
         when.className = "news-date";
-        when.textContent = matched[1].trim();
+        when.textContent = date.trim();
         head.appendChild(when);
-        if (matched[2] && matched[3] && this.safeUrl(matched[3])) {
-            head.appendChild(this.link(this.linkLabel(matched[2]), matched[3], "news-link"));
-        }
-        row.appendChild(head);
+        body.appendChild(head);
         const text = document.createElement("p");
         text.className = "news-text";
-        this.appendInline(text, matched[4]);
-        row.appendChild(text);
+        this.appendInline(text, rest);
+        body.appendChild(text);
+        row.appendChild(body);
         return row;
-    },
-
-    linkLabel(label) {
-        const pr = String(label).match(/^#(\d+)$/);
-        if (pr) return "Record " + pr[1];
-        if (/direct commit/i.test(label)) return "A maker's note";
-        return String(label);
     },
 
     safeUrl(href) {

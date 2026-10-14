@@ -8,13 +8,14 @@ test("the changelog names every merged pull request, newest first", () => {
     const text = fs.readFileSync(file, "utf8");
     expect(text.startsWith("# Changelog"), "the chronicle has a title").toBe(true);
 
-    const versions = text.split(/^## v/m).slice(1);
-    expect(versions.length).toBeGreaterThan(0);
-    const firstBullet = versions[0].split("\n").find((line) => line.startsWith("- "));
-    expect(firstBullet, "the newest version has an entry").toBeTruthy();
+    expect(text, "versions are pull request numbers, not a separate scheme").not.toMatch(/^## v0\./m);
+    const record = text.split(/^## Highlights/m)[0];
+    const firstBullet = record.split("\n").find((line) => line.startsWith("- **v"));
+    expect(firstBullet, "the newest entry has a version").toBeTruthy();
 
     const mentioned = [...text.matchAll(/\/pull\/(\d+)/g)].map((match) => Number(match[1]));
     const newest = Math.max(...mentioned);
+    expect(firstBullet).toMatch(new RegExp(`^- \\*\\*v${newest}\\*\\*`));
     expect(firstBullet).toContain(`/pull/${newest}`);
 
     const log = execSync("git log --first-parent --pretty=%s HEAD", { encoding: "utf8" });
@@ -24,4 +25,8 @@ test("the changelog names every merged pull request, newest first", () => {
     expect(history.size).toBeGreaterThan(0);
     const missing = [...history].filter((n) => !mentioned.includes(n)).sort((a, b) => a - b);
     expect(missing, "changelog is missing merged pull requests").toEqual([]);
+    for (const n of history) {
+        const line = record.split("\n").find((entry) => entry.includes(`/pull/${n})`));
+        expect(line, `v${n} is missing`).toMatch(new RegExp(`\\*\\*v${n}\\*\\*`));
+    }
 });

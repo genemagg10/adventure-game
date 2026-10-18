@@ -9,6 +9,9 @@ test("the changelog names every merged pull request, newest first", () => {
     expect(text.startsWith("# Changelog"), "the chronicle has a title").toBe(true);
 
     expect(text, "versions are pull request numbers, not a separate scheme").not.toMatch(/^## v0\./m);
+    expect(text, "the chronicle names a secret it should only hint at").not.toMatch(
+        /Laser Gun|Copper Key|Jade Key|Crystal Key|beating Luca|Beat Luca|meet Luca|hidden door|secret meeting/
+    );
     const record = text.split(/^## Highlights/m)[0];
     const firstBullet = record.split("\n").find((line) => line.startsWith("- **v"));
     expect(firstBullet, "the newest entry has a version").toBeTruthy();

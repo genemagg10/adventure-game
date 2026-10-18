@@ -4,6 +4,7 @@ A history of Ingoizer's World, newest first. Luca created the game. Dates are Pa
 
 The version of a change is its pull request number. v80 is pull request 80. A change written straight onto main does not take the next number: it keeps the previous one and adds a step, such as v77.1. The first writing, before any pull request, is marked Direct.
 
+- **v81** — **October 18, 2026** — [#81](https://github.com/genemagg10/adventure-game/pull/81) — The chronicle speaks more softly about things that are still yours to find.
 - **v80** — **October 13, 2026** — [#80](https://github.com/genemagg10/adventure-game/pull/80) — What's New opens from the title screen and the pause menu and reads this chronicle, newest first. Share with Luca and What's New sit side by side under the other title buttons.
 - **v79** — **October 13, 2026** — [#79](https://github.com/genemagg10/adventure-game/pull/79) — Notes sent from Safari were getting stuck before they left the phone. They go through now.
 - **v78** — **October 13, 2026** — [#78](https://github.com/genemagg10/adventure-game/pull/78) — Friends can send Luca an idea, a frustration, a story, or something they found, from the title screen or the pause menu. The title menu leads with one big button, Continue or Begin Adventure, and tucks the rest into a tidy grid.
@@ -14,9 +15,9 @@ The version of a change is its pull request number. v80 is pull request 80. A ch
 - **v74** — **October 10, 2026** — [#74](https://github.com/genemagg10/adventure-game/pull/74) — The surface and the Cloudlands pass through day, dusk, night, and dawn. Monsters are tougher at night and drop better treasure. Fire, water, ice, and earth can also clear matching ground, while lakes, the fountain, and other landmarks stay protected.
 - **v73** — **October 7, 2026** — [#73](https://github.com/genemagg10/adventure-game/pull/73) — Strange keys sit in Relics. The Hall uses softer names for secret places, each cave is its own deed, and a gravestone marks the spot where you fell. A full set of deeds can wear a jade crown, and tapping a champion's name opens their list on a phone.
 - **v72** — **October 6, 2026** — [#72](https://github.com/genemagg10/adventure-game/pull/72) — Cave bats and Cloudlands eagles can be tamed with an apple. They follow, they fight, and they count toward the pack of five, including the Clubhouse.
-- **v71** — **October 6, 2026** — [#71](https://github.com/genemagg10/adventure-game/pull/71) — The Hall remembers helping the Lady of the Lake, helping Merlin, and beating Luca. That last deed is the secret meeting Luca left in the world. The prize from the fight stays off the public board.
+- **v71** — **October 6, 2026** — [#71](https://github.com/genemagg10/adventure-game/pull/71) — The Hall remembers helping the Lady of the Lake and helping Merlin. Some say there's more to find for those who gather what's hidden.
 - **v70** — **October 6, 2026** — [#70](https://github.com/genemagg10/adventure-game/pull/70) — The Hall of Deeds became the Hall of Champions. Players are grouped by name and ranked by the weight of their deeds, and a crown marks the hardest one they have earned.
-- **v69** — **October 5, 2026** — [#69](https://github.com/genemagg10/adventure-game/pull/69) — After you choose a sibling, the game asks for a short name. First-time milestones from that run appear on a Hall you can open from the title screen or the pause menu. A hidden door also appeared beside the Maker's Hollow.
+- **v69** — **October 5, 2026** — [#69](https://github.com/genemagg10/adventure-game/pull/69) — After you choose a sibling, the game asks for a short name. First-time milestones from that run appear on a Hall you can open from the title screen or the pause menu. Some say there's more to find for those who gather what's hidden.
 - **v68** — **September 28, 2026** — [#68](https://github.com/genemagg10/adventure-game/pull/68) — The new pet fighting rules were undone the same morning. Companions were dying too quickly, so they went back to the way they fought before.
 - **v67** — **September 28, 2026** — [#67](https://github.com/genemagg10/adventure-game/pull/67) — For a short while, pets attacked only the enemy you had just hit, and they fought back when a monster hurt them. That experiment did not stay.
 - **v66** — **September 20, 2026** — [#66](https://github.com/genemagg10/adventure-game/pull/66) — A Giant Snapping Turtle guards the Fallow, south of Ing Castle, on the ground where the Worldtree Seed is meant to go. It is as tough as the Black Knight. Beating it drops Turtle Shell Armor, and no seed takes root anywhere until the turtle is gone.
@@ -35,7 +36,7 @@ The version of a change is its pull request number. v80 is pull request 80. A ch
 - **v53** — **August 21, 2026** — [#53](https://github.com/genemagg10/adventure-game/pull/53) — The inventory button on a phone wears a pack. The potion button moved so it no longer covers the mini map.
 - **v52** — **August 21, 2026** — [#52](https://github.com/genemagg10/adventure-game/pull/52) — Slow companions, like the toad and the turtle, can catch up when they fall behind. Animals also steer around trees and walls instead of getting stuck.
 - **v51** — **August 21, 2026** — [#51](https://github.com/genemagg10/adventure-game/pull/51) — Phone buttons show the thing they will do: the sword or axe you are holding, your bow, your element, a potion, or whatever is in reach.
-- **v50** — **August 20, 2026** — [#50](https://github.com/genemagg10/adventure-game/pull/50) — A ladder at the far southwest corner, with nothing pointing to it, climbs down to the Maker's Hollow. The room holds the credits: Luca, 2026.
+- **v50** — **August 20, 2026** — [#50](https://github.com/genemagg10/adventure-game/pull/50) — A ladder leads down to the Maker's Hollow. The room holds the credits: Luca, 2026.
 - **v49** — **August 20, 2026** — [#49](https://github.com/genemagg10/adventure-game/pull/49) — The jewel sheath can no longer get stuck where you cannot pick it up. Quest items have their own panel, the phone picture stopped stretching, and the close button is harder to miss.
 - **v48** — **August 20, 2026** — [#48](https://github.com/genemagg10/adventure-game/pull/48) — A phone held sideways uses the wide screen for the world, instead of leaving empty bars on both sides.
 - **v47** — **August 20, 2026** — [#47](https://github.com/genemagg10/adventure-game/pull/47) — Quick taps on a phone count again. The close button no longer swallows the tap that comes right after another one.
@@ -96,11 +97,11 @@ The version of a change is its pull request number. v80 is pull request 80. A ch
 - **July 23, 2026** — Ice opens a hidden room inside Ing Castle.
 - **August 16, 2026** — The Worldtree, the Cloudlands, the Olympians, and animals you can tame with apples.
 - **August 18, 2026** — The game's own address, luca.maggio.xyz, and a title screen painted like the realm.
-- **August 20, 2026** — Maps that fill in as you walk, and a ladder in the corner down to the Maker's Hollow, where Luca signed the game.
+- **August 20, 2026** — Maps that fill in as you walk, and the Maker's Hollow, where Luca signed the game.
 - **August 23–25, 2026** — Saving the game, the Clubhouse, and the Worldtree Seed's real planting ground.
 - **August 31, 2026** — Choose which Ingoizer sibling you play. The people you meet say that name.
 - **September 13–20, 2026** — Sprinting on apple energy, and the Giant Snapping Turtle guarding the place the seed belongs.
-- **October 5–7, 2026** — The Hall of Champions, gravestones, and a secret in the world where you can meet Luca.
+- **October 5–7, 2026** — The Hall of Champions and gravestones. Some say there's more to find for those who gather what's hidden.
 - **October 10–13, 2026** — Day and night. Ice freezes the fountain and Crystal Lake. Fire can burn trees even at the edge of the map.
 - **October 13, 2026** — Share with Luca: send a note from the title screen or the pause menu.
 - **October 13, 2026** — What's New, so this chronicle can be read inside the game.

@@ -22,10 +22,10 @@ test("What's New sits beside Share and reads the chronicle", async ({ page }) =>
     await expect(page.locator("#news-overlay")).toBeVisible();
     await expect(page.locator("#title-screen")).toBeHidden();
     const version = page.locator(".news-version-badge").first();
-    await expect(version).toHaveText("v80");
+    await expect(version).toHaveText("v81");
     await expect(version.locator("a")).toHaveAttribute("target", "_blank");
-    await expect(version.locator("a")).toHaveAttribute("href", /\/pull\/80$/);
-    await expect(page.locator(".news-text").first()).toContainText("reads this chronicle");
+    await expect(version.locator("a")).toHaveAttribute("href", /\/pull\/81$/);
+    await expect(page.locator(".news-text").first()).toContainText("still yours to find");
 
     await page.focus("#news-scroll");
     await page.keyboard.press("Space");

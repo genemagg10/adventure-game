@@ -136,7 +136,7 @@ test("what's new fits a phone and does not swing the sword", async ({ page }) =>
 
     await page.tap("#pause-news");
     await expect(page.locator("#news-overlay")).toBeVisible();
-    await expect(page.locator(".news-text").first()).toContainText("chronicle");
+    await expect(page.locator(".news-text").first()).toContainText("still yours to find");
 
     const fits = await page.evaluate(() => {
         const panel = document.querySelector(".news-panel").getBoundingClientRect();

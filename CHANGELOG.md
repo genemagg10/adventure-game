@@ -4,6 +4,7 @@ A history of Ingoizer's World, newest first. Luca created the game. Dates are Pa
 
 The version of a change is its pull request number. v80 is pull request 80. A change written straight onto main does not take the next number: it keeps the previous one and adds a step, such as v77.1. The first writing, before any pull request, is marked Direct.
 
+- **v83** — **November 14, 2026** — [#83](https://github.com/genemagg10/adventure-game/pull/83) — The curious tree near the castle looks like the other trees around it.
 - **v82** — **November 14, 2026** — [#82](https://github.com/genemagg10/adventure-game/pull/82) — A curious tree has appeared near the castle. The Hall of Champions remembers The Destroyer for clearing every tree in a biome, and each biome is worth ten points.
 - **v81** — **October 18, 2026** — [#81](https://github.com/genemagg10/adventure-game/pull/81) — The chronicle speaks more softly about things that are still yours to find.
 - **v80** — **October 13, 2026** — [#80](https://github.com/genemagg10/adventure-game/pull/80) — What's New opens from the title screen and the pause menu and reads this chronicle, newest first. Share with Luca and What's New sit side by side under the other title buttons.

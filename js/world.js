@@ -122,6 +122,13 @@ class World {
 
         // Add decorations
         this.generateDecorations(rng);
+
+        // A single tree just east of Ing Castle. It is not one of the biome's
+        // trees: burning it starts a chain, and it never counts toward The Destroyer.
+        this.castlePuzzle = null;
+        this.placeCastlePuzzle();
+        this.destroyerCleared = {};
+        this.censusTrees();
     }
 
     getTileForPosition(x, y, rng) {
@@ -767,6 +774,107 @@ class World {
         return cleared;
     }
 
+    // Immediately east of Ing Castle's east wall, halfway down that wall.
+    // buildCastle uses origin (175, 55) and a 16-tile footprint.
+    placeCastlePuzzle() {
+        const tileX = 175 + 16;
+        const tileY = 55 + 8;
+        if (tileX < 0 || tileY < 0 || tileX >= WORLD_W || tileY >= WORLD_H) return;
+        this.castlePuzzle = {
+            tileX,
+            tileY,
+            x: tileX * TILE_SIZE + TILE_SIZE / 2,
+            y: tileY * TILE_SIZE + TILE_SIZE / 2,
+            stage: "tree",
+            rewarded: false,
+            flash: null,
+        };
+        this.applyCastlePuzzleTile();
+        // The tile beside it has to stay walkable, or the chain cannot be reached.
+        const besideX = tileX + 1;
+        if (besideX < WORLD_W && SOLID_TILES.has(this.tiles[tileY][besideX])) {
+            this.tiles[tileY][besideX] = TILE.STONE;
+        }
+    }
+
+    isCastlePuzzle(tx, ty) {
+        const p = this.castlePuzzle;
+        return !!(p && p.tileX === tx && p.tileY === ty);
+    }
+
+    applyCastlePuzzleTile() {
+        const p = this.castlePuzzle;
+        if (!p) return;
+        const tile = {
+            tree: TILE.TREE,
+            mountain: TILE.MOUNTAIN,
+            pool: TILE.WATER,
+            fire: TILE.LAVA,
+            ladder: TILE.LADDER,
+        }[p.stage] || TILE.TREE;
+        this.tiles[p.tileY][p.tileX] = tile;
+    }
+
+    // Fire, earth, ice, then water, in that order. Anything else leaves it alone.
+    advanceCastlePuzzle(element) {
+        const p = this.castlePuzzle;
+        if (!p || p.stage === "ladder") return false;
+        const next = {
+            tree: ["fire", "mountain"],
+            mountain: ["earth", "pool"],
+            pool: ["ice", "fire"],
+            fire: ["water", "ladder"],
+        }[p.stage];
+        if (!next || next[0] !== element) return false;
+        p.stage = next[1];
+        p.flash = p.stage;
+        this.applyCastlePuzzleTile();
+        this.invalidateMapCache();
+        return true;
+    }
+
+    // How many ordinary trees each biome started with. The puzzle tree is left out.
+    censusTrees() {
+        const counts = {};
+        for (let y = 0; y < WORLD_H; y++) {
+            for (let x = 0; x < WORLD_W; x++) {
+                if (this.tiles[y][x] !== TILE.TREE) continue;
+                if (this.isCastlePuzzle(x, y)) continue;
+                const zone = getZoneAt(x, y);
+                counts[zone] = (counts[zone] || 0) + 1;
+            }
+        }
+        this.treeCensus = counts;
+    }
+
+    // A tree has just finished burning to ash. If that was the last ordinary
+    // tree in its biome, the biome is cleared. Returns the zone id, or null.
+    felledZone(tx, ty) {
+        if (!this.treeCensus) return null;
+        const zone = getZoneAt(tx, ty);
+        if (!this.treeCensus[zone] || (this.destroyerCleared && this.destroyerCleared[zone])) return null;
+        let left = 0;
+        const z = ZONES[zone];
+        const x0 = z ? z.x : 0;
+        const y0 = z ? z.y : 0;
+        const x1 = z ? Math.min(WORLD_W, z.x + z.w) : WORLD_W;
+        const y1 = z ? Math.min(WORLD_H, z.y + z.h) : WORLD_H;
+        for (let y = y0; y < y1; y++) {
+            for (let x = x0; x < x1; x++) {
+                if (z && getZoneAt(x, y) !== zone) continue;
+                if (!z && getZoneAt(x, y) !== "wilderness") continue;
+                if (this.isCastlePuzzle(x, y)) continue;
+                if (x === tx && y === ty) continue;
+                const tile = this.tiles[y][x];
+                if (tile === TILE.TREE || tile === TILE.BURNING_TREE) left++;
+            }
+        }
+        if (left > 0) return null;
+        if (!this.destroyerCleared) this.destroyerCleared = {};
+        this.destroyerCleared[zone] = true;
+        return zone;
+    }
+
     // Fire, water, ice and earth each already open one cave by clearing the
     // obstacle in front of it. The same gesture clears that kind of ground
     // anywhere the player is standing: trees, lava, water, mountains. A few
@@ -791,6 +899,11 @@ class World {
                 if (tx < 0 || ty < 0 || tx >= WORLD_W || ty >= WORLD_H) continue;
                 if (this.tiles[ty][tx] !== spec.tile) continue;
                 if (this.terrainProtected(tx, ty, element)) continue;
+                // The tree east of Ing Castle changes shape instead of turning to ash or stone.
+                if (this.isCastlePuzzle(tx, ty)) {
+                    if (this.advanceCastlePuzzle(element)) cleared++;
+                    continue;
+                }
                 // Fire leaves the same burning tree a fire arrow does. It burns
                 // down to brown ash on its own; the other elements still leave stone.
                 if (element === "fire") this.igniteTree(tx, ty);
@@ -831,6 +944,7 @@ class World {
     // lets it go out as brown ash (a path tile). The timer is what a save keeps.
     igniteTree(tx, ty) {
         if (ty < 0 || tx < 0 || ty >= WORLD_H || tx >= WORLD_W) return false;
+        if (this.isCastlePuzzle(tx, ty)) return this.advanceCastlePuzzle("fire");
         if (this.tiles[ty][tx] !== TILE.TREE) return false;
         this.tiles[ty][tx] = TILE.BURNING_TREE;
         if (!this.burningTrees) this.burningTrees = {};
@@ -1569,6 +1683,7 @@ class World {
 
                 // Tile details
                 this.renderTileDetail(ctx, tile, sx, sy, tx, ty, time);
+                if (this.isCastlePuzzle(tx, ty)) this.drawCastlePuzzleMark(ctx, sx, sy, time);
             }
         }
 
@@ -2233,6 +2348,16 @@ class World {
             ctx.fillStyle = i % 2 === 0 ? "#ffffff" : "#d8f6ff";
             ctx.fillRect(px, py, 2, 2);
         }
+        ctx.restore();
+    }
+
+    // A thin gold ring so the castle tree, and each shape it takes, reads as one place.
+    drawCastlePuzzleMark(ctx, sx, sy, time) {
+        const pulse = 0.45 + Math.sin(time * 0.006) * 0.35;
+        ctx.save();
+        ctx.strokeStyle = `rgba(240, 198, 65, ${pulse})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(sx + 2, sy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
         ctx.restore();
     }
 

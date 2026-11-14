@@ -172,7 +172,18 @@ create policy hall_deeds_insert
             ('helped-merlin', 'Helped Merlin'),
             ('strange-key-copper', 'Found a strange key'),
             ('strange-key-jade', 'Found a strange key'),
-            ('strange-key-crystal', 'Found a strange key')
+            ('strange-key-crystal', 'Found a strange key'),
+            ('destroyer-meadow', 'The Destroyer — Green Meadow'),
+            ('destroyer-forest', 'The Destroyer — Dark Forest'),
+            ('destroyer-village', 'The Destroyer — Camelot Village'),
+            ('destroyer-swamp', 'The Destroyer — Merlin''s Swamp'),
+            ('destroyer-mountains', 'The Destroyer — Dragon Mountains'),
+            ('destroyer-castle', 'The Destroyer — Ing Castle'),
+            ('destroyer-ruins', 'The Destroyer — Ancient Ruins'),
+            ('destroyer-darklands', 'The Destroyer — The Darklands'),
+            ('destroyer-greenlands', 'The Destroyer — Green Knight''s Domain'),
+            ('destroyer-worldtree', 'The Destroyer — The Worldtree Reach'),
+            ('destroyer-wilderness', 'The Destroyer — the wilds')
         )
     );
 ```

@@ -511,6 +511,14 @@ class CombatSystem {
                 const wTilesW = world.tiles[0] ? world.tiles[0].length : WORLD_W;
                 const wTilesH = world.tiles.length || WORLD_H;
                 if (tile.x >= 0 && tile.x < wTilesW && tile.y >= 0 && tile.y < wTilesH) {
+                    if (world.isCastlePuzzle && world.isCastlePuzzle(tile.x, tile.y)) {
+                        if (world.advanceCastlePuzzle("fire")) {
+                            this.spawnHitParticles(a.x, a.y, "#ff4400", 16);
+                            this.spawnElementEffect(a.x, a.y, "fire", 800);
+                        }
+                        this.arrowProjectiles.splice(i, 1);
+                        continue;
+                    }
                     if (world.tiles[tile.y][tile.x] === TILE.TREE) {
                         // Check if the tree is adjacent to water
                         let touchingWater = false;

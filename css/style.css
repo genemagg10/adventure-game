@@ -4604,6 +4604,7 @@ body.touch-mode * {
 .champ-badge[data-tier="Late"] { color: #8fd4ea; }
 .champ-badge[data-tier="Ending"] { color: #f5f8ff; }
 .champ-badge[data-tier="Legend"] { color: #1a8f4a; }
+.champ-badge[data-tier="Destroyer"] { color: #e25b2a; }
 .champ-badge[data-tier="Jade"] { color: #3dce7c; }
 
 .champ-badge[data-tier="Ending"] .champ-badge-icon .champ-spark {
@@ -4687,6 +4688,7 @@ body.touch-mode * {
 .deed-tier[data-tier="Late"] { color: #8fd4ea; }
 .deed-tier[data-tier="Ending"] { color: #f5f8ff; }
 .deed-tier[data-tier="Legend"] { color: #1a8f4a; }
+.deed-tier[data-tier="Destroyer"] { color: #e25b2a; }
 
 .cave-group {
     display: block;

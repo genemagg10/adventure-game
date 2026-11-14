@@ -97,6 +97,7 @@ class Game {
         this.nearCaveEntrance = null;
         this.nearCaveExit = null;
         this.nearMakersHollow = false;
+        this.nearCastleLadder = false;
         this.nearSealedDoor = false;
         this.nearSealExit = false;
         this.inSeal = false;
@@ -501,6 +502,7 @@ class Game {
         this.nearCaveEntrance = null;
         this.nearCaveExit = null;
         this.nearMakersHollow = false;
+        this.nearCastleLadder = false;
         this.nearSealedDoor = false;
         this.nearSealExit = false;
         this.inSeal = false;
@@ -639,6 +641,7 @@ class Game {
 
         document.getElementById("title-screen").classList.add("hidden");
         this.beginLoop();
+        this.syncDestroyerDeeds();
         return true;
     }
 
@@ -1424,10 +1427,11 @@ class Game {
                         }
                     }
                     const cleared = this.world.clearTerrain(elemUsed, this.player.x, this.player.y);
+                    const puzzleNote = this.consumeCastlePuzzleFlash();
                     if (cleared > 0) {
                         this.world.invalidateMapCache();
                         const spec = ELEMENT_TERRAIN[elemUsed];
-                        if (spec) this.ui.showNotification(spec.note);
+                        if (spec && !puzzleNote) this.ui.showNotification(spec.note);
                     }
                     const landmarkNote = this.landmarkIceNote(elemUsed);
                     if (landmarkNote) this.ui.showNotification(landmarkNote);
@@ -1710,6 +1714,7 @@ class Game {
         // Check proximity for interactions
         this.checkCaveProximity();
         this.checkMakersHollow();
+        this.checkCastlePuzzle();
         this.checkSealedDoor();
         this.checkStrangeKeys();
         this.checkSkyProximity();
@@ -1751,6 +1756,7 @@ class Game {
 
         // Update combat effects
         this.combat.update(dt);
+        this.consumeCastlePuzzleFlash();
 
         // Update camera
         this.updateCamera();
@@ -2378,6 +2384,9 @@ class Game {
         if (this.nearMakersHollow && this.onSurface) {
             return { icon: "🪜", short: "climb down the ladder", long: "climb down the ladder" };
         }
+        if (this.nearCastleLadder && this.onSurface) {
+            return { icon: "🪜", short: "climb the ladder", long: "climb the ladder" };
+        }
         if (this.nearSealedDoor && this.onSurface) {
             return { icon: "▣", short: "try the door", long: "try the door" };
         }
@@ -2442,6 +2451,10 @@ class Game {
         // The ladder down to the Maker's Hollow
         if (this.nearMakersHollow && this.onSurface) {
             this.enterMakersHollow();
+            return;
+        }
+        if (this.nearCastleLadder && this.onSurface) {
+            this.claimCastleLadder();
             return;
         }
         if (this.nearSealedDoor && this.onSurface) {
@@ -2730,8 +2743,10 @@ class Game {
 
                 // Fire is out - turn to path/ash
                 if (this.world.burningTrees[key].timer <= 0) {
+                    const zone = this.world.felledZone(tx, ty);
                     this.world.tiles[ty][tx] = TILE.PATH;
                     delete this.world.burningTrees[key];
+                    if (zone) this.awardDestroyer(zone);
                     continue;
                 }
 
@@ -2929,6 +2944,75 @@ class Game {
 
     // The ladder in the southwest corner. Nothing marks it; the only way to
     // find it is to walk out to the edge of the world and look.
+    checkCastlePuzzle() {
+        this.nearCastleLadder = false;
+        if (!this.onSurface || !this.world || !this.world.castlePuzzle) return;
+        const p = this.world.castlePuzzle;
+        if (p.stage !== "ladder") return;
+        this.nearCastleLadder = dist(this.player.x, this.player.y, p.x, p.y) < 48;
+    }
+
+    consumeCastlePuzzleFlash() {
+        const p = this.world && this.world.castlePuzzle;
+        if (!p || !p.flash) return false;
+        const stage = p.flash;
+        p.flash = null;
+        const lines = {
+            mountain: "The tree burns away. A mountain stands where it was.",
+            pool: "The mountain sinks, and a pool takes its place.",
+            fire: "The pool flares up into a fire.",
+            ladder: "The fire dies down. A ladder is left behind.",
+        };
+        const effect = { mountain: "fire", pool: "earth", fire: "ice", ladder: "water" }[stage];
+        if (effect && this.combat) this.combat.spawnElementEffect(p.x, p.y, effect, 900);
+        if (lines[stage]) this.ui.showNotification(lines[stage]);
+        const sting = { mountain: "fireBlast", pool: "earthQuake", fire: "iceFreeze", ladder: "waterSplash" }[stage];
+        if (sting && this.sound[sting]) this.sound[sting]();
+        return true;
+    }
+
+    claimCastleLadder() {
+        const p = this.world && this.world.castlePuzzle;
+        if (!p || p.stage !== "ladder") return;
+        if (p.rewarded) {
+            this.ui.showNotification("The ladder has nothing more to give.");
+            return;
+        }
+        p.rewarded = true;
+        const got = [];
+        if (this.player.holdKey("jade")) got.push(STRANGE_KEYS.jade.name);
+        if (this.player.addArmor("knights_armor")) {
+            this.player.equipArmor("knights_armor");
+            got.push(ARMOR.knights_armor.name);
+        }
+        if (this.player.addBow("hunters_bow")) {
+            this.player.equipBow("hunters_bow");
+            got.push(BOWS.hunters_bow.name);
+        }
+        this.sound.weaponPickup();
+        this.sound.gemCollect();
+        this.ui.showNotification(got.length
+            ? "The ladder grants " + got.join(", ") + "."
+            : "You already carry everything the ladder offered.");
+        this.ui.updateHud(this.player);
+    }
+
+    awardDestroyer(zone) {
+        const id = "destroyer-" + zone;
+        this.recordDeed(id);
+        const label = (typeof HallOfDeeds !== "undefined" && HallOfDeeds.label(id)) || "The Destroyer";
+        this.ui.showNotification(label + ".");
+        this.sound.divineChime();
+    }
+
+    syncDestroyerDeeds() {
+        const cleared = this.world && this.world.destroyerCleared;
+        if (!cleared) return;
+        for (const zone of Object.keys(cleared)) {
+            if (cleared[zone]) this.recordDeed("destroyer-" + zone);
+        }
+    }
+
     checkMakersHollow() {
         this.nearMakersHollow = false;
         if (!this.onSurface) return;

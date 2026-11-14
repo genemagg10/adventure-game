@@ -1683,7 +1683,6 @@ class World {
 
                 // Tile details
                 this.renderTileDetail(ctx, tile, sx, sy, tx, ty, time);
-                if (this.isCastlePuzzle(tx, ty)) this.drawCastlePuzzleMark(ctx, sx, sy, time);
             }
         }
 
@@ -2348,16 +2347,6 @@ class World {
             ctx.fillStyle = i % 2 === 0 ? "#ffffff" : "#d8f6ff";
             ctx.fillRect(px, py, 2, 2);
         }
-        ctx.restore();
-    }
-
-    // A thin gold ring so the castle tree, and each shape it takes, reads as one place.
-    drawCastlePuzzleMark(ctx, sx, sy, time) {
-        const pulse = 0.45 + Math.sin(time * 0.006) * 0.35;
-        ctx.save();
-        ctx.strokeStyle = `rgba(240, 198, 65, ${pulse})`;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(sx + 2, sy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
         ctx.restore();
     }
 

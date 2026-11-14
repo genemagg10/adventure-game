@@ -374,6 +374,11 @@ const SaveSystem = {
             makersHollow: world.makersHollow ? { discovered: world.makersHollow.discovered } : null,
             strangeKey: world.strangeKey ? { collected: !!world.strangeKey.collected } : null,
             burningTrees: world.burningTrees ? JSON.parse(JSON.stringify(world.burningTrees)) : null,
+            castlePuzzle: world.castlePuzzle ? {
+                stage: world.castlePuzzle.stage,
+                rewarded: !!world.castlePuzzle.rewarded,
+            } : null,
+            destroyerCleared: world.destroyerCleared ? { ...world.destroyerCleared } : null,
         };
     },
 
@@ -479,6 +484,13 @@ const SaveSystem = {
             world.strangeKey.collected = true;
         }
         if (saved.burningTrees) world.burningTrees = { ...saved.burningTrees };
+        if (world.castlePuzzle && saved.castlePuzzle) {
+            if (saved.castlePuzzle.stage) world.castlePuzzle.stage = saved.castlePuzzle.stage;
+            world.castlePuzzle.rewarded = !!saved.castlePuzzle.rewarded;
+            world.castlePuzzle.flash = null;
+            world.applyCastlePuzzleTile();
+        }
+        if (saved.destroyerCleared) world.destroyerCleared = { ...saved.destroyerCleared };
 
         // Treasures already carried out of the hidden base do not lie there
         // waiting to be picked up a second time.

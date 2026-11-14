@@ -90,7 +90,19 @@ const HallOfDeeds = {
     PAGE_SIZE: 1000,
 
     label(milestoneId) {
-        return HALL_MILESTONES[milestoneId] || null;
+        if (HALL_MILESTONES[milestoneId]) return HALL_MILESTONES[milestoneId];
+        if (typeof milestoneId === "string" && milestoneId.startsWith("destroyer-")) {
+            return HallOfDeeds.destroyerLabel(milestoneId.slice("destroyer-".length));
+        }
+        return null;
+    },
+
+    // One deed per biome, each worth ten. Not part of the full set: clearing
+    // a meadow is its own prize, and the crown still means every other deed.
+    destroyerLabel(zone) {
+        const named = (typeof ZONES !== "undefined" && ZONES[zone]) ? ZONES[zone].name : null;
+        const place = named || (zone === "wilderness" ? "the wilds" : zone);
+        return "The Destroyer — " + place;
     },
 
     // What an insert sends. The hollow keeps the sentence the table already
@@ -101,12 +113,16 @@ const HallOfDeeds = {
 
     weightOf(milestoneId) {
         const row = HALL_DEED_WEIGHT[milestoneId];
-        return row ? row.weight : 0;
+        if (row) return row.weight;
+        if (typeof milestoneId === "string" && milestoneId.startsWith("destroyer-")) return 10;
+        return 0;
     },
 
     tierOf(milestoneId) {
         const row = HALL_DEED_WEIGHT[milestoneId];
-        return row ? row.tier : "";
+        if (row) return row.tier;
+        if (typeof milestoneId === "string" && milestoneId.startsWith("destroyer-")) return "Destroyer";
+        return "";
     },
 
     // Every listed public deed. The three strange keys are one line on the
